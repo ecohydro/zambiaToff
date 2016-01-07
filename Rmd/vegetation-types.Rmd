@@ -1,0 +1,263 @@
+---
+title: "Vegetation types"
+author: "Lyndon Estes"
+date: "January 4, 2016"
+output: html_document
+    highlight: tango
+    theme: spacelab
+    toc: yes 
+    number_sections: yes
+---
+
+# Preparing a habitat rarity layer based on vegetation types
+
+A more straightforward way for calculating biodiversity impacts, which can be based on hectares
+
+## Data
+```{r, eval = FALSE}
+library(agroEcoTradeoff)
+library(gdalUtils)
+library(RPostgreSQL)
+library(rmapaccuracy)
+library(gisutils)
+
+# p_dat <- "/Users/lestes/Dropbox/data/zari/landcover/Spatial Data_FD_ILUAII/"
+p_proj <- "/Users/lestes/Dropbox/publications/zambiaToff/private/zambiaToff/"
+p_dat <- paste0("/Users/lestes/Dropbox/data/distributions/vegetation/",
+                "potential/vecea/Zambia/")
+p_basedat <- paste0("/Users/lestes/Dropbox/projects/agroEcoTradeoff/external/",
+                    "base_data/")
+p_devel <- full_path(p_proj, "external/input_devel/biodiversity")
+
+
+# Load in Vegetation Map of Zambia
+veg <- readOGR(dsn = full_path(p_dat, "pnv_vecea_v2_0_Zambia.shp"), 
+               layer = "pnv_vecea_v2_0_Zambia", stringsAsFactors = FALSE)
+mgrid <- raster(full_path(p_basedat, "ZA-grid.tif"))
+msk <- raster(full_path(p_basedat, "ZA-mask.tif"))
+cntry <- readOGR(full_path(p_basedat, "africa_countries_alb.sqlite"), 
+                 layer = "africa_countries_alb")
+zam <- cntry[cntry@data$fips_cntry == "ZA", ]
+```
+
+## Intersect grid with vegetation types
+
+To 1 km resolution, in order to turn it into percent coverage
+
+```{r, eval=FALSE}
+# transform vegetation map to albers
+vegalb <- spTransform(veg, mgrid@crs)
+
+# Test intersects
+vtypes <- unique(vegalb$CAT)
+vegss <- vegalb[vegalb$CAT == 75, ]
+tcrp <- crop(mgrid, extent(vegss))
+tint <- intersect(vegss, tcrp)
+# plot(tint[1:100, ])
+# plot(tcrp)
+# tcrp <- rasterToPolygons(tcrp)
+# plot(tcrp[1:10, ])
+# plot(vegss)
+# plot(zam, add = TRUE)
+# rm(tint)
+
+```
+
+Initial tests shows this will be tedious in R, so will run this through postgis, for speed (although given the install hassles I could have already run this and been done in R)
+
+Notes on fixing a broken postgis install are appended to postgis
+
+```{r, eval = FALSE}
+# Set up new postigs database
+Sys.setenv(PATH=paste(Sys.getenv("PATH"),"/usr/local/pgsql/bin/",
+                      sep=":"))
+# Sys.getenv("PATH")
+dbname <- "zambiatoff"
+# system(paste("createdb", dbname))
+# system("psql -U lestes -h localhost zambiatoff")  # just hangs
+drv <- dbDriver("PostgreSQL")
+con <- dbConnect(drv, host = "localhost", dbname = dbname, port = 5432)
+# dbSendQuery(con, "CREATE EXTENSION postgis;")
+# dbSendQuery(con, "CREATE EXTENSION postgis_topology;")
+# dbSendQuery(con, "CREATE EXTENSION fuzzystrmatch;")
+# dbSendQuery(con, "CREATE EXTENSION postgis_tiger_geocoder;")
+
+# Need to add back in Africa Albers projection
+# p_sql <- "~/Dropbox/projects/mappingafrica/external/postgis/af-alb-ref.sql"
+# system(paste("psql -f", p_sql, dbname))  # add in prj
+srid <- 102022
+sql <- paste0("select proj4text from spatial_ref_sys WHERE srid=", srid)
+rs <- dbGetQuery(con, sql)
+
+# First convert zambia grid to a set of polygons, for loading into postgis
+# Resurrect old gdal_polygonize wrapper
+gdal_polygonize <- function(inraster, outshape, attname, 
+                            gdalformat = "SQLite") {
+  gdal_setInstallation()
+  ext_tab <- cbind(c("SQLite", "ESRI Shapefile"), 
+                   c(".sqlite", ".shp"))
+  ext <- ext_tab[which(ext_tab[, 1] == gdalformat), 2]
+  gdal_opts <- getOption("gdalUtils_gdalPath")[[1]]
+  
+  pyv <- system("which python", intern = TRUE)
+  py_c <- paste(pyv, paste0(gdal_opts$path, "gdal_polygonize.py"))
+  rnm <- inraster@file@name
+  # rast_nm <- unlist(strsplit(rnm, "/"))[length(unlist(strsplit(rnm, "/")))]
+  fullc <- paste(py_c, rnm, "-f", paste0("'", gdalformat, "'"), 
+                 paste0(outshape, ext), outshape, attname)
+  system(fullc)
+  # shp <- readOGR(dsn = paste0(outshape, ext), layer = outshape)
+  # return(shp)
+}
+
+# Convert to shapefile using gdal_polygonize
+setwd(p_devel)
+gdal_polygonize(mgrid, "zamgrid", "ID", "ESRI Shapefile")
+
+r <- crop(mgrid, extent(-200000, -100000, -2000000, -1900000))
+
+# Small test grid
+# plot(zam)
+# plot(as(extent(-200000, -100000, -2000000, -1900000), "SpatialPolygons"), 
+#      add = TRUE)
+r <- writeRaster(r, file = "testraster.tif", overwrite = TRUE)
+gdal_polygonize(r, "testgrid", "ID", "ESRI Shapefile")
+polygonizer(r@file@name, outshape = "testgrid2.shp")  # doesn't work with asc
+
+# Send to postgis
+postgis_vectab("testgrid.shp", "testgrid", "zambiatoff", "geom", "lestes", con)
+# dbRemoveTable(con, "testgrid")
+
+# system("shp2pgsql zamgrid.shp zamgrid zambiatoff > zamgrid.sql")
+# system("psql -U lestes -d zambiatoff -f zamgrid.sql")
+
+# Index it
+grname_out <- "zamgrid"
+dbSendQuery(con, paste0("CREATE INDEX gix_",  grname_out, " ON ", grname_out, 
+                        " USING GIST(geom)"))
+dbSendQuery(con, paste("VACUUM ANALYZE",  grname_out))
+dbSendQuery(con, paste0("CLUSTER ", grname_out, " USING gix_", grname_out))
+dbSendQuery(con, paste("ANALYZE",  grname_out))
+
+# A little test, using rmapaccuracy functions
+# sql <- paste0("SELECT ID, ST_ASeWKT(geom) FROM ", grname_out, 
+#              " WHERE gid in (", paste0(1:10, collapse = ","), ")") 
+# qgrid <- dbGetQuery(con, sql) 
+# plot(polyFromWkt(qgrid, rs$proj4text))
+
+# Vacuum analyze
+create_idx <- function(tabname, idxvarname, idxvar, con) {
+  # this first one should be revised to check if there is an index variable or 
+  # not first
+  dbSendQuery(con, paste0("CREATE INDEX gix_", idxvarname, " ON ",
+                          tabname, " USING GIST(", idxvar, ")"))
+  dbSendQuery(con, paste("VACUUM ANALYZE", tabname))
+  dbSendQuery(con, paste0("CLUSTER ", tabname, " USING gix_", idxvarname))
+  dbSendQuery(con, paste("ANALYZE",  tabname))
+}
+
+
+# A function to create tables from shapefiles
+postgis_vectab <- function(shp, tabname, dbname, idxvarname, idxvar, user, 
+                           con) {
+  pgcalls <- list(paste("shp2pgsql", shp, tabname, dbname, ">",
+                        paste0(tabname, ".sql")), 
+                  paste("psql -U", user, "-d", dbname, "-f", 
+                        paste0(tabname, ".sql")))
+  for(i in pgcalls) system(i)  # create table in db
+  create_idx(tabname, idxvarname, idxvar, con)
+}
+
+# send vegetation types to postgis
+writeOGR(vegalb, dsn = full_path(p_devel, "vecea.shp"), 
+         layer = "vecea", driver = "ESRI Shapefile")
+create_pg_vtable("vecea.shp", "vtypes", "zambiatoff", "geom", "lestes", con)
+
+# Update srids for the two fields
+sql <- paste0("SELECT UpdateGeometrySRID('vtypes', 'geom', ", srid, ")")  
+dbSendQuery(con, sql)
+dbClearResult(dbListResults(con)[[1]])
+sql <- paste0("SELECT UpdateGeometrySRID('zamgrid', 'geom', ", srid, ")")  
+dbSendQuery(con, sql)
+dbClearResult(dbListResults(con)[[1]])
+
+# Intersection
+isectname <- "vtypegrids"
+sql <- paste("CREATE TABLE",  isectname, 
+             "(gid serial primary key,", 
+             "grid_id integer,", 
+             "v_cat integer,",  
+             "geom geometry(multipolygon,", srid, ")",
+             ");")
+d <- dbSendQuery(con, sql)
+
+a <- "zamgrid"
+b <- "vtypes"
+tick <- Sys.time()
+print(paste("Processing intersection, starting at time", tick))
+sql <- paste("INSERT INTO", isectname, "(grid_id, v_cat, geom)", 
+             "SELECT", 
+             "a.id AS grid_id,", 
+             "b.gid AS v_cat,",  
+             "CASE", 
+             "WHEN ST_Within(a.geom,b.geom)", 
+             "THEN a.geom", 
+             "ELSE ST_Multi(ST_Intersection(a.geom,b.geom))", 
+             "END AS geom", 
+             "FROM", a, "a",
+             "JOIN", b, "b", 
+             "ON ST_Intersects(a.geom, b.geom)")
+system.time(d <- dbSendQuery(con, sql))  # 6.211
+tock <- Sys.time()
+print(paste0("Finished intersections at ", tock, ", total time = ", tock - tick))
+
+create_idx()
+
+
+
+for(i in vtypes) {
+  v <- vegalb[vegalb@data$CAT == i, ]
+  
+}
+vtypes
+
+
+
+
+dbDisconnect(con)
+
+
+
+```
+
+
+```{r, eval=FALSE, echo=FALSE}
+# For cleaning up zari-sourced vegetation map
+
+# trim down some names
+# unique(veg@data[, c(1:2, 4)])
+ftype <- unique(veg@data$FEATURE_TY)
+ftyper <- ftype
+ftyper[1] <- "treeless-grassy"
+ftyper[2] <- "termitary"
+ftyper[3:4] <- c("miombo hilly", "miombo plateau")
+ftyper[10] <- "Parinari-copperbelt chipya"
+ftyper[15] <- "Munga heavy soils"
+ftyper[16] <- "Kalahari woodland"
+ftyper[17] <- "Mopane"
+ftyper[18] <- "Baikiaea"
+
+# Replace in table
+ftype_tab <- cbind(ftype, ftyper)
+for(i in 1:nrow(ftype_tab)) {  # i <- 1
+  ind <- which(veg@data$FEATURE_TY == ftype_tab[i, 1])
+  veg@data$FEATURE_TY[ind] <- ftype_tab[i, 2]
+}
+colnames(veg@data) <- c("code", "vtype1", "trapnell", "vtype2")
+unique(veg@data[, c(1:2, 4)])
+# plot(veg[veg$FORESTCLAS == "Inland water", ])
+# plot(veg[veg@data$vtype1 == "Itigi forest", ])
+
+
+```
+

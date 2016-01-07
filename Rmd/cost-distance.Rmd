@@ -1,0 +1,309 @@
+---
+title: "Cost distance inputs"
+author: "Lyndon Estes"
+date: "December 9, 2015"
+output: 
+  html_document:
+    highlight: tango
+    theme: spacelab
+    toc: yes 
+    number_sections: yes
+---
+
+# Creating a cost distance surface for Zambia
+
+A summary of the datasets and steps needs to create a cost distance surface for Zambia. 
+
+## Approach
+
+Following Tim Thomas's (IFPRI) basic approaches and datasets for making friction/access surfaces. We are going to use isotropic distances, and not worry about slopes and directional variation in speed. 
+
+### Datasets needed
+
+1. Roads - these will vary the most, and will draw on three datasets
+    + Urban Links shapefiles from Zambia--these will define urban areas
+    + PFRLinks - Zambia Roads Department data, I think for provincial roads 
+    + TMDLinks merged - RDA data these are national/trunk roads
+    + roads_trunk; roads_primary; roads_secondary; roads_tertiary - these were downloaded from OpenStreetMap (using a QGIS utility). They provide almost the same coverage (and a bit better in some places then the TMD and PFRlinks data) and are accurate, and show consistent transport linkages into other countries. 
+    + The trick is to compare the Zambia RDA datasets with the OpenStreetMap ones and ancillary data about the roads projects to figure out what are new roads, and what are just upgrades. The class of road and the upgrades (or whether they are new or not) will determine how quickly travel time will be on them. 
+2. Rivers - These will provide a barrier except where roads cross. Using the USGS hydrosheds, selecting cells with more than 1000 cells of contributing areas upstream as major rivers.  
+3. Lakes - Two sets of lakes data, one for all of Africa from FAO and one from the Zambia datasets I have received from ZARI. I will merge them both. 
+4. Towns/cities - Three datasets - grump (NASA) urban centers for region outside of Zambia (towns that might represent the nearest town to some Zambia border regions), and the district head towns from the ZARI datasets.
+5. International boundaries (Zambia shape). Will provide a barrier or friction.
+6. Background frame - a rectangle covering Zambia and parts of neighboring countries, to have some connections between them. 
+
+```{r, eval = FALSE}
+library(lmisc)
+library(raster)
+library(rgdal)
+library(rgeos)
+library(gdalUtils)
+p_root <- set_base_path("zambiaToff")
+p_roads <- full_path(p_root, "external/input_devel/roads/")
+p_roads2 <- paste0("~/Dropbox/data/zari/infrastructure/zambia/rda_dump/", 
+                   "Final Shape files RDA/")
+p_trade <- "~/Dropbox/projects/agroEcoTradeoff/external/base_data/"
+
+# Read in data
+setwd(p_roads)
+
+# Africa grid, for grid cells size and projection
+mgrid <- raster(full_path(p_trade, "africa_grid.tif"))
+
+# zambia and frame, for projecting
+setwd("..")
+zframe <- readOGR("zambia-frame.sqlite", layer = "zambia-frame")
+zfr <- crop(mgrid, spTransform(zframe, projection(mgrid)))
+zfr[!is.na(zfr)] <- 1
+# plot(spTransform(zframe, projection(mgrid)), add = TRUE)
+
+# zfr <- rasterize(spTransform(zframe, projection(mgrid)), mgrid)
+# zfr <- raster(round(extent(zframe), 1))  # use extent to create raster
+# res(zfr) <- 0.00833
+# zfr[] <- 1
+# projection(zfr) <- zframe@proj4string
+
+setwd(p_roads2)
+zambia <- readOGR("zam_boundary_region_ll.shp", "zam_boundary_region_ll")
+zambia@proj4string <- zframe@proj4string
+
+# towns
+setwd(p_roads)
+ztowns <- readOGR(dsn = "district_towns.shp", layer = "district_towns")
+ntowns <- readOGR("zambia-neighbor-cities.shp", 
+                  layer = "zambia-neighbor-cities")
+ntowns <- ntowns[ntowns$ES00POP > 10000, ]  # filter down to 10,000 or greater
+ztowns$cid <- 1:nrow(ztowns)
+ztowns@data <- ztowns@data[, "cid", drop = FALSE]  # reduce for binding
+ntowns$cid <- (max(ztowns$cid) + 1):(nrow(ntowns) + (max(ztowns$cid)))
+ntowns@data <- ntowns@data[, "cid", drop = FALSE]  # reduce for binding
+ntowns@proj4string <- ztowns@proj4string
+alltowns <- spTransform(rbind(ztowns, ntowns), CRSobj = projection(zfr))
+
+# write this out--needed for determining nodes in cost distance analysis
+writeOGR(alltowns, dsn = "alltowns.shp", layer = "alltowns", 
+         driver = "ESRI Shapefile", overwrite = TRUE)
+
+# rivers & lakes
+setwd(p_roads)
+riv <- readOGR("rivers-gt1000.sqlite", layer = "rivers_gt1000")
+riv@proj4string <- zframe@proj4string
+riv <- readOGR("rivers-gt1000.sqlite", layer = "rivers_gt1000")
+
+# QGIS merge of africa water-bodies clipped to frame and Zambia lakes layer
+# both have inaccuracies against satellite
+lakes <- readOGR("lakesall.shp", "lakesall")  
+
+# roads
+rtypes <- c("trunk", "primary", "second", "tertiary")
+
+r3 <- "roads_tmdlinks.sqlite"
+r4 <- "roads_pfrlinks.sqlite"
+
+roadnms <- sapply(rtypes, function(x) {
+  dir(p_roads, pattern = paste0("^roads_", x))
+})
+rdrcl <- c(1, 2, 4, 8)
+roads <- lapply(1:length(roads), function(x) {
+  nm <- unname(roadnms)[x]
+  rdspoly <- readOGR(nm, layer = gsub("\\.sqlite", "", nm))
+  rdspoly@proj4string <- zframe@proj4string
+  rdspoly$code <- rdrcl[x]  # assign new variable with code for road coding
+  rdspoly@data <- rdspoly@data[, c("full_id", "osm_id", "code")]
+  rdspoly
+})
+
+# 
+tmd <- readOGR(r3, layer = gsub("\\.sqlite", "", r3))
+tmd@proj4string <- zambia@proj4string
+pfr <- readOGR(r4, layer = gsub("\\.sqlite", "", r4))
+pfr@proj4string <- zambia@proj4string
+
+# plot(zframe)
+# plot(lakes, add = TRUE)
+# plot(ztowns, pch = 20, cex = 0.5)
+# points(ntowns, pch = 20, cex = 0.5)  
+
+```
+
+### Rasterize datasets
+
+We'll start with the frame for the region - a box defining Zambia and its surrounding regions. Next we'll do the roads. This is the one to pay attention to, because we are going to have use the TMDlinks and pfrlinks to update the values of these.  
+```{r, eval = FALSE}
+# Start with the frame
+zamr <- rasterize(as(spTransform(zambia, projection(zfr)),"SpatialLines"), zfr)
+zamr[is.na(zamr)] <- 0
+
+# roads
+# want to avoid super high numbers where roads overlap--always assign
+# lowest value to intersecting roads
+# e.g. 1 where primary, secondary overlap
+# 1 <= 1 + 1 (2)
+# 1 <= 1 + 2 | 1 + 1 + 1 (3)
+# 1 <= 1 + 2 + 4 (7)
+# 1 <= 1 + 2 + 4 + 8 (15)
+# 2 <= 2 + 4 (6)
+# 2 <= 2 + 4 + 8 (14)
+# 3 <= 4 + 8 (12)
+# 4 <= 8
+# now read in roads data in a loop. This is the place where you will need to
+# update values. Here we are just reading in 
+# roads_trunk|primary|secondary|tertiary. 
+roadsr <- lapply(1:length(roads), function(x) {
+  print(paste("processing", x))
+  rp <- spTransform(roads[[x]], projection(zfr))
+  writeOGR(rp, dsn = "rdtmp.sqlite", layer = "rdtmp", driver = "SQLite")
+  # r <- rasterize(x = rp, y = zfr, field = "code", progress = "text")
+  fnm <- paste0("roads_", names(roadnms)[x], ".tif")
+  gdal_rasterize(src_datasource = "rdtmp.sqlite", l = "rdtmp", ot = "Int16", 
+                 a = "code", tr = res(zfr), at = TRUE, init = 0,
+                 dst_filename = fnm, te = bbox(zfr)[1:4], of = "GTiff")
+  file.remove("rdtmp.sqlite")
+  r <- raster(fnm)
+})
+
+# start to add roads grids, and reclassify as we go. The fastest road is dominant
+# where roads intersect
+# roadsr[[1]] > 0 & roadsr[[2]] > 0
+roadsrs <- roadsr[[1]] + roadsr[[2]]  # trunk and primary
+roadsrs[roadsrs == 3] <- 1  # if 3 (trunk and primary), set to 1
+roadsrs <- roadsrs + roadsr[[3]]  # sum of that plus secondary
+roadsrs[roadsrs == 5] <- 1  # if 5 (trunk + secondary) set to 1
+roadsrs[roadsrs == 6] <- 2  # if 6 (primary + secondary) set to 2
+roadsrs <- roadsrs + roadsr[[4]]  # sum of that plus tertiary
+roadsrs[roadsrs == 9] <- 1  # if 9 (trunk + tertiary) set to 1
+roadsrs[roadsrs == 10] <- 2  # if 10 (primary + tertiary) set to 2
+roadsrs[roadsrs == 12] <- 3  # if 12 (secondary + tertiary) set to 3
+roadsrs[roadsrs == 4] <- 3  # reset 4 to 3
+roadsrs[roadsrs == 8] <- 4  # reset 8 to 4
+# freq(roadsr[[3]] > 0 & roadsr[[4]] > 0)
+# freq(roadsrs)
+
+# rivers
+# 3 classes of rivers, based on upstream contributing areas. This will affect 
+# crossing times. These are worth playing with
+# gt > 20000. Let's say 90 minutes to cross, to make a barrier
+# gt > 10000 < 20000. Let's say 60 minutes to cross, to make a barrier
+# gt < 10000. Let's say 30 minutes to cross
+
+# plots
+# hist(riv$up_cells, plot = FALSE)
+# plot(zambia)
+# plot(riv[riv$up_cells > 20000, ], add = TRUE, col = "red")
+# plot(riv[riv$up_cells > 10000 & riv$up_cells <= 20000, ], add = TRUE, 
+#      col = "blue")
+# plot(riv[riv$up_cells <= 10000, ], add = TRUE, 
+#      col = "green")
+
+# project rivers shapefile, give crossing time code, rasterize
+rp <- spTransform(riv, projection(zfr))  # project to albers
+rp$code <- 2  # assign code for setting times (this will be 10000-20000)
+rp$code[rp$up_cells > 20000] <- 3  # 3 for greater than 20000
+rp$code[rp$up_cells < 10000] <- 1  # 1 for lt 10000
+writeOGR(rp, dsn = "tmp.sqlite", layer = "tmp", driver = "SQLite")
+# r <- rasterize(x = rp, y = zfr, field = "code", progress = "text")
+fnm <- "rivers.tif"
+gdal_rasterize(src_datasource = "tmp.sqlite", l = "tmp", ot = "Int16", 
+               a = "code", tr = res(zfr), at = TRUE, init = 0,
+               dst_filename = fnm, te = bbox(zfr)[1:4], of = "GTiff")
+file.remove("tmp.sqlite")
+rivr <- raster(fnm)
+
+# lakes
+lakes$code <- 1
+rp <- spTransform(lakes, projection(zfr))  # project to albers
+fnm <- "lakes.tif"
+writeOGR(rp, dsn = "tmp.sqlite", layer = "tmp", driver = "SQLite")
+gdal_rasterize(src_datasource = "tmp.sqlite", l = "tmp", ot = "Int16", 
+               a = "code", tr = res(zfr), at = TRUE, init = 0,
+               dst_filename = fnm, te = bbox(zfr)[1:4], of = "GTiff")
+file.remove("tmp.sqlite")
+laker <- raster(fnm)
+
+# assemble grid layers into a single friction/cost surface
+roadsrs
+laker[laker > 0] <- 50  # give lake a value easy to distinguish
+zamr[zamr > 0] <- 100  # give border a value
+rivr2 <- rivr * 200
+
+# find overlaps to correct
+bridges <- roadsrs > 0 & rivr > 0  # find places where roads cross rivers
+rivinlake <- laker > 0 & rivr > 0  # places where rivers are in lakes
+roadsinlake <- roadsrs > 0 & laker > 0  # roads in lakes - set to roads vals
+
+# create friction surface and fix overlaps
+fric <- laker + rivr2
+fric2 <- (rivinlake == 0) * fric + (rivinlake * laker)  # lake over rivers
+fric3 <- fric2 * (roadsrs == 0) + roadsrs  # roads over lakes and rivers
+fric4 <- fric3 * (zamr == 0) + zamr  # border over lakes, rivers, roads
+
+# give time values to the friction raster - time in minutes to cross 1 km grid 
+fric4[fric4 == 1] <- 1 # 1 minutes for trunk road (60 km/h)
+fric4[fric4 == 2] <- 1.333  # 1.333 minutes for primary road (45 km/h)
+fric4[fric4 == 3] <- 2  # 2 minutes for secondary road (30 km/h)
+fric4[fric4 == 4] <- 4 # 4 minutes for tertiary road (15 km/h)
+fric4[fric4 == 50] <- 6  # 6 minutes on lake (10 km/h)
+fric4[fric4 == 100] <- 60  # 60 minutes to cross border
+fric4[fric4 == 200] <- 30   # 30 minutes to cross smaller river
+fric4[fric4 == 400] <- 60   # 60 minutes to cross next size river
+fric4[fric4 == 600] <- 90   # 1.5 hours to cross next size river
+fric4[fric4 == 0] <- 20  # 20 minutes off-road
+
+fric4 <- fric4 / 1000 / 60  # divide by 1000 / 60 to get cost in hrs / meter 
+
+
+# write it out
+writeRaster(fric4, file = "friction.tif", overwrite = TRUE)
+
+# copy over to ArcGIS folder (if you have it set-up)
+cnm <- "/Volumes/Data/loMadzala/GIS/Zambia/costdistance/friction.tif"
+file.copy("friction.tif", cnm, overwrite = TRUE)
+
+```
+
+The raster that was written out now becomes the cost surface for cost distance analysis. Do that in ArcGIS, because R doesn't have a great algorithm for that yet.  
+
+You will the alltowns.shp dataset as well for your analysis, which are the towns that will serve as the focal points for calculating travel costs 
+
+Send over the friction surface to ArcGIS, and then go into ArcToolBox > Spatial Analyst Tools > Distance > Cost Distance and the input alltowns into the input raster or feature source dialog, and friction into input cost raster dialog, and then choose an output name. 
+
+To bring up back into R, which you will need to do to work with it, export to the arcgis grid to a geotiff (right click on the name of the cost grid in the left hand menu of arc, save it as a geotiff, and copy it to where you will work with it in R)
+
+That will give you a cost of movement in hours. You might want to play around with the values I have provided for the friction surface to see if they are reasonable.  Some end up being quite high. 
+
+# Processing cost grid to make it usable by model
+```{r, eval = FALSE}
+# Some code I use to quickly copy data out of the ArcGIS processing folder
+# back to my machine
+cnm <- "/Volumes/Data/loMadzala/GIS/Zambia/costdistance/zamcost2.tif"
+file.copy(cnm, "cost.tif", overwrite = TRUE)
+
+# read in the cost raster
+costr <- raster("cost.tif")
+
+# first we have to cut this down for R, and then convert it to a data.table
+# get the zambia mask for AgroEcoTradeoffs
+# find your install of AgroEcoTradeoffs
+# read in the "ZA-mask.csv" file, which is a data.table
+library(agroEcoTradeoff)
+dt_path <- "~/Dropbox/projects/agroEcoTradeoff/external/data/dt/"
+msk <- fread(paste0(dt_path, "ZA-mask.csv"))  # read it in
+mskr <- dt_to_raster(msk, CRSobj = projection(zamr))  # convert to raster
+
+# now crop the cost surface, then resample it to  
+# line up with our mask raster, since they are slightly offset from one 
+# another, and then mask it
+costrcr <- crop(costr, mskr)
+costcrrs <- resample(costrcr, mskr)
+costrmsk <- mask(costcrrs, mskr)
+plot(costrmsk)  # voila
+
+# then convert it to a data.table as follows
+costdt <- na.omit(as.data.table(costrmsk, xy = FALSE))
+
+# and then you will write it out as a csv file.  
+fnm <- "../../data/ZA-cost.csv"
+write.table(costdt, file = fnm, sep = ",", col.names = TRUE, row.names = FALSE)
+```
+
+Your final output csv file will want to replace the ZA-cost.csv file in agroEcoTradeoffs folder `external/data/dt`, and then the model will work nicely.  

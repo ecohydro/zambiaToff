@@ -1,0 +1,291 @@
+---
+title: "Zambia Potential Yield Grids"
+author: "Lyndon Estes"
+date: "December 3, 2015"
+output: 
+  html_document:
+    highlight: tango
+    theme: spacelab
+    toc: yes 
+    number_sections: yes
+---
+
+# Prepare Maize and Soy Yield Grids
+
+Based on simulated potential yields run by Di Tian. 
+```{r, eval = FALSE}
+library(data.table)
+library(lmisc)
+library(dtraster)
+# devtools::install_github("PrincetonUniversity/lmisc")
+
+p_root <- set_base_path()
+p_crop <- "~/Dropbox/data/agricultural/zambia/dssat/"
+p_cropmod <- "~/Dropbox/projects/rCropMod/external/ext_data/"
+p_agro <- "~/Dropbox/projects/agroEcoTradeoff/external/base_data/"
+
+# Read in spatial reference grid and chop it down to size
+ID <- fread(full_path(p_crop, "Soil_clim_match_ID_master.csv"))
+ID[, V1 := NULL]
+setkeyv(ID, c("WTH", "SOL", "Zone"))
+ID[, SharePct := as.numeric(SharePct)]
+IDr <- subset(unique(ID[, .(x, y, WTH, Zone)]))
+setkeyv(IDr, c("WTH", "Zone"))
+# unique(ID[, .(WTH, SOL)])
+# gr <- dt_to_raster(IDr[, .(ID, x, y)], CRS(prj))
+# plot(gr)
+
+plot(dt_to_raster(IDr[, .(x, y, as.factor(Zone))], CRS(prj)))
+prj <- paste0("+proj=aea +lat_1=20 +lat_2=-23 +lat_0=0 +lon_0=25 +x_0=0 +y_0=0",
+              " +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs")
+gcs <- "+proj=longlat +datum=WGS84"
+
+
+# Maize yield in each grid cell varies as a function of soil, year, and 
+# management inputs
+# Need to capture that uncertainty
+# Start with climate uncertainty by mean soil. 
+# Then look at uncertainty in average year by soil type
+
+# Weighted variance functions, from here: 
+# https://rulesofreason.wordpress.com/2012/02/13/weighted-variance-and-weighted-coefficient-of-variation/
+weighted.var <- function(x, w, na.rm = FALSE) {
+    if (na.rm) {
+        w <- w[i <- !is.na(x)]
+        x <- x[i]
+    }
+    sum.w <- sum(w)
+    sum.w2 <- sum(w^2)
+    mean.w <- sum(x * w) / sum(w)
+    (sum.w / (sum.w^2 - sum.w2)) * sum(w * (x - mean.w)^2, na.rm = na.rm)
+}
+
+weighted.var2 <- function(x, w, na.rm = FALSE) {
+  if (na.rm) {
+    w <- w[i <- !is.na(x)]
+    x <- x[i]
+  }
+  sum.w <- sum(w)
+  (sum(w*x^2) * sum.w - sum(w*x)^2) / (sum.w^2 - sum(w^2))
+}
+
+# We're going to start by mapping the CV of the soil versus the inter-annual
+# variability in the data, just to the 0.25 degree resolution
+# read in different grids, start with Maize
+crops <- list.dirs(p_crop, full.names = FALSE)[-1]
+cv_rasts <- lapply(crops, function(X) {
+  # X <- crops[1]
+  fnms <- dir(full_path(p_crop, X))
+  fl <- unlist(lapply(c("S", "R", "I"), function(x) {
+    fnms[grep(paste0(paste0(x, "0"), "|", paste0(x, "9")), fnms)]
+  }))  # reorder to read subsistence first
+  idt <- copy(IDr)
+  for(y in 1:length(fl)) { # y <- 2
+    print(paste("Processing", fl[y]))
+    cr <- fread(input = full_path(p_crop, paste0(X, "/", fl[y])))
+    cr[, "YR" := RUNNO - min(RUNNO) + 1, by = .(TNAM, Zones)]  # unique year  
+    # crss <- cr[YR == 1, ]
+    setnames(cr, c("SOIL_ID...", "WSTA....", "Zones"), c("SOL", "WTH", "Zone"))
+    cr[, WTH := substr(WTH, 1, 4)]
+    cr[, c("V1", "TRNO") := NULL]
+    setkeyv(cr, c("WTH", "SOL", "Zone"))
+    
+    # unique(ID$WTH)[!unique(ID$WTH) %in% unique(substr(cr$WTH, 1, 4))]
+    
+    # cr[, .N, by = .(TNAM, SOL, Zone)][which(N > 62), ]
+    # tst <- cr[TNAM == "AAAX0003" & SOL == "WI_FLSO001", ][order(YR), ]
+    # plot(tst[YR > 31, HWAH], tst[YR <= 31, HWAH])
+    # cr[TNAM == "AAEA0001" & SOL == "WI_CMZR003", ]
+    
+    crm <- cr[ID[, .(WTH, SOL, SharePct, Zone)], allow.cartesian = TRUE]
+    
+    # CV due to interannual variability
+    solmu <- crm[, round(weighted.mean(HWAH, w = SharePct)), 
+                 by = .(WTH, Zone, YR)]
+    
+    snm <- gsub("*.*_|\\.csv", "", fl[y])
+    anncv <- solmu[, round(cv(V1)), by = .(WTH, Zone)]
+    setnames(anncv, "V1", paste0("acv", snm))
+    idt <- idt[anncv]
+    setkeyv(idt, c("WTH", "Zone"))
+  
+    # anncv <- solmu[, round(cv(V1)), by = .(WTH, Zone)][, V1]
+    # setnames(anncv, "V1", "acv")
+    
+    # annwv2[WTH == "AERM" & Zone == "Zone3",]
+    # crm[WTH == "AERM" & Zone == "Zone3" & YR == 1, 
+    # weighted.var2(HWAH, SharePct)]
+    # annwv2[, sqrt(V1)] / solmu[, V1]  # checks
+    
+    # CV due to soil
+    annmu <- crm[, round(mean(HWAH)), by = .(WTH, SOL, Zone, SharePct)]
+    # cr[, .N, by = .(TNAM, SOL)][which(N > 62), ]
+    # crm[WTH == "AAAI" & SOL == "WI_LVUY032" & Zone == "Zone2a", ]
+    # crm[WTH == "AAAI" & SOL == "WI_LVUY032" & Zone == "Zone3", mean(HWAH)]
+    # annmu[WTH == "AAAI" & Zone == "Zone3", ]
+    # crm[WTH == "AAAI" & Zone == "Zone3" & SOL == "WI_LVUY032", mean(HWAH)]
+    # range(crm[, round(mean(HWAH)), by = .(WTH, SOL, Zone)][, V1] - 
+    # crm[, round(mean(HWAH)), by = .(WTH, SOL, Zone, SharePct)][, V1])
+    # crm[WTH == "AAAA" & Zone == "Zone3" & SOL == "WI_CLBW256", mean(HWAH)]
+    # annmu[WTH == "AAAA" & Zone == "Zone3" & SOL == "WI_CLBW256", ]
+    annsolmu <- annmu[, weighted.mean(V1, SharePct), by = .(WTH, Zone)]
+    # sum(annsolmu$V1 - annmu[, weighted.mean(V1, SharePct), 
+    # by = .(WTH, Zone, SOL)][, V1])
+    solcv <- annmu[, sqrt(weighted.var(V1, w = SharePct, na.rm = TRUE)), 
+                   by = .(WTH, Zone)][, V1 / annsolmu[, V1] * 100]
+    scvnm <- paste0("scv", snm)
+    annsolmu[, c(scvnm) := round(solcv)]
+    annsolmu[, V1 := NULL]
+    setkeyv(annsolmu, c("WTH", "Zone"))
+    idt <- idt[annsolmu]
+    setkeyv(idt, c("WTH", "Zone"))
+    idt
+  }
+  idt
+})
+names(cv_rasts) <- crops
+
+# Mean CVs by cultivar
+mucvs <- lapply(crops, function(x) {
+  cv_rasts[[x]][, lapply(.SD, function(x) mean(x, na.rm = TRUE)), 
+                 .SDcols = grep("cv", names(cv_rasts[[x]]))]
+})
+# cv_rasts$soybean[, lapply(.SD, function(x) length(which(is.na(x)))), 
+#                  .SDcols = grep("cv", names(cv_rasts$soybean))]  # only 2 nas
+# plot(sapply(nms1, function(x) mucvs[[1]][, get(x)]), 
+#      sapply(nms2, function(x) mucvs[[1]][, get(x)]))
+
+# Calculate mean CV across cultivar types
+dtr <- lapply(crops, function(x) {
+  nms1 <- names(cv_rasts[[x]])[grep("scv", names(cv_rasts[[x]]))]
+  nms2 <- names(cv_rasts[[x]])[grep("acv", names(cv_rasts[[x]]))]
+  cv_rasts[[x]][,  scvmu := rowMeans(.SD, na.rm = TRUE), .SDcols = nms1]
+  cv_rasts[[x]][,  acvmu := rowMeans(.SD, na.rm = TRUE), .SDcols = nms2]
+  dt_to_raster(cv_rasts[[x]][, .(x, y, scvmu, acvmu)], CRSobj = gcs)
+})
+
+# cv_rasts[[1]][order(x, -y), .(x, y)]
+
+# CV due to soil and climate
+png(full_path(p_root, "external/input_devel/crop-cv.png"), width = 700, 
+    height = 700)
+plot(stack(dtr), zlim = c(0, 100),  
+     main = c("maize soil CV", "maize annual CV", "soy soil CV", 
+              "soy annual CV"))
+dev.off()
+```
+
+![figure](../external/input_devel/crop-cv.png)
+
+These maps display the coefficient of variation in simulated maize (top row) and soybean (bottom row) yields, for variability due to soil differences (left column) and inter-annual variability in weather (right column). Soil differences within a given grid cause more yield variability than seasonal differences in weather. 
+
+<a href="#top">Back to top</a>
+
+# Yield grids
+## 10 km grids
+
+Creating 10 km grids for 10th, 50th, 90th percentile yields for each cultivar under each management type (subsistence, rainfed commercial, irrigated). 
+```{r, eval=FALSE}
+nmso <- c("10", "50", "90")  # naming vector for quantile variables
+probs <- c(0.1, 0.5, 0.9)  # quantiles to get
+crops <- list.dirs(p_crop, full.names = FALSE)[-1]  # dir names
+yld_rasts <- lapply(crops, function(X) {
+  # X <- crops[1]
+  fnms <- dir(full_path(p_crop, X))
+  fl <- unlist(lapply(c("S", "R", "I"), function(x) {
+    fnms[grep(paste0(paste0(x, "0"), "|", paste0(x, "9")), fnms)]
+  }))  # reorder to read subsistence first
+  idt <- copy(IDr)
+  for(y in 1:length(fl)) { # y <- 1
+    print(paste("Processing", fl[y]))
+    cr <- fread(input = full_path(p_crop, paste0(X, "/", fl[y])))
+    cr[, "YR" := RUNNO - min(RUNNO) + 1, by = .(TNAM, Zones)]  # unique year  
+    setnames(cr, c("SOIL_ID...", "WSTA....", "Zones"), c("SOL", "WTH", "Zone"))
+    cr[, WTH := substr(WTH, 1, 4)]
+    cr[, c("V1", "TRNO") := NULL]
+    setkeyv(cr, c("WTH", "SOL", "Zone"))
+    
+    # merge IDs
+    crm <- cr[ID[, .(WTH, SOL, SharePct, Zone)], allow.cartesian = TRUE]
+    
+    # Soil averaged yields
+    solmu <- crm[, round(weighted.mean(HWAH, w = SharePct)), 
+                 by = .(WTH, Zone, YR)]
+    snm <- gsub("*.*_|\\.csv", "", fl[y])
+    
+    # Yield quantiles and means
+    for(i in 1:3) {
+      # solmu[WTH == "AAAA" & Zone == "Zone2b", box_stats(V1), by = .(WTH, Zone)]
+      v <- solmu[, quantile(V1, probs = probs[i]), by = .(WTH, Zone)]
+      setnames(v, "V1", paste0("y", nmso[i], "_", snm))
+      idt <- idt[v]
+      setkeyv(idt, c("WTH", "Zone"))
+    }
+    v <- solmu[, round(mean(V1)), by = .(WTH, Zone)]
+    setnames(v, "V1", paste0("ymu_", snm))
+    idt <- idt[v]
+    setkeyv(idt, c("WTH", "Zone"))
+    idt
+  }
+  idt
+})
+names(yld_rasts) <- crops
+
+# Write out 10 km yield grids to csvs, for safe keeping
+lapply(crops, function(x) {
+  fnm <- full_path(p_root,
+                   paste0("external/data/", x, "_yields_10km.csv"))
+  write.csv(yld_rasts[[x]], file = fnm, row.names = FALSE)
+})
+
+# Take average of mean yields across the different cultivar types. 
+# This will give 1 set of yields for each of the three management scenarios
+# Subsistence, rainfed commercial, irrigated
+# The same approach can be used to estimate the average of the 10th percentile 
+# across cultivars, or median, or 90th, etc. 
+yld_mus <- lapply(crops, function(x) {  # x <- crops[[1]]
+  ymu <- lapply(c("S", "R", "I"), function(y) {  #y <- "S"
+    cnms <- names(yld_rasts[[x]])[grep(paste0("mu_", y), names(yld_rasts[[x]]))]
+    ylds <- copy(yld_rasts[[x]][, c("x", "y", cnms), with = FALSE])
+    ylds[, c(x) := round(rowMeans(.SD)), .SDcols = cnms]
+    ylds[, c(cnms) := NULL]
+    ylds
+  })
+  named_out(ymu, c("S", "R", "I"))
+})
+names(yld_mus) <- crops
+  
+plot(dt_to_raster(yld_mus[[2]]$R, CRSobj = gcs))
+```
+<a href="#top">Back to top</a>
+
+
+# 1 km grids
+
+Average mean yields across cultivars within management treatments, and then reseample to 1 km grids. These become new inputs for the tradeoff model.  
+```{r, eval=FALSE}
+mgrid <- raster(full_path(p_agro, "ZA-grid.tif"))
+msk <- raster(full_path(p_agro, "ZA-mask.tif"))
+lapply(c("S", "R", "I"), function(x) { # x <- "S" 
+  print(paste("Processing", x))
+  DTL <- lapply(crops, function(y) {  # y <- crops[1]
+    # fname <- full_path("external/base_data/", paste0(x, "-crop-yields.tif"))
+    print(paste("..Processing", y))
+    r <- dt_to_raster(yld_mus[[y]][[x]], CRSobj = gcs)
+    r2 <- disaggregate(r, fact = 10)
+    r3 <- resample(r, r2)
+    r4 <- projectRaster(r3, msk)
+    r4 <- mask(r4, msk)
+    # plot(r4)
+    valinds <- which(!is.na(values(msk)))
+    DT <- as.data.table.raster(r4, xy = FALSE)[valinds, ]
+    DT[, c(y) := round(get(y))]
+    DT
+  })
+  DTdt <- do.call(cbind, DTL)
+  fnm <- full_path(p_root,
+                   paste0("external/data/ZA-potential-yields-", x, ".csv"))
+  write.table(DTdt, file = fnm, sep = ",", col.names = TRUE, row.names = FALSE)
+})
+```
+<a href="#top">Back to top</a>

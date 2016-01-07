@@ -1,0 +1,62 @@
+---
+title: "To-Do List"
+author: "Lyndon Estes"
+date: "January 4, 2016"
+output: 
+  html_document:
+    highlight: tango
+    theme: spacelab
+    toc: yes 
+    number_sections: yes
+---
+
+# Data and Improvements Needed
+
+For the next iteration of the model and the ProcRoyalB paper.
+
+## Improvements
+
+A table of things to do, stating their progress and likelihood of achieving ("D" = doing, "L" is likely to get done, "U" is unlikely to get done, "F" is finished, "A" is abandoned) during the month of January.  __Table last updated: `r Sys.Date()`__
+
+```{r, echo=FALSE, message=FALSE, warnings=FALSE, results='asis'}
+# http://stackoverflow.com/questions/19997242/simple-manual-rmarkdown-tables-that-look-good-in-html-pdf-and-docx
+# tabl <- "  
+# | Item        | Description           | Doing or Done?  |
+# |---------------|:-------------|------|
+# | Plausible scenario | A single production target to follow (Alastair)  | Doing |
+# | Gridded yield estimates | Maize and soybean, exact method for handling variability & production zones (e.g. irrigation regions) |  Doing |
+# | Gridded yield estimates | Run with improved soil profiles (Di) | Unlikely |
+# | Upgrade soils | With ILUA database (with Nate?) | Unlikely |
+# | Filter terrain | Get rid of unfarmable bits, probably needs new model logic (cell fraction multiplier) | Doing | 
+# 
+# "
+# cat(tabl) # output the table in a format good for HTML/PDF/docx conversion
+
+# make an html table
+# http://r-norberg.blogspot.com/2013/06/generating-tables-using-pander-knitr.html
+tabl <- cbind(
+  "Item" = c("Plausible Scenario", 
+             "Gridded yields",
+             "Gridded yields",
+             "Upgrade soils", 
+             "Filter terrain", 
+             "Biodiversity impacts", 
+             "Impacts weighting (per Tim)", 
+             "Work in economics", 
+             "Explore econ versus enviro goals", 
+             "Better cropland map, yield estimates"), 
+  "Notes" = c("Single production to follow (Alastair)", 
+              "Exact method for variability and production zones, including inability to reach potential yields", 
+              "Run with improved soils maps", 
+              "With ILUA database (and Nate's help)", 
+              "Removable unfarmable areas, add new supporting logic", 
+              "Habitat rarity/threatenedness", 
+              "Weight carbon and biodiversity equally", 
+              "Estimate profitability per pixel. Either input modification or code modification", 
+              "See where map overlaps are greatest, most divergent", 
+              "Upgrade all maps to SERVIR landcover, and rebase yield estimates on that"),
+  "Doing" = c("D", "D", "U", "U", "D", "D", "D", "L", "D", "D")
+)
+print(xtable::xtable(tabl), align = rep("c", dim(table)[2] + 1), type = "html", 
+      include.rownames = FALSE)
+```
