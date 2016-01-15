@@ -1,0 +1,60 @@
+---
+title: "terrain"
+author: "Lyndon Estes"
+date: "January 8, 2016"
+output: 
+  html_document:
+    highlight: tango
+    theme: spacelab
+    toc: yes 
+    number_sections: yes
+---
+
+# Filter terrain by workability
+
+The first step entailed getting a percent slope map from EarthEngine, using script XX, from which I exported a map showing areas less than 20% slope built from the new SRTM 30 m dataset for Africa.  
+
+## Background data for Earth Engine
+```{r, eval = FALSE}
+library(agroEcoTradeoff)
+library(rworldxtra)
+data("countriesHigh")
+
+p_proj <- "/Users/lestes/Dropbox/publications/zambiaToff/private/zambiaToff/"
+# p_dat <- paste0("/Users/lestes/Dropbox/data/distributions/vegetation/",
+#                 "potential/vecea/Zambia/")
+
+p_devel <- full_path(p_proj, "external/input_devel/terrain")
+p_basedat <- paste0("/Users/lestes/Dropbox/projects/agroEcoTradeoff/external/",
+                    "base_data/")
+
+# Load in Vegetation Map of Zambia
+cntry <- readOGR(full_path(p_basedat, "africa_countries_alb.sqlite"), 
+                 layer = "africa_countries_alb")
+cntrygcs <- spTransform(cntry, raster()@crs)
+zambia <- countriesHigh[countriesHigh@data$SOVEREIGNT == "Zambia", ]
+zambia@data <- zambia@data[, c("OID_", "NAME")]
+mgrid <- raster(full_path(p_basedat, "ZA-grid.tif"))
+
+writeOGR(cntrygcs, dsn = full_path(p_devel, "africa.kml"), 
+         layer = "africa", driver = "KML")
+writeOGR(zambia, dsn = full_path(p_devel, "zambia.kml"), 
+         layer = "zambia", driver = "KML")
+```
+
+## Process slope filter from Earth Engine
+```{r, eval = FALSE}
+
+farmable <- raster(full_path(p_devel, "farmable.tif"))
+
+onm <- full_path(p_devel, "farmable-1k.tif")
+ext <- bbox(mgrid)[1:4]  # extent   
+gdalwarp(srcfile = farmable@file@name, t_srs = projection(mgrid), 
+         dstfile = onm, r = "average", ot = "Float32", te = ext, 
+         srcnodata = 255, dstnodata = 255, tr = c(1000, 1000), 
+         of = "GTiff", multi = TRUE, verbose = FALSE, overwrite = TRUE)
+r <- raster(onm)
+par(mar = rep(0, 4)); plot(r)
+
+```
+

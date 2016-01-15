@@ -2,7 +2,8 @@
 title: "Vegetation types"
 author: "Lyndon Estes"
 date: "January 4, 2016"
-output: html_document
+output: 
+  html_document:
     highlight: tango
     theme: spacelab
     toc: yes 
@@ -20,6 +21,8 @@ library(gdalUtils)
 library(RPostgreSQL)
 library(rmapaccuracy)
 library(gisutils)
+library(rworldxtra)
+data("countriesHigh")
 
 # p_dat <- "/Users/lestes/Dropbox/data/zari/landcover/Spatial Data_FD_ILUAII/"
 p_proj <- "/Users/lestes/Dropbox/publications/zambiaToff/private/zambiaToff/"
@@ -34,6 +37,8 @@ p_devel <- full_path(p_proj, "external/input_devel/biodiversity")
 veg <- readOGR(dsn = full_path(p_dat, "pnv_vecea_v2_0_Zambia.shp"), 
                layer = "pnv_vecea_v2_0_Zambia", stringsAsFactors = FALSE)
 mgrid <- raster(full_path(p_basedat, "ZA-grid.tif"))
+# length(which(!is.na(values(mgrid)))) # diff(cellStats(mgrid, range))
+# plot(mgrid)
 msk <- raster(full_path(p_basedat, "ZA-mask.tif"))
 cntry <- readOGR(full_path(p_basedat, "africa_countries_alb.sqlite"), 
                  layer = "africa_countries_alb")
@@ -65,7 +70,7 @@ tint <- intersect(vegss, tcrp)
 
 Initial tests shows this will be tedious in R, so will run this through postgis, for speed (although given the install hassles I could have already run this and been done in R)
 
-Notes on fixing a broken postgis install are appended to postgis
+Notes on fixing a broken postgis install are in evernote. 
 
 ```{r, eval = FALSE}
 # Set up new postigs database
@@ -112,32 +117,29 @@ gdal_polygonize <- function(inraster, outshape, attname,
 
 # Convert to shapefile using gdal_polygonize
 setwd(p_devel)
-gdal_polygonize(mgrid, "zamgrid", "ID", "ESRI Shapefile")
-
-r <- crop(mgrid, extent(-200000, -100000, -2000000, -1900000))
 
 # Small test grid
 # plot(zam)
 # plot(as(extent(-200000, -100000, -2000000, -1900000), "SpatialPolygons"), 
 #      add = TRUE)
+r <- crop(mgrid, extent(-200000, -100000, -2000000, -1900000))
 r <- writeRaster(r, file = "testraster.tif", overwrite = TRUE)
-gdal_polygonize(r, "testgrid", "ID", "ESRI Shapefile")
-polygonizer(r@file@name, outshape = "testgrid2.shp")  # doesn't work with asc
+# gdal_polygonize(r, "testgrid", "ID", "ESRI Shapefile")
+polygonizer(r@file@name, outshape = "testgrid.shp")  # doesn't work with asc
+# gdal_polygonize(mgrid, "zamgrid", "ID", "ESRI Shapefile")
+polygonizer(mgrid@file@name, outshape = "zamgrid.shp")  # doesn't work with asc
 
 # Send to postgis
 postgis_vectab("testgrid.shp", "testgrid", "zambiatoff", "geom", "lestes", con)
 # dbRemoveTable(con, "testgrid")
 
-# system("shp2pgsql zamgrid.shp zamgrid zambiatoff > zamgrid.sql")
+# system("shp2pgsql zamgrid2.shp zamgrid zambiatoff > zamgrid.sql")
 # system("psql -U lestes -d zambiatoff -f zamgrid.sql")
 
 # Index it
-grname_out <- "zamgrid"
-dbSendQuery(con, paste0("CREATE INDEX gix_",  grname_out, " ON ", grname_out, 
-                        " USING GIST(geom)"))
-dbSendQuery(con, paste("VACUUM ANALYZE",  grname_out))
-dbSendQuery(con, paste0("CLUSTER ", grname_out, " USING gix_", grname_out))
-dbSendQuery(con, paste("ANALYZE",  grname_out))
+postgis_vectab("zamgrid.shp", "zamgrid", "zambiatoff", "geom", "lestes", con)
+# create_idx("zamgrid", idxvar = "geom", con)
+# dbRemoveTable(con, "zamgrid")
 
 # A little test, using rmapaccuracy functions
 # sql <- paste0("SELECT ID, ST_ASeWKT(geom) FROM ", grname_out, 
@@ -145,48 +147,28 @@ dbSendQuery(con, paste("ANALYZE",  grname_out))
 # qgrid <- dbGetQuery(con, sql) 
 # plot(polyFromWkt(qgrid, rs$proj4text))
 
-# Vacuum analyze
-create_idx <- function(tabname, idxvarname, idxvar, con) {
-  # this first one should be revised to check if there is an index variable or 
-  # not first
-  dbSendQuery(con, paste0("CREATE INDEX gix_", idxvarname, " ON ",
-                          tabname, " USING GIST(", idxvar, ")"))
-  dbSendQuery(con, paste("VACUUM ANALYZE", tabname))
-  dbSendQuery(con, paste0("CLUSTER ", tabname, " USING gix_", idxvarname))
-  dbSendQuery(con, paste("ANALYZE",  tabname))
-}
-
-
-# A function to create tables from shapefiles
-postgis_vectab <- function(shp, tabname, dbname, idxvarname, idxvar, user, 
-                           con) {
-  pgcalls <- list(paste("shp2pgsql", shp, tabname, dbname, ">",
-                        paste0(tabname, ".sql")), 
-                  paste("psql -U", user, "-d", dbname, "-f", 
-                        paste0(tabname, ".sql")))
-  for(i in pgcalls) system(i)  # create table in db
-  create_idx(tabname, idxvarname, idxvar, con)
-}
-
 # send vegetation types to postgis
 writeOGR(vegalb, dsn = full_path(p_devel, "vecea.shp"), 
          layer = "vecea", driver = "ESRI Shapefile")
-create_pg_vtable("vecea.shp", "vtypes", "zambiatoff", "geom", "lestes", con)
+postgis_vectab("vecea.shp", "vtypes", "zambiatoff", "geom", "lestes", con)
 
 # Update srids for the two fields
 sql <- paste0("SELECT UpdateGeometrySRID('vtypes', 'geom', ", srid, ")")  
 dbSendQuery(con, sql)
 dbClearResult(dbListResults(con)[[1]])
+# sql <- paste0("SELECT UpdateGeometrySRID('testgrid', 'geom', ", srid, ")")  
 sql <- paste0("SELECT UpdateGeometrySRID('zamgrid', 'geom', ", srid, ")")  
 dbSendQuery(con, sql)
 dbClearResult(dbListResults(con)[[1]])
 
 # Intersection
-isectname <- "vtypegrids"
-sql <- paste("CREATE TABLE",  isectname, 
-             "(gid serial primary key,", 
-             "grid_id integer,", 
-             "v_cat integer,",  
+isectname <- "gridveg"
+# dbRemoveTable(con, isectname)
+sql <- paste0("CREATE TABLE ",  isectname, 
+             "(gid serial primary key, ", 
+             "grid_id integer, ", 
+             "vgid integer, ", 
+             "veg_cat integer, ",
              "geom geometry(multipolygon,", srid, ")",
              ");")
 d <- dbSendQuery(con, sql)
@@ -195,40 +177,171 @@ a <- "zamgrid"
 b <- "vtypes"
 tick <- Sys.time()
 print(paste("Processing intersection, starting at time", tick))
-sql <- paste("INSERT INTO", isectname, "(grid_id, v_cat, geom)", 
+sql <- paste("INSERT INTO", isectname, "(grid_id, vgid, veg_cat, geom)", 
              "SELECT", 
              "a.id AS grid_id,", 
-             "b.gid AS v_cat,",  
+             "b.gid AS vgid,", "b.cat AS veg_cat,",  
              "CASE", 
-             "WHEN ST_Within(a.geom,b.geom)", 
+             "WHEN ST_CoveredBy(a.geom,b.geom)", 
              "THEN a.geom", 
              "ELSE ST_Multi(ST_Intersection(a.geom,b.geom))", 
              "END AS geom", 
-             "FROM", a, "a",
-             "JOIN", b, "b", 
+             "FROM", a, "AS a",
+             "INNER JOIN", b, "AS b", 
              "ON ST_Intersects(a.geom, b.geom)")
 system.time(d <- dbSendQuery(con, sql))  # 6.211
 tock <- Sys.time()
-print(paste0("Finished intersections at ", tock, ", total time = ", tock - tick))
-
-create_idx()
-
-
-
-for(i in vtypes) {
-  v <- vegalb[vegalb@data$CAT == i, ]
-  
-}
-vtypes
-
-
-
+print(paste0("Finished at ", tock, ", total time = ", tock - tick))
 
 dbDisconnect(con)
+```
+Intersection in postgis taking far too long (it ran for more than 15 hours before I killed it). Switching to Grass, which is much faster. Table updates of area calculations took unacceptably long there also.  So I ended up doing the full workflow in ArcGIS (!), in script `vegridToRaster.py`.  
 
+# Convert vegetation types
 
+## Come up with percent remaining first
+
+First I sent both Zambia landcover and a rasterized version of vecea (in EPSG:4326) created by ArcGIS (`veceaToRaster.py`).  I then 
+```{r, eval = FALSE}
+# Read in extent of Zambia landcover grid
+p_lc <- "~/Dropbox/data/landcover/Zambia_LandCover_2010_Scheme_II/"
+lcnm <- full_path(p_lc, fname = "Zambia_LandCover_2010_Scheme_II.tif")
+lc <- raster(full_path(p_lc, fname = "Zambia_LandCover_2010_Scheme_II.tif"))
+vegrem <- raster(full_path(p_devel, fname = "vegremain.tif"))
+
+lt <- 8
+fnm <- full_path(p_devel, "cropland.tif")
+pcalc <- paste0("gdal_calc.py -A ", lcnm, " --outfile=", fnm, " --type='Byte'",
+                " --overwrite --calc=", "'", lt, "'", " --co 'COMPRESS=LZW'")
+system.time(system(pcalc))  # 49 seconds
+
+# Read in unique vegetation types from "actual" vegetation map
+v <- gdalinfo(vegrem@file@name, hist=TRUE)[31]  # gdalinfo histogram
+v <- as.numeric(strsplit(v, " ")[[1]])  # convert to numeric, get numbers
+v <- v[!is.na(v)]  # remove NAs
+lcvals <- c(0:(length(v) - 1))[which(v != 0)]  # what are the actuals, less 0
+
+# ran raster calculator - this proves much faster than gdal_calc.py, which is 
+# a dog by comparison and always converts to float, despite passing byte type
+p_temp <- full_path(p_devel, "temp")
+dir.create(p_temp)
+
+# Processed converted areas also
+vtr <- lapply(lcvals, function(x) {
+  print(paste("Processing veg type", x))
+  dang <- Sys.time()
+  r <- rast_math(vegrem == x, tmpdir = p_temp)
+  print(Sys.time() - dang)
+  r
+})
+# length(vtr) * 4  # rough time to process, about 88 minutes for all types
+names(vtr) <- paste0("veg", lcvals)
+
+# aggregate and reproject these types to 1 km resolution
+ext <- sapply(c("xmin", "ymin", "xmax", "ymax"), function(x) {
+  slot(extent(sa_r), x)
+})
+
+p_aveg <- full_path(p_devel, "act_veg")
+dir.create(p_aveg)
+
+atypes <- names(vtr)[names(vtr) != "veg0"]  # drop type 0, which are the converted areas
+avr <- lapply(1:length(atypes), function(x) {  # x <- 1
+  ri <- vtr[atypes[x]]
+  nm <- paste0(names(ri), ".tif")
+  onm <- full_path(p_aveg, nm)
+  ext <- bbox(mgrid)[1:4]  # extent   
+  print(paste("warping and masking", nm))
+  dang <- Sys.time()
+  gdalwarp(srcfile = ri[[1]]@file@name, t_srs = projection(mgrid), 
+           dstfile = onm, r = "average", ot = "Float32", te = ext, 
+           srcnodata = 255, dstnodata = 255, tr = c(1000, 1000), 
+           of = "GTiff", multi = TRUE, verbose = FALSE, overwrite = TRUE)
+  # file.remove(lcnm[j])
+  print(ptime <- Sys.time() - dang)
+  l <- list(raster(onm), as.numeric(gsub("[[:alpha:]]", "", ptime)))
+  names(l) <- c(names(ri), "minutes")
+  return(l)
+})
+sum(sapply(avr, function(x) x$minutes)) / 60  # actually in seconds, not mins
+
+# getOption("gdalUtils_gdalPath")
+# getOption("")
+
+# stack the rasters
+s <- stack(lapply(avr, function(x) x[[1]]))
+
+# Sum for total - the inverse of this will be the farmable areas
+remfrac <- calc(s, sum)   
+
+veg_dt <- dtraster::as.data.table(s)  # stack and convert to dt
+veg_dt[, lapply(.SD, function(x) max(x, na.rm = TRUE))]
+veg_dt <- na.omit(veg_dt)
 
 ```
+
+
+
+# Various rubbish I tried
+```{r, eval = FALSE}
+# Convert to kmls for creating fusion tables
+# http://gis.stackexchange.com/questions/43848/how-to-re-project-shapefiles
+system("ogr2ogr -f KML -t_srs EPSG:4326 zamgrid.kml zamgrid.shp")
+system("ogr2ogr -f KML -t_srs EPSG:4326 vecea.kml vecea.shp")
+system("ogr2ogr -t_srs EPSG:4326 veceagcs.shp vecea.shp")
+
+options("gdal")
+
+fnm <- full_path(p_proj, "external/input_devel/roads/tmdpfr_links.sqlite")
+onm <- full_path(p_proj, "external/input_devel/roads/tmdpfr_links.kml")
+system(paste("ogr2ogr -f KML", onm, fnm))
+
+zambia <- countriesHigh[countriesHigh@data$SOVEREIGNT == "Zambia", ]
+zambia@data <- zambia@data[, c("OID_", "NAME")]
+r <- raster(extent(zambia))
+# res(r) <- c(0.008333333, 0.008333333)
+res(r) <- c(0.00899, 0.00899)
+projection(r) <- raster()@crs
+r[] <- 1
+dataType(r) <- "INT4S"
+
+zambiar <- rasterize(zambia, r, dataType = "INT4S")
+dataType(zambiar) <- "INT4S"
+vi <- which(!is.na(values(zambiar)))
+zambiar[vi] <- as.integer(1:length(vi))
+# plot(zambiar)
+length(which(!is.na(values(zambiar))))
+dataType(zambiar) 
+
+zambiawr <- writeRaster(zambiar, format = "GTiff",
+                        filename = full_path(p_devel, "zamgridgcs.tif"),
+                        datatype = "INT4S", overwrite = TRUE)
+dataType(zambiawr) 
+
+
+round(res(r)[1] / res(lc)[1])
+res(lc)[1] * 31
+
+# First rasterize landcover types at 30 m resolution
+# inm <- full_path(p_dat, "pnv_vecea_v2_0_Zambia.shp")
+# fnm <- full_path(p_devel, "vecea.tif")
+# gdal_rasterize(src_datasource = inm, l = "pnv_vecea_v2_0_Zambia", ot = "Byte", 
+#                a = "CAT", tr = res(lc), at = TRUE, co = "COMPRESS=LZW",
+#                dst_filename = fnm, te = bbox(lc)[1:4], of = "GTiff", 
+#                verbose = TRUE)
+# 
+# veg@data <- veg@data[, "CAT", drop = FALSE]
+# writeOGR(veg, dsn = full_path(p_devel, "vecea.kml"), layer = "vecea", 
+#          driver = "KML")
+
+
+# a <- rep(0, 40)
+# a[sample(1:length(a), size = 40, replace = FALSE)] <- 1
+# mean(a)
+
+```
+
+
 
 
 ```{r, eval=FALSE, echo=FALSE}

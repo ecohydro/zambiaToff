@@ -1,0 +1,50 @@
+---
+title: "cropland.Rmd"
+author: "Lyndon Estes"
+date: "January 14, 2016"
+output: 
+  html_document:
+    highlight: tango
+    theme: spacelab
+    toc: yes 
+    number_sections: yes
+---
+
+# New cropland map of Zambia
+
+Cropland class from the SERVIR landcover map (2010)
+
+## Inputs
+```{r, eval = FALSE}
+library(agroEcoTradeoff)
+library(rworldxtra)
+data("countriesHigh")
+
+p_proj <- "/Users/lestes/Dropbox/publications/zambiaToff/private/zambiaToff/"
+p_devel <- full_path(p_proj, "external/input_devel/cropland")
+p_basedat <- paste0("/Users/lestes/Dropbox/projects/agroEcoTradeoff/external/",
+                    "base_data/")
+p_lc <- "~/Dropbox/data/landcover/Zambia_LandCover_2010_Scheme_II/"
+
+# Load in data
+mgrid <- raster(full_path(p_basedat, "ZA-grid.tif"))
+lc <- raster(full_path(p_lc, fname = "Zambia_LandCover_2010_Scheme_II.tif"))
+
+```
+
+## Extract cropland class and resample
+```{r, eval = FALSE}
+
+# pullout cropland class 8
+system.time(cropland <- rast_math(lc == 8, tmpdir = p_devel))
+
+onm <- full_path(p_devel, "cropland-1k.tif")
+ext <- bbox(mgrid)[1:4]  # extent   
+gdalwarp(srcfile = cropland@file@name, t_srs = projection(mgrid), 
+         dstfile = onm, r = "average", ot = "Float32", te = ext, 
+         srcnodata = 255, dstnodata = 255, tr = c(1000, 1000), 
+         of = "GTiff", multi = TRUE, verbose = FALSE, overwrite = TRUE)
+r <- raster(onm)
+par(mar = rep(0, 4)); plot(r)
+
+```

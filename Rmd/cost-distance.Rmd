@@ -303,7 +303,8 @@ costdt <- na.omit(as.data.table(costrmsk, xy = FALSE))
 
 # and then you will write it out as a csv file.  
 fnm <- "../../data/ZA-cost.csv"
-write.table(costdt, file = fnm, sep = ",", col.names = TRUE, row.names = FALSE)
+write.table(costdt, file = fnm, sep = ",", col.names = TRUE, 
+            row.names = FALSE)
 ```
 
 Your final output csv file will want to replace the ZA-cost.csv file in agroEcoTradeoffs folder `external/data/dt`, and then the model will work nicely.  
