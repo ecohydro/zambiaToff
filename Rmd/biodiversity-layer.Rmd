@@ -1,0 +1,245 @@
+---
+title: "Biodiversity layer prep"
+author: "Lyndon Estes"
+date: "January 15, 2016"
+output: 
+  html_document:
+    highlight: tango
+    theme: spacelab
+    toc: yes 
+    number_sections: yes
+---
+
+# Assembling new biodiversity layer
+
+
+## Inputs
+```{r, eval = FALSE}
+library(agroEcoTradeoff)
+
+p_proj <- "/Users/lestes/Dropbox/publications/zambiaToff/private/zambiaToff/"
+p_bd <- full_path(p_proj, "external/input_devel/biodiversity")
+p_dat <- "/Users/lestes/Dropbox/data/zari/"
+p_basedat <- paste0("/Users/lestes/Dropbox/projects/agroEcoTradeoff/external/",
+                    "base_data/")
+p_findat <- "~/Dropbox/projects/agroEcoTradeoff/external/data/dt/"
+p_pas <- full_path(p_dat, "landcover/Spatial Data_FD_ILUAII")
+
+# Load in data
+mgrid <- raster(full_path(p_basedat, "ZA-grid.tif"))
+vegrem <- raster(full_path(p_bd, fname = "vegremain.tif"))
+msk <- raster(full_path(p_basedat, "ZA-mask.tif"))
+mskdt <- fread(full_path(p_findat, "ZA-mask.csv"))
+nps <- spTransform(readOGR(full_path(p_pas, "Nat_Parks_GMAs.shp"), 
+                           layer = "Nat_Parks_GMAs"), mgrid@crs)
+freserves <- spTransform(readOGR(full_path(p_pas, "Forest_Reserves.shp"), 
+                                 layer = "Forest_Reserves"), mgrid@crs)
+vecea <- readOGR(full_path(p_bd, "veceagcs.shp"), layer = "veceagcs",
+                 stringsAsFactors = FALSE)
+
+# assign threat matrix rank from van Breugel et al (2014) 
+veceatypes <- unique(vecea@data)
+veceatypes <- veceatypes[, c(1, 3)]
+veceatypes[order(veceatypes$CODE), ]
+vecea@data[vecea@data$CODE == "wd", ][1, ]
+endang <- c("VU", "EN", "", "VU", "NA", "VU", "", "", "VU", "EN", "NA", "drop",
+            "VU", "VU", "", "VU", "VU", "VU", "", "", "VU")
+veceatypes$THRT <- endang
+thrtmat <- cbind(unique(endang), c(3, 2, 4, 5, 6))
+veceatypes$erank <- 0
+for(i in 1:nrow(thrtmat)) {
+  veceatypes[veceatypes$THRT == thrtmat[i, 1], "erank"] <- thrtmat[i, 2]
+}
+
+```
+
+## Prepare impacts layer
+```{r, eval = FALSE}
+fnms <- full_path(full_path(p_bd, "act_veg"), 
+                  dir(full_path(p_bd, "act_veg"), pattern = ".tif$"))
+s <- stack(lapply(fnms, function(x) raster(x)))
+sm <- mask(s, mgrid)
+
+# Sum for total - the inverse of this will be the farmable areas
+remfrac <- calc(s, sum)
+remfrac <- mask(remfrac, mgrid)
+
+# Calculate intactness
+w <- matrix(nrow = 11, ncol = 11)
+w[] <- 1
+intact <- focal(remfrac, w = w, fun = mean, na.rm = TRUE)
+# intact <- mask(intact, mgrid)
+# plot(intact)
+
+# Calculate a veg type weight based on relative remaining area
+veg_dt <- dtraster::as.data.table(sm)  # stack and convert to dt
+veg_dt <- na.omit(veg_dt)
+vnms <- names(veg_dt)[-c(1:2)]
+vtots <- veg_dt[, lapply(.SD, function(x) sum(x * 100)), 
+                .SDcols = vnms]  
+wgti <- round(1 / (vtots / nrow(veg_dt)), 2)  # bd weights (1 = rarest)
+# wgt <- round(vtots / nrow(veg_dt), 4)  # biodiversity weights (1 = most common)
+# plot(unlist(wgti), unlist(wgt))
+
+# Check the relative areas against histograms from 30 m layer
+v <- gdalinfo(vegrem@file@name, hist=TRUE)[31]  # gdalinfo histogram
+v <- as.numeric(strsplit(v, " ")[[1]])  # convert to numeric, get numbers
+v <- v[!is.na(v)]  # remove NAs
+lcvals <- c(0:(length(v) - 1))[which(v != 0)]  # what are the actuals, less 0
+hist30 <- cbind(lcvals, v[v != 0])
+
+# check to see if similar to data.table derived versions (checks out)
+plot(round(hist30[-1, 2] / sum(hist30[-1, 2]) * 100, 2), vtots / nrow(veg_dt)) 
+
+```
+
+## New impacts layer
+
+Will be intactness, PAs, and rarity weights combined 
+
+### Weighting in relation to rarity and protectedness
+```{r, eval = TRUE}
+# Combine protected areas (NPs and GMAs, forest reserves)
+nps$code <- ifelse(nps$TYPE == "gma", 2, 1) 
+npsr <- rasterize(nps, mgrid, field = "code")  # rasterize NPs/GMAs
+npsr[is.na(npsr)] <- 0  
+freserves$code <- 3  
+freservesr <- rasterize(freserves, mgrid, field = "code")  # forest reserves
+freservesr[is.na(freservesr)] <- 0
+pas <- npsr + freservesr  # sum them
+reclmat <- cbind(0:5, c(0:3, 1, 2))
+pas <- reclassify(pas, reclmat)
+pas <- mask(pas, mgrid)
+# plot(pas)
+# plot(freservesr)
+
+# Let's look at how much veg is protected, and maybe use that as basis for 
+# weights - rarity + proportion protected
+smpa <- mask(stack(s, pas), mgrid)
+vegpa_dt <- as.data.table(smpa)
+vegpa_dt <- na.omit(vegpa_dt)
+setnames(vegpa_dt, "layer", "PA")
+protected <- vegpa_dt[, lapply(.SD, sum(x * 100)), by = PA, .SDcols = vnms]
+protected <- cbind("PA" = protected[, PA], 
+                   protected[, lapply(.SD, function(x) {
+                       round(x / sum(x), 3)
+                   }), .SDcols = vnms])
+# proportion protected in both NPs and GMA, and just in NPs
+prop_prot2 <- protected[PA %in% c(1:2), lapply(.SD, sum), .SDcols = vnms]
+prop_prot1 <- protected[PA == 1, lapply(.SD, sum), .SDcols = vnms]  # nps only
+
+# stack PAS with intact area
+pasconvs <- mask(stack(pas, remfrac), mgrid)
+pa_dt <- as.data.table(pasconvs)
+pa_dt <- na.omit(pa_dt)
+setnames(pa_dt, c("layer.1", "layer.2"), c("pas", "nveg"))
+pa_dt[, (1 - sum(nveg) / .N) * 100 , by = "pas"]
+pa_dt[, .N, by = "pas"]
+
+# how much of PAs converted
+# 15.8 % outside of PAs converted (472,429 km2)
+# 0.9 % NPs converted (60,201 km2)
+# 3.8 % in GMAs converted (165228 km2)
+# 8.3 % forest reserves converted (54091 km2)
+
+# Weighting scheme, factoring in protection status
+wgts <- unlist(log(wgti))  # log transform weights
+wgtsn <- (wgts - min(wgts)) / diff(range(wgts))
+normalize <- function(x) (x - min(x)) / diff(range(x))
+wgts_prop <- normalize(unlist(wgtsn + (1 - prop_prot2)))
+wgts_propl <- normalize(log(unlist(wgtsn + (1 - prop_prot2))))
+wgts_prop_np <- normalize(unlist(wgtsn + (1 - prop_prot1)))
+
+# plots to examine them
+labs <- gsub("veg", "", names(wgtsn))
+# par(mfrow = c(2, 1), mar = c(2, 2, 2, 2))
+# weights against protected proportion (NPs + GMAs)
+plot(wgtsn, prop_prot2, pch = "", ylab = "")
+text(wgtsn, prop_prot2, labels = labs, cex = 0.75)
+# weights against protected proportion (NPs only)
+plot(wgtsn, prop_prot1, pch = "", ylab = "")
+text(wgtsn, prop_prot1, labels = labs, cex = 0.75)
+# additive weights factoring in protected proportion versus protected proportion
+plot(wgts_prop2, prop_prot, pch = "", ylab = "")
+text(wgts_prop2,  prop_prot, labels = labs, cex = 0.75)
+# BD + NP protected proportion versus NP protected proportion
+plot(wgts_prop_np, prop_prot1, pch = "", ylab = "")
+text(wgts_prop_np,  prop_prot1, labels = labs, cex = 0.75)
+# protected proportion weighted versus same but log-transformed
+plot(wgts_prop, wgts_propl, pch = "", ylab = "")
+text(wgts_prop,  wgts_propl, labels = labs, cex = 0.75)
+# Bd weights against BD + protected proportion weights
+plot(wgtsn, wgts_prop, pch = "", ylab = "")
+lines(c(0, 1), c(0, 1))
+text(wgtsn, wgts_prop, labels = labs, cex = 0.75)
+# Bd weights against BD + NP protected proportion weights
+plot(wgtsn, wgts_prop_np, pch = "", ylab = "")
+lines(c(0, 1), c(0, 1))
+text(wgtsn, wgts_prop_np, labels = labs, cex = 0.75)
+# Bd weights versus log-transformed BD + protected proportion weights
+plot(wgtsn, wgts_propl, pch = "", ylab = "")
+lines(c(0, 1), c(0, 1))
+text(wgtsn,  wgts_propl, labels = labs, cex = 0.75)
+# The same but against multiplicative weights
+plot(wgtsn, wgtsn * unlist(1 - prop_prot), pch = "", ylab = "")
+lines(c(0, 1), c(0, 1))
+text(wgtsn,  wgtsn * unlist(1 - prop_prot), labels = labs, cex = 0.75)
+# sort(wgts_prop); sort(wgts_prop_np)
+# sort(wgtsn)
+
+# check against veceatypes von Breugel categories
+veceatypes$wgtsn <- wgtsn[match(veceatypes$CAT, labs)]
+veceatypes$wgtsnp <- wgts_prop[match(veceatypes$CAT, labs)]
+plot(veceatypes$erank, veceatypes$wgtsn)  # not much connection
+plot(veceatypes$erank, veceatypes$wgtsnp)  # not much connection
+```
+
+We will use the weights for rarity adjusted by how much the vegetation type falls in parks -- this corresponds to von Breugel risk class A C2 in Table 2.
+
+### Reweight with intactness
+```{r, eval = FALSE}
+# assign weights to veg types
+bdw <- wgts_prop_np
+bd1 <- copy(veg_dt)
+for(i in names(bdw)) {
+  wi <- bdw[i]
+  di <- eval(parse(text = paste0("quote(", i, ")")))
+  bd1[eval(di) > 0, (i) := wi]
+}
+
+# Reduce to single column that takes the maximum weight across vegetation types
+bd1[, TID := 1:.N ]
+setkey(bd1, "TID")
+bd1[, MWGT := apply(.SD, 1, max), .SDcols = vnms]
+bd1r <- dt_to_raster(bd1[, .(x, y, MWGT)], mgrid@crs)
+# plot(bd1r)
+# plot(remfrac == 0)
+# plot(smpa[["veg68"]])
+
+# Stack vprior
+bdstack <- stack(list("veg" = bd1r, "intact" = crop(intact, bd1r)))
+bdr <- calc(bdstack, sum)
+bdr <- (bdr - minValue(bdr)) / diff(cellStats(bdr, range, na.rm = TRUE))
+# plot(bdr)
+
+# Filter out PAs
+# 0.9 % NPs converted (60,201 km2) - set NPs to 0
+# 3.8 % in GMAs converted (165228 km2)  - set them to 4 %
+# 8.3 % forest reserves converted (54091 km2) - set them to 8.3
+pamat <- cbind(1:3, c(1, 1 - 0.038, 1 - 0.083))
+pafix <- lapply(1:3, function(x) {  # x <- 2
+  pamsk <- crop((pas == x) * pamat[x, 2], bdr)
+  bdmsk <- mask(bdr, pamsk, maskvalue = 0)
+  bdcalc <- calc(stack(bdmsk, pamsk), max)
+})
+pafix <- calc(stack(pafix), sum)  # sum those
+
+# final biodiversity layer
+bdf <- calc(stack(bdr, pafix), max)
+plot(remfrac)
+plot(bdf)
+
+writeRaster(bdf, file = full_path(p_bd, "bdprior.tif"))
+
+```
+

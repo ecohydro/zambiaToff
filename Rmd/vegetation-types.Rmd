@@ -276,7 +276,7 @@ remfrac <- calc(s, sum)
 
 veg_dt <- dtraster::as.data.table(s)  # stack and convert to dt
 veg_dt[, lapply(.SD, function(x) max(x, na.rm = TRUE))]
-veg_dt <- na.omit(veg_dt)
+# veg_dt <- na.omit(veg_dt)
 
 ```
 
