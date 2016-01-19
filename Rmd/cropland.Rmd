@@ -1,5 +1,5 @@
 ---
-title: "cropland.Rmd"
+title: "Current Cropland, Production, and Yield"
 author: "Lyndon Estes"
 date: "January 14, 2016"
 output: 
@@ -24,6 +24,8 @@ p_proj <- "/Users/lestes/Dropbox/publications/zambiaToff/private/zambiaToff/"
 p_devel <- full_path(p_proj, "external/input_devel/cropland")
 p_basedat <- paste0("/Users/lestes/Dropbox/projects/agroEcoTradeoff/external/",
                     "base_data/")
+p_dat <- "~/Dropbox/data/agricultural/fao/countrystat/zambia/"
+p_usda <- "~/Dropbox/data/agricultural/usda/fas/zambia/"
 p_lc <- "~/Dropbox/data/landcover/Zambia_LandCover_2010_Scheme_II/"
 
 # Load in data
@@ -44,7 +46,91 @@ gdalwarp(srcfile = cropland@file@name, t_srs = projection(mgrid),
          dstfile = onm, r = "average", ot = "Float32", te = ext, 
          srcnodata = 255, dstnodata = 255, tr = c(1000, 1000), 
          of = "GTiff", multi = TRUE, verbose = FALSE, overwrite = TRUE)
-r <- raster(onm)
-par(mar = rep(0, 4)); plot(r)
+cropland <- raster(onm)
+par(mar = rep(0, 4)); plot(cropland)
 
 ```
+
+## Cropland statistics
+
+From FAO countrystat at this [link](http://www.countrystat.org/home.aspx?c=ZMB&tr=21).
+```{r, eval = FALSE}
+# select crop stats
+fnms <- dir(p_dat, pattern = "10|16", full.names = TRUE)
+vars <- c("prod", "pa")
+fao <- rbindlist(lapply(1:length(fnms), function(x){
+  DT <- fread(fnms[x], stringsAsFactors = FALSE)
+  cbind(vars[x], DT)
+})) 
+fao[, Value := as.numeric(Value)]
+setnames(fao, old = c("V1", "administrative level 1 (code)", 
+                      "administrative level 1", "Crop (code)"), 
+         new = c("var", "provcode", "prov", "cropcode"))
+setkeyv(fao, c("var", "Year"))
+
+# missing 2008 NW province maize and 2011 Southern Province, same for soybean
+fao[Crop == "Maize" & var == "prod" & is.na(Value)]  
+fao[Crop == "Soybeans" & var == "prod" & is.na(Value)]  
+
+# corresponding FAOStat full country values are 1211566 and 3020380 for maize
+# 56839 and 116539 for soybean
+nwrepl <- fao[Crop == "Maize" & var == "prod" & Year == "2008" & 
+                provcode != 3431, 1211566 - sum(Value)]
+fao[Crop == "Maize" & var == "prod" & Year == "2008" & 
+                provcode == 3431, Value := nwrepl]
+srepl <- fao[Crop == "Maize" & var == "prod" & Year == "2011" & 
+               provcode != 3433, 3020380 - sum(Value)]
+fao[Crop == "Maize" & var == "prod" & Year == "2011" & 
+                provcode == 3433, Value := srepl]
+nwrepl <- fao[Crop == "Soybeans" & var == "prod" & Year == "2008" & 
+                provcode != 3431, 56839 - sum(Value)]
+fao[Crop == "Soybeans" & var == "prod" & Year == "2008" & 
+                provcode == 3431, Value := nwrepl]
+srepl <- fao[Crop == "Soybeans" & var == "prod" & Year == "2011" & 
+               provcode != 3433, 116539 - sum(Value)]
+fao[Crop == "Soybeans" & var == "prod" & Year == "2011" & 
+                provcode == 3433, Value := srepl]
+
+# Planted area and production 2010-2014 for Zambia
+muprod <- lapply(c("Maize", "Soybeans"), function(x) {
+  fao[Crop == x & var == "prod" & Year %in% c(2008:2015), sum(Value), 
+      by = Year]
+})
+names(muprod) <- c("maize", "soy")
+mupa <- lapply(c("Maize", "Soybeans"), function(x) {
+  fao[Crop == x & var == "pa" & Year %in% c(2008:2015), sum(Value), 
+      by = Year]
+})
+names(mupa) <- c("maize", "soy")
+
+# Read in USDA harvested area and production to get difference in harvested area
+# and planted area
+fnms <- dir(p_usda, full.names = TRUE)
+vars <- c("maize", "soy")
+usda <- rbindlist(lapply(1:length(fnms), function(x){
+  DT <- fread(fnms[x], stringsAsFactors = FALSE, header = TRUE)
+  # cbind(vars[x], DT)
+}))
+cols <- names(usda)[4:9]
+usda_ylds <- usda[var == "prod", cols, with = FALSE] / 
+  usda[var == "harvarea", cols, with = FALSE]
+
+# FAO references start year, it seems for maize, but soybean is correct year
+yp <- unlist(usda[var == "prod" & crop == "maize", cols, with = FALSE] * 1000)
+plot(yp, muprod[[1]]$V1[-c(1, 8)])  # but essentially same yields
+yp <- unlist(usda[var == "prod" & crop == "soybean", cols, with =FALSE] * 1000)
+plot(yp, muprod[[2]]$V1[-c(1:2)])  
+
+# Production estimates ~2010/1-2015
+currprod <- round(c("maize" = muprod$maize[Year %in% 2010:2014, mean(V1)], 
+                    "soy" = muprod$soy[Year %in% 2011:2015, mean(V1)]))
+save(currprod, file = full_path(p_devel, "currprod.rda"))
+
+```
+
+## Resulting model inputs
+
+`currprod.rda`, `cropland-1k.tif`
+
+Eventually might want to disaggregate yields onto cropland map, but will need provincial harvested area for that.  Model might not really need that, however. 
+
