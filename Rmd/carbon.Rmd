@@ -1,0 +1,104 @@
+---
+title: "Carbon datasets, updated"
+author: "Lyndon Estes"
+date: "January 18, 2016"
+output: 
+  html_document:
+    highlight: tango
+    theme: spacelab
+    toc: yes 
+    number_sections: yes
+---
+
+# New carbon layer
+```{r, eval = FALSE}
+library(agroEcoTradeoff)
+library(GSIF)
+
+p_proj <- "/Users/lestes/Dropbox/publications/zambiaToff/private/zambiaToff/"
+p_dat <- "/Users/lestes/Dropbox/data/"
+p_basedat <- paste0("/Users/lestes/Dropbox/projects/agroEcoTradeoff/external/",
+                    "base_data/")
+# p_findat <- "~/Dropbox/projects/agroEcoTradeoff/external/data/dt/"
+p_c <- full_path(p_dat, "carbon/baccini/africa/")
+p_devel <- full_path(p_proj, "external/input_devel/carbon")
+p_soc <- full_path(p_dat, "soil/carbon/SoilGrids1km")
+p_bd <- full_path(p_dat, "soil/bulkdens/SoilGrids1km")
+
+# load datasets
+mgrid <- raster(full_path(p_basedat, "ZA-grid.tif"))
+vcarb <- raster(full_path(p_c, "biomass-C.tif"))
+ocarb <- brick(full_path(p_basedat, "ZA-carbon.tif"))  # original carbon
+names(ocarb) <- c("veg", "soil", "total")
+# plot(ocarb < 30)
+
+```
+
+## Vegetation carbon
+```{r, eval=FALSE}
+onm <- full_path(p_devel, "veg-carbon.tif")
+ext <- bbox(mgrid)[1:4]  # extent   
+gdalwarp(srcfile = vcarb@file@name, t_srs = projection(mgrid), 
+         dstfile = onm, r = "average", ot = "Float32", te = ext, 
+         srcnodata = -32768, dstnodata = -99, tr = c(1000, 1000), 
+         of = "GTiff", multi = TRUE, verbose = FALSE, overwrite = TRUE)
+zvcarb <- raster(onm)  # vegetation carbon
+plot(zvcarb)
+
+```
+
+## Soil carbon
+
+ISRIC WISE grids, from [here](http://soilgrids1km.isric.org), with units and ancillary information from [here](http://www.isric.org/content/faq-soilgrids#How_much_does_it_cost). Conversion to t/ha from [here](http://www.soilquality.org.au/factsheets/organic-carbon) and [here](https://www.agric.wa.gov.au/climate-change/what-soil-organic-carbon?page=0%2C1).
+```{r, eval = FALSE}
+crpshp <- as(extent(mgrid), "SpatialPolygons")
+crpshp@proj4string <- mgrid@crs
+
+# organic carbon 
+socr <- lapply(dir(p_soc, full.names = TRUE), function(x) {
+  r <- raster(x)
+  r <- crop(r, spTransform(crpshp, r@crs))
+  r / 10  # convert from permille to percent
+})
+# plot(socr[[1]])
+
+# bulk density converted kg / m3 (or g / cm3)
+bd <- lapply(dir(p_bd, full.names = TRUE), function(x) {
+  r <- raster(x)
+  r <- crop(r, spTransform(crpshp, r@crs))
+  r  / 1000  # convert from Mg/m3 to kg/m3
+})
+# plot(bd[[1]] * 1000)
+
+# layer depth
+depths <- c(0, 5, 15, 30, 60, 100, 200) 
+thickness <- depths[-1] - depths[-length(depths)]
+
+# plot(round(bd[[1]], 1) == 1.2)
+# tst <- (socr[[1]] == 1.3 & round(bd[[1]], 1) == 1.2)
+# 1.2 * 1.2 * 10
+# 10000 * 0.1
+# depths / 100
+
+# calculate carbon in each layer
+soct <- lapply(1:length(thickness), function(x) {
+  socr[[x]] * bd[[x]] * thickness[x]
+})
+
+# then total for top 1 m
+soct_1m <- calc(stack(soct[1:5]), sum)
+soct_1ma <- projectRaster(soct_1m, mgrid)
+writeRaster(soct_1ma, filename = full_path(p_devel, "soil-C-1m.tif"))
+
+# plot(mask(soct_1ma, mgrid))
+# plot(ocarb$soil)
+# plot(mask(soct_1ma, mgrid) - ocarb$soil)  # same order of magnitude
+
+zamcarb <- brick(stack(zvcarb, soct_1ma), 
+                 filename = full_path(p_devel, "ZA-carbon.tif"))
+
+```
+
+
+
+

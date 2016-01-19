@@ -44,7 +44,8 @@ tabl <- cbind(
              "Impacts weighting (per Tim)", 
              "Work in economics", 
              "Explore econ versus enviro goals", 
-             "Better cropland map, yield estimates"), 
+             "Better cropland map, yield estimates", 
+             "Updated carbon layers"), 
   "Notes" = c("Single production to follow (Alastair)", 
               "Exact method for variability and production zones, including inability to reach potential yields", 
               "Run with improved soils maps", 
@@ -54,8 +55,8 @@ tabl <- cbind(
               "Weight carbon and biodiversity equally", 
               "Estimate profitability per pixel. Either input modification or code modification", 
               "See where map overlaps are greatest, most divergent", 
-              "Upgrade all maps to SERVIR landcover, and rebase yield estimates on that"),
-  "Doing" = c("D", "D", "U", "U", "D", "D", "D", "L", "D", "D")
+              "Upgrade all maps to SERVIR landcover, and rebase yield estimates on that", "Baccini vegetation carbon + ISRIC grids"),
+  "Doing" = c("D", "D", "U", "U", "D", "D", "D", "L", "D", "D", "F")
 )
 print(xtable::xtable(tabl), align = rep("c", dim(table)[2] + 1), type = "html", 
       include.rownames = FALSE)

@@ -236,8 +236,8 @@ pafix <- calc(stack(pafix), sum)  # sum those
 
 # final biodiversity layer
 bdf <- calc(stack(bdr, pafix), max)
-plot(remfrac)
-plot(bdf)
+# plot(remfrac)
+# plot(bdf)
 
 writeRaster(bdf, file = full_path(p_bd, "bdprior.tif"))
 
