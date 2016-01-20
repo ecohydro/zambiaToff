@@ -14,15 +14,17 @@ output:
 
 Based on simulated potential yields run by Di Tian. 
 ```{r, eval = FALSE}
-library(data.table)
+library(agroEcoTradeoff)
+# library(data.table)
 library(lmisc)
-library(dtraster)
+# library(dtraster)
 # devtools::install_github("PrincetonUniversity/lmisc")
 
-p_root <- set_base_path()
+p_root <- lmisc::set_base_path()
 p_crop <- "~/Dropbox/data/agricultural/zambia/dssat/"
 p_cropmod <- "~/Dropbox/projects/rCropMod/external/ext_data/"
 p_agro <- "~/Dropbox/projects/agroEcoTradeoff/external/base_data/"
+p_yield <- full_path(p_root, "external/input_devel/yield")
 
 # Read in spatial reference grid and chop it down to size
 ID <- fread(full_path(p_crop, "Soil_clim_match_ID_master.csv"))
@@ -35,11 +37,10 @@ setkeyv(IDr, c("WTH", "Zone"))
 # gr <- dt_to_raster(IDr[, .(ID, x, y)], CRS(prj))
 # plot(gr)
 
-plot(dt_to_raster(IDr[, .(x, y, as.factor(Zone))], CRS(prj)))
 prj <- paste0("+proj=aea +lat_1=20 +lat_2=-23 +lat_0=0 +lon_0=25 +x_0=0 +y_0=0",
               " +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs")
 gcs <- "+proj=longlat +datum=WGS84"
-
+plot(dt_to_raster(IDr[, .(x, y, as.factor(Zone))], CRS(prj)))
 
 # Maize yield in each grid cell varies as a function of soil, year, and 
 # management inputs
@@ -242,7 +243,48 @@ lapply(crops, function(x) {
 # This will give 1 set of yields for each of the three management scenarios
 # Subsistence, rainfed commercial, irrigated
 # The same approach can be used to estimate the average of the 10th percentile 
-# across cultivars, or median, or 90th, etc. 
+# across cultivars, or median, or 90th, etc.
+
+# fill in yield at edges
+yield_fix <- function(x = r[[1]], w, na.rm = TRUE) {
+  r <- focal(x, w = w, fun = mean, na.rm = na.rm)
+  rmsk <- (!is.na(r) & is.na(x)) * r
+  x[is.na(x)] <- 0
+  rfix <- x + rmsk  # add back in edge bits
+}
+
+# ra
+yld_rl <- lapply(crops, function(x) {  # x <- crops[[1]]
+  yr <- lapply(c("S", "R", "I"), function(y) {  #y <- "S"
+    ylds <- yld_rasts[[x]]
+    nms <- names(ylds)
+    cnms <- nms[grep(paste0("y.*._", y), nms)]
+    r <- dt_to_raster(ylds[, c("x", "y", cnms), with = FALSE], CRSobj = gcs)
+    w <- matrix(ncol = 3, nrow = 3, rep(1, 9))
+    rfoc <- sapply(1:nlayers(r), function(i) rfoc <- yield_fix(r[[i]], w = w))
+    names(rfoc) <- names(r)
+    rs <- stack(rfoc)
+    rs
+  })
+  named_out(yr, c("S", "R", "I"))
+})
+names(yld_rl) <- crops
+
+for(i in 1:length(yld_rl)) {
+  rl <- yld_rl[[i]]
+  for(j in 1:length(rl)) {
+    fnm <- full_path(p_yield, paste0(crops[i], "_", names(rl)[j], "_10K.tif"))
+    writeRaster(rl[[j]], filename = fnm)
+  }
+}
+```
+<a href="#top">Back to top</a>
+
+
+## How to make 1 km grids/data.tables
+
+This provides the methods for taking 10 km grids, averaging them across cultivars within management treatments, and then reseampling to 1 km grids. This is approximately the approach that will be used to make inputs for the tradeoff model. Other methods to explore include blending different types of management practice, e.g. X% of each cell is irrigated, Y% is rainfed commercial, Z% is subsistence. 
+```{r, eval=FALSE}
 yld_mus <- lapply(crops, function(x) {  # x <- crops[[1]]
   ymu <- lapply(c("S", "R", "I"), function(y) {  #y <- "S"
     cnms <- names(yld_rasts[[x]])[grep(paste0("mu_", y), names(yld_rasts[[x]]))]
@@ -254,16 +296,9 @@ yld_mus <- lapply(crops, function(x) {  # x <- crops[[1]]
   named_out(ymu, c("S", "R", "I"))
 })
 names(yld_mus) <- crops
-  
 plot(dt_to_raster(yld_mus[[2]]$R, CRSobj = gcs))
-```
-<a href="#top">Back to top</a>
 
-
-# 1 km grids
-
-Average mean yields across cultivars within management treatments, and then reseample to 1 km grids. These become new inputs for the tradeoff model.  
-```{r, eval=FALSE}
+# 1 km resample
 mgrid <- raster(full_path(p_agro, "ZA-grid.tif"))
 msk <- raster(full_path(p_agro, "ZA-mask.tif"))
 lapply(c("S", "R", "I"), function(x) { # x <- "S" 
@@ -289,3 +324,14 @@ lapply(c("S", "R", "I"), function(x) { # x <- "S"
 })
 ```
 <a href="#top">Back to top</a>
+
+## Resulting model inputs
+
+`maize_S|R|I_10K.tif` - 10 km maize grids for different management
+`soybean_S|R|I_10K.tif` - 10 km soy grids for different management
+
+These will have to go through intermediate, and perhaps on the fly, processing in batch mode to represent different yield scenarios.  
+
+
+
+

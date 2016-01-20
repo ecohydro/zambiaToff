@@ -84,6 +84,7 @@ img {
 <li><a href="#new-carbon-layer"><span class="toc-section-number">1</span> New carbon layer</a><ul>
 <li><a href="#vegetation-carbon"><span class="toc-section-number">1.1</span> Vegetation carbon</a></li>
 <li><a href="#soil-carbon"><span class="toc-section-number">1.2</span> Soil carbon</a></li>
+<li><a href="#resulting-model-inputs"><span class="toc-section-number">1.3</span> Resulting model inputs</a></li>
 </ul></li>
 </ul>
 </div>
@@ -168,6 +169,10 @@ soct_1ma &lt;-<span class="st"> </span><span class="kw">projectRaster</span>(soc
 
 zamcarb &lt;-<span class="st"> </span><span class="kw">brick</span>(<span class="kw">stack</span>(zvcarb, soct_1ma), 
                  <span class="dt">filename =</span> <span class="kw">full_path</span>(p_devel, <span class="st">&quot;ZA-carbon.tif&quot;</span>))</code></pre>
+</div>
+<div id="resulting-model-inputs" class="section level2">
+<h2><span class="header-section-number">1.3</span> Resulting model inputs</h2>
+<p><code>ZA-carbon.tif</code> - grid of carbon densities, for impact and prioritization</p>
 </div>
 </div>
 

@@ -1,0 +1,55 @@
+---
+title: "Water mask"
+author: "Lyndon Estes"
+date: "January 19, 2016"
+output: 
+  html_document:
+    highlight: tango
+    theme: spacelab
+    toc: yes 
+    number_sections: yes
+---
+
+# Water mask of Zambia
+
+Water class from the SERVIR landcover map (2010)
+
+## Inputs
+```{r, eval = FALSE}
+library(agroEcoTradeoff)
+library(gdalUtils)
+library(rworldxtra)
+data("countriesHigh")
+
+p_proj <- "/Users/lestes/Dropbox/publications/zambiaToff/private/zambiaToff/"
+p_devel <- full_path(p_proj, "external/input_devel/water")
+p_basedat <- paste0("/Users/lestes/Dropbox/projects/agroEcoTradeoff/external/",
+                    "base_data/")
+p_dat <- "~/Dropbox/data/agricultural/fao/countrystat/zambia/"
+p_usda <- "~/Dropbox/data/agricultural/usda/fas/zambia/"
+p_lc <- "~/Dropbox/data/landcover/Zambia_LandCover_2010_Scheme_II/"
+
+# Load in data
+mgrid <- raster(full_path(p_basedat, "ZA-grid.tif"))
+lc <- raster(full_path(p_lc, fname = "Zambia_LandCover_2010_Scheme_II.tif"))
+
+```
+
+## Extract water class and resample
+```{r, eval = FALSE}
+
+# pullout cropland class 8
+system.time(water <- rast_math(lc == 10, tmpdir = p_devel))
+
+onm <- full_path(p_devel, "water-1k.tif")
+ext <- bbox(mgrid)[1:4]  # extent   
+gdalwarp(srcfile = water@file@name, t_srs = projection(mgrid), 
+         dstfile = onm, r = "average", ot = "Float32", te = ext, 
+         srcnodata = 255, dstnodata = 255, tr = c(1000, 1000), 
+         of = "GTiff", multi = TRUE, verbose = FALSE, overwrite = TRUE)
+water <- raster(onm)
+par(mar = rep(0, 4)); plot(water)
+
+```
+
+

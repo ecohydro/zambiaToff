@@ -38,11 +38,12 @@ library(raster)
 library(rgdal)
 library(rgeos)
 library(gdalUtils)
-p_root <- set_base_path("zambiaToff")
+p_root <- lmisc::set_base_path("zambiaToff")
 p_roads <- full_path(p_root, "external/input_devel/roads/")
 p_roads2 <- paste0("~/Dropbox/data/zari/infrastructure/zambia/rda_dump/", 
                    "Final Shape files RDA/")
 p_trade <- "~/Dropbox/projects/agroEcoTradeoff/external/base_data/"
+p_cost <- full_path(p_root, "external/input_devel/roads/cost")
 
 # Read in data
 setwd(p_roads)
@@ -276,35 +277,48 @@ That will give you a cost of movement in hours. You might want to play around wi
 # Some code I use to quickly copy data out of the ArcGIS processing folder
 # back to my machine
 cnm <- "/Volumes/Data/loMadzala/GIS/Zambia/costdistance/zamcost2.tif"
-file.copy(cnm, "cost.tif", overwrite = TRUE)
+file.copy(cnm, full_path(p_cost, "zamcost.tif"), overwrite = TRUE)
 
 # read in the cost raster
-costr <- raster("cost.tif")
+costr <- raster(full_path(p_cost, "zamcost.tif"))
 
 # first we have to cut this down for R, and then convert it to a data.table
 # get the zambia mask for AgroEcoTradeoffs
 # find your install of AgroEcoTradeoffs
 # read in the "ZA-mask.csv" file, which is a data.table
 library(agroEcoTradeoff)
-dt_path <- "~/Dropbox/projects/agroEcoTradeoff/external/data/dt/"
-msk <- fread(paste0(dt_path, "ZA-mask.csv"))  # read it in
-mskr <- dt_to_raster(msk, CRSobj = projection(zamr))  # convert to raster
+# dt_path <- "~/Dropbox/projects/agroEcoTradeoff/external/data/dt/"
+# msk <- fread(paste0(dt_path, "ZA-mask.csv"))  # read it in
+# mskr <- dt_to_raster(msk, CRSobj = projection(zamr))  # convert to raster
+mgrid <- raster(full_path(p_trade, "ZA-grid.tif"))
 
 # now crop the cost surface, then resample it to  
 # line up with our mask raster, since they are slightly offset from one 
 # another, and then mask it
-costrcr <- crop(costr, mskr)
-costcrrs <- resample(costrcr, mskr)
-costrmsk <- mask(costcrrs, mskr)
-plot(costrmsk)  # voila
+costrcr <- crop(costr, mgrid)
+costcrrs <- resample(costrcr, mgrid)
+# costrmsk <- mask(costcrrs, )
+# plot(costcrrs)  # voila
+
+writeRaster(costcrrs, filename = full_path(p_cost, "ZA-cost.tif"))
 
 # then convert it to a data.table as follows
-costdt <- na.omit(as.data.table(costrmsk, xy = FALSE))
+# costdt <- na.omit(as.data.table(costrmsk, xy = FALSE))
 
 # and then you will write it out as a csv file.  
-fnm <- "../../data/ZA-cost.csv"
-write.table(costdt, file = fnm, sep = ",", col.names = TRUE, 
-            row.names = FALSE)
+# fnm <- "../../data/ZA-cost.csv"
+# write.table(costdt, file = fnm, sep = ",", col.names = TRUE, 
+#             row.names = FALSE)
+
+
 ```
 
-Your final output csv file will want to replace the ZA-cost.csv file in agroEcoTradeoffs folder `external/data/dt`, and then the model will work nicely.  
+## Resulting model inputs
+
+Alistair's project:
+Your final output csv file will want to replace the ZA-cost.csv file in agroEcoTradeoffs folder `external/data/dt`, and then the model will work nicely. 
+
+Full analysis: 
+`ZA-cost.tif` - for masking, etc
+
+

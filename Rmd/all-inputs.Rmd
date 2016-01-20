@@ -1,0 +1,56 @@
+---
+title: "Assemble Inputs"
+author: "Lyndon Estes"
+date: "January 20, 2016"
+output: 
+  html_document:
+    highlight: tango
+    theme: spacelab
+    toc: yes 
+    number_sections: yes
+---
+
+# Assemble Inputs
+
+Bring all datasets in, create farmable area mask, mask them, and convert to data.tables for model input
+
+1. For running model, non-grid: 
+    + `currprod.rda` - For input, not data.table
+    + `vprops.rda` - table of veg type area, rarity value, and prioritization value. 
+
+2. For running model:
+    + Prioritization (P) and impact (I)
+        + `ZA-carbon.tif` - Carbon impacts, to data.table (P|I)
+        + `bdprior.tif` - biodiversity prioritization grid (P)
+        + `ZA-cost.tif` - cost distance
+        + `maize|soybean_S|R|I_10km,tif` - variants thereof (P|I). Separate variants of these must be created prior to model runtime. A function will be creatd here to facilitate that.  
+    + Impact only:
+        + `ZA-vegremain.tif` - vegetation remaining grid, for assessing conversion impacts. 
+    + Masking/allocation
+        + `farmable-1k.tif` - slope-based farmable area mask
+        + `water-1k.tif` - water-based farmable area mask
+        + `ZA-remfrac.tif` - cropland and urban-based farmable area mask
+3. For displaying model outputs: 
+    + `cropland-1k.tif` - cropland mask
+
+## Inputs
+```{r, eval = FALSE}
+library(agroEcoTradeoff)
+
+p_proj <- "/Users/lestes/Dropbox/publications/zambiaToff/private/zambiaToff/"
+p_devel <- full_path(p_proj, "external/input_devel/cropland")
+p_basedat <- paste0("/Users/lestes/Dropbox/projects/agroEcoTradeoff/external/",
+                    "base_data/")
+p_crop <- full_path(p_proj, "external/input_devel/cropland")
+p_bd <- full_path(p_proj, "external/input_devel/biodiversity")
+p_cost <- full_path(p_proj, "external/input_devel/roads/cost")
+
+# Load in data
+mgrid <- raster(full_path(p_basedat, "ZA-grid.tif"))
+cropland <- raster(full_path(p_crop, fname = "cropland-1k.tif"))
+bd <- raster(full_path(p_bd, fname = "bdprior.tif"))
+vegr <- raster(full_path(p_bd, fname = "ZA-vegremain.tif"))
+cost <- raster(full_path(p_cost, fname = "zamcost.tif"))
+
+```
+

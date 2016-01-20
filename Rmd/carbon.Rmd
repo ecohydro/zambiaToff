@@ -99,6 +99,9 @@ zamcarb <- brick(stack(zvcarb, soct_1ma),
 
 ```
 
+## Resulting model inputs
+
+`ZA-carbon.tif` - grid of carbon densities, for impact and prioritization
 
 
 
