@@ -83,6 +83,8 @@ img {
 <ul>
 <li><a href="#assemble-inputs"><span class="toc-section-number">1</span> Assemble Inputs</a><ul>
 <li><a href="#inputs"><span class="toc-section-number">1.1</span> Inputs</a></li>
+<li><a href="#create-farmable-area"><span class="toc-section-number">1.2</span> Create farmable area</a></li>
+<li><a href="#stack-and-mask-all-grids"><span class="toc-section-number">1.3</span> Stack and mask all grids</a></li>
 </ul></li>
 </ul>
 </div>
@@ -102,13 +104,12 @@ img {
 <ul>
 <li><code>ZA-carbon.tif</code> - Carbon impacts, to data.table (P|I)</li>
 <li><code>bdprior.tif</code> - biodiversity prioritization grid (P)</li>
-<li><code>ZA-vegremain.tif</code> - vegetation remaining grid, for assessing conversion impacts</li>
 <li><code>ZA-cost.tif</code> - cost distance</li>
-<li><code>maize|soybean_S|R|I_10km,tif</code> - variants thereof (P|I)</li>
+<li><code>maize|soybean_S|R|I_10km,tif</code> - variants thereof (P|I). Separate variants of these must be created prior to model runtime. A function will be creatd here to facilitate that.<br /></li>
 </ul></li>
 <li>Impact only:
 <ul>
-<li><code>ZA-vegrem.tif</code> - fraction of remaining vegetation types</li>
+<li><code>ZA-vegremain.tif</code> - vegetation remaining grid, for assessing conversion impacts.</li>
 </ul></li>
 <li>Masking/allocation
 <ul>
@@ -131,10 +132,101 @@ p_devel &lt;-<span class="st"> </span><span class="kw">full_path</span>(p_proj, 
 p_basedat &lt;-<span class="st"> </span><span class="kw">paste0</span>(<span class="st">&quot;/Users/lestes/Dropbox/projects/agroEcoTradeoff/external/&quot;</span>,
                     <span class="st">&quot;base_data/&quot;</span>)
 p_crop &lt;-<span class="st"> </span><span class="kw">full_path</span>(p_proj, <span class="st">&quot;external/input_devel/cropland&quot;</span>)
+p_bd &lt;-<span class="st"> </span><span class="kw">full_path</span>(p_proj, <span class="st">&quot;external/input_devel/biodiversity&quot;</span>)
+p_cost &lt;-<span class="st"> </span><span class="kw">full_path</span>(p_proj, <span class="st">&quot;external/input_devel/roads/cost&quot;</span>)
+p_yield &lt;-<span class="st"> </span><span class="kw">full_path</span>(p_proj, <span class="st">&quot;external/input_devel/yield&quot;</span>)
+p_h20 &lt;-<span class="st"> </span><span class="kw">full_path</span>(p_proj, <span class="st">&quot;external/input_devel/water&quot;</span>)
+p_terr &lt;-<span class="st"> </span><span class="kw">full_path</span>(p_proj, <span class="st">&quot;external/input_devel/terrain&quot;</span>)
+p_carb &lt;-<span class="st"> </span><span class="kw">full_path</span>(p_proj, <span class="st">&quot;external/input_devel/carbon&quot;</span>)
+p_production &lt;-<span class="st"> </span><span class="kw">full_path</span>(p_proj, <span class="st">&quot;external/data/production&quot;</span>)
 
 <span class="co"># Load in data</span>
 mgrid &lt;-<span class="st"> </span><span class="kw">raster</span>(<span class="kw">full_path</span>(p_basedat, <span class="st">&quot;ZA-grid.tif&quot;</span>))
-lc &lt;-<span class="st"> </span><span class="kw">raster</span>(<span class="kw">full_path</span>(p_lc, <span class="dt">fname =</span> <span class="st">&quot;Zambia_LandCover_2010_Scheme_II.tif&quot;</span>))</code></pre>
+cropland &lt;-<span class="st"> </span><span class="kw">raster</span>(<span class="kw">full_path</span>(p_crop, <span class="dt">fname =</span> <span class="st">&quot;cropland-1k.tif&quot;</span>))
+bd &lt;-<span class="st"> </span><span class="kw">raster</span>(<span class="kw">full_path</span>(p_bd, <span class="dt">fname =</span> <span class="st">&quot;bdprior.tif&quot;</span>))
+vegr &lt;-<span class="st"> </span><span class="kw">brick</span>(<span class="kw">full_path</span>(p_bd, <span class="dt">fname =</span> <span class="st">&quot;ZA-vegremain.tif&quot;</span>))
+<span class="kw">load</span>(<span class="kw">full_path</span>(p_bd, <span class="dt">fname =</span> <span class="st">&quot;ZA-vegremain.rda&quot;</span>))
+<span class="kw">names</span>(vegr) &lt;-<span class="st"> </span>vegnames
+carbon &lt;-<span class="st"> </span><span class="kw">brick</span>(<span class="kw">full_path</span>(p_carb, <span class="dt">fname =</span> <span class="st">&quot;ZA-carbon.tif&quot;</span>))
+<span class="kw">names</span>(carbon) &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;veg&quot;</span>, <span class="st">&quot;soil&quot;</span>)
+cost &lt;-<span class="st"> </span><span class="kw">raster</span>(<span class="kw">full_path</span>(p_cost, <span class="dt">fname =</span> <span class="st">&quot;ZA-cost.tif&quot;</span>))
+ynms &lt;-<span class="st"> </span><span class="kw">dir</span>(p_yield)
+ynms &lt;-<span class="st"> </span><span class="kw">sapply</span>(<span class="kw">c</span>(<span class="st">&quot;S&quot;</span>, <span class="st">&quot;R&quot;</span>, <span class="st">&quot;I&quot;</span>), function(x) ynms[<span class="kw">grep</span>(x, ynms)])
+ynms &lt;-<span class="st"> </span>ynms[<span class="kw">c</span>(<span class="dv">1</span>, <span class="dv">3</span>, <span class="dv">5</span>, <span class="dv">2</span>, <span class="dv">4</span>, <span class="dv">6</span>)]
+ylds &lt;-<span class="st"> </span><span class="kw">lapply</span>(ynms, function(x) <span class="kw">brick</span>(<span class="kw">full_path</span>(p_yield, x)))
+<span class="kw">names</span>(ylds) &lt;-<span class="st"> </span><span class="kw">gsub</span>(<span class="st">&quot;_10K&quot;</span>, <span class="st">&quot;&quot;</span>, ynms)
+
+<span class="co"># mask materials</span>
+remfrac &lt;-<span class="st"> </span><span class="kw">raster</span>(<span class="kw">full_path</span>(p_bd, <span class="dt">fname =</span> <span class="st">&quot;ZA-remfrac.tif&quot;</span>))
+water &lt;-<span class="st"> </span><span class="kw">raster</span>(<span class="kw">full_path</span>(p_h20, <span class="dt">fname =</span> <span class="st">&quot;water-1k.tif&quot;</span>))
+farmable &lt;-<span class="st"> </span><span class="kw">raster</span>(<span class="kw">full_path</span>(p_terr, <span class="dt">fname =</span> <span class="st">&quot;farmable-1k.tif&quot;</span>))</code></pre>
+</div>
+<div id="create-farmable-area" class="section level2">
+<h2><span class="header-section-number">1.2</span> Create farmable area</h2>
+<pre class="sourceCode r"><code class="sourceCode r"><span class="co"># merge together the three farmland available masks</span>
+avail &lt;-<span class="st"> </span>remfrac -<span class="st"> </span>water
+avail[avail &lt;<span class="st"> </span><span class="dv">0</span>] &lt;-<span class="st"> </span><span class="dv">0</span>
+avail &lt;-<span class="st"> </span>avail -<span class="st"> </span>(<span class="dv">1</span> -<span class="st"> </span>farmable)
+avail[avail &lt;<span class="st"> </span><span class="dv">0</span>] &lt;-<span class="st"> </span><span class="dv">0</span>
+avail &lt;-<span class="st"> </span>avail *<span class="st"> </span>(bd &lt;<span class="st"> </span><span class="fl">0.962</span>)  <span class="co"># remove PAs entirely (1 if nps, 0.962 if GMAs)</span>
+<span class="co"># plot(avail)</span></code></pre>
+<p>That creates the farmland availability mask that is needed.</p>
+</div>
+<div id="stack-and-mask-all-grids" class="section level2">
+<h2><span class="header-section-number">1.3</span> Stack and mask all grids</h2>
+<pre class="sourceCode r"><code class="sourceCode r"><span class="co"># first get rid of all NA area in all grids</span>
+<span class="co"># start with yield grids</span>
+yldmask &lt;-<span class="st"> </span><span class="kw">calc</span>(<span class="kw">stack</span>(ylds), sum)
+yldmask2 &lt;-<span class="st"> </span><span class="kw">disaggregate</span>(yldmask, <span class="dt">fact =</span> <span class="dv">10</span>)
+yldmask3 &lt;-<span class="st"> </span><span class="kw">resample</span>(yldmask, yldmask2)
+yldmask4 &lt;-<span class="st"> </span><span class="kw">projectRaster</span>(yldmask3, mgrid)
+yldmask5 &lt;-<span class="st"> </span><span class="kw">mask</span>(yldmask4, mgrid)
+<span class="kw">plot</span>(yldmask5)
+
+<span class="co"># now with other</span>
+carbonf &lt;-<span class="st"> </span><span class="kw">stack</span>(<span class="kw">lapply</span>(<span class="dv">1</span>:<span class="kw">nlayers</span>(carbon), function(x) {
+  r &lt;-<span class="st"> </span>carbon[[x]]
+  r[<span class="kw">is.na</span>(r)] &lt;-<span class="st"> </span><span class="dv">0</span>
+  r
+})) 
+
+inlist &lt;-<span class="st"> </span><span class="kw">list</span>(<span class="st">&quot;convertible&quot;</span> =<span class="st"> </span>avail, <span class="st">&quot;vegremain&quot;</span> =<span class="st"> </span>vegr, <span class="st">&quot;carbon&quot;</span> =<span class="st"> </span>carbonf, 
+               <span class="st">&quot;cost&quot;</span> =<span class="st"> </span>cost, <span class="st">&quot;bd&quot;</span> =<span class="st"> </span>bd, <span class="st">&quot;cropland&quot;</span> =<span class="st"> </span>cropland)
+inlist &lt;-<span class="st"> </span><span class="kw">lapply</span>(inlist, function(x) <span class="kw">crop</span>(x, mgridc))
+inlist2 &lt;-<span class="st"> </span><span class="kw">lapply</span>(inlist, function(x) <span class="kw">calc</span>(x, mean))
+inlist3 &lt;-<span class="st"> </span><span class="kw">calc</span>(<span class="kw">stack</span>(inlist2), mean)
+
+<span class="co"># filter NA values</span>
+nafilt &lt;-<span class="st"> </span><span class="kw">calc</span>(<span class="kw">stack</span>(!<span class="kw">is.na</span>(inlist3), !<span class="kw">is.na</span>(<span class="kw">crop</span>(yldmask5, mgridc))), sum)
+<span class="co"># plot(nafilt)</span>
+<span class="co"># plot(!is.na(calc(vegr, mean)))</span>
+<span class="co"># plot(!is.na(crop(yldmask5, mgridc)), col = c(&quot;transparent&quot;, &quot;red&quot;), add = TRUE)</span>
+msk &lt;-<span class="st"> </span>nafilt ==<span class="st"> </span><span class="kw">maxValue</span>(nafilt)
+msk[msk ==<span class="st"> </span><span class="dv">0</span>] &lt;-<span class="st"> </span><span class="ot">NA</span>
+
+<span class="co"># updated mask</span>
+mgridf &lt;-<span class="st"> </span><span class="kw">mask</span>(mgridc, msk)
+valinds &lt;-<span class="st"> </span><span class="kw">which</span>(!<span class="kw">is.na</span>(<span class="kw">values</span>(mgridf)))
+outlist &lt;-<span class="st"> </span>inlist[<span class="kw">names</span>(inlist) !=<span class="st"> &quot;cropland&quot;</span>]
+
+<span class="co"># write out new data.tables</span>
+cnames &lt;-<span class="st"> &quot;ZA&quot;</span>  
+onms &lt;-<span class="st"> </span><span class="kw">names</span>(inlist)
+onms[onms ==<span class="st"> &quot;bd&quot;</span>] &lt;-<span class="st"> &quot;cons-priorities&quot;</span>
+for(i in <span class="dv">1</span>:<span class="kw">length</span>(outlist)) { <span class="co"># i &lt;- 1</span>
+  fnm &lt;-<span class="st"> </span><span class="kw">full_path</span>(p_production, <span class="kw">paste0</span>(cnames, <span class="st">&quot;-&quot;</span>, onms[i], <span class="st">&quot;.csv&quot;</span>))
+  DT &lt;-<span class="st"> </span><span class="kw">as.data.table</span>(outlist[[i]], <span class="dt">xy =</span> <span class="ot">FALSE</span>)[valinds, ]
+  <span class="kw">write.table</span>(DT, <span class="dt">file =</span> fnm, <span class="dt">sep =</span> <span class="st">&quot;,&quot;</span>, <span class="dt">col.names =</span> <span class="ot">TRUE</span>, <span class="dt">row.names =</span> <span class="ot">FALSE</span>)
+}
+
+<span class="co"># write out mask raster</span>
+base &lt;-<span class="st"> </span><span class="kw">as.data.table</span>(msk, <span class="dt">xy =</span> <span class="ot">TRUE</span>)
+<span class="kw">setnames</span>(base, <span class="dt">old =</span> <span class="kw">names</span>(msk), <span class="dt">new =</span> <span class="st">&quot;val&quot;</span>)
+base[, ind :<span class="er">=</span><span class="st"> </span><span class="dv">1</span>:<span class="kw">nrow</span>(base)]
+base &lt;-<span class="st"> </span>base[!<span class="kw">is.na</span>(val)][, val :<span class="er">=</span><span class="st"> </span><span class="ot">NULL</span>]
+fnm &lt;-<span class="st"> </span><span class="kw">full_path</span>(p_production, <span class="kw">paste0</span>(cnames, <span class="st">&quot;-mask.csv&quot;</span>))
+<span class="kw">write.table</span>(base, <span class="dt">file =</span> fnm, <span class="dt">sep =</span> <span class="st">&quot;,&quot;</span>, <span class="dt">col.names =</span> <span class="ot">TRUE</span>, <span class="dt">row.names =</span> <span class="ot">FALSE</span>)
+<span class="co"># plot(dt_to_raster(base, mgridf@crs))</span></code></pre>
 </div>
 </div>
 

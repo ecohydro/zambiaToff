@@ -25,6 +25,8 @@ p_crop <- "~/Dropbox/data/agricultural/zambia/dssat/"
 p_cropmod <- "~/Dropbox/projects/rCropMod/external/ext_data/"
 p_agro <- "~/Dropbox/projects/agroEcoTradeoff/external/base_data/"
 p_yield <- full_path(p_root, "external/input_devel/yield")
+p_cropland <- full_path(p_root, "external/input_devel/cropland")
+p_fao <- "~/Dropbox/data/agricultural/fao/aez/soybean/"
 
 # Read in spatial reference grid and chop it down to size
 ID <- fread(full_path(p_crop, "Soil_clim_match_ID_master.csv"))
@@ -90,14 +92,7 @@ cv_rasts <- lapply(crops, function(X) {
     cr[, WTH := substr(WTH, 1, 4)]
     cr[, c("V1", "TRNO") := NULL]
     setkeyv(cr, c("WTH", "SOL", "Zone"))
-    
-    # unique(ID$WTH)[!unique(ID$WTH) %in% unique(substr(cr$WTH, 1, 4))]
-    
-    # cr[, .N, by = .(TNAM, SOL, Zone)][which(N > 62), ]
-    # tst <- cr[TNAM == "AAAX0003" & SOL == "WI_FLSO001", ][order(YR), ]
-    # plot(tst[YR > 31, HWAH], tst[YR <= 31, HWAH])
-    # cr[TNAM == "AAEA0001" & SOL == "WI_CMZR003", ]
-    
+
     crm <- cr[ID[, .(WTH, SOL, SharePct, Zone)], allow.cartesian = TRUE]
     
     # CV due to interannual variability
@@ -110,28 +105,9 @@ cv_rasts <- lapply(crops, function(X) {
     idt <- idt[anncv]
     setkeyv(idt, c("WTH", "Zone"))
   
-    # anncv <- solmu[, round(cv(V1)), by = .(WTH, Zone)][, V1]
-    # setnames(anncv, "V1", "acv")
-    
-    # annwv2[WTH == "AERM" & Zone == "Zone3",]
-    # crm[WTH == "AERM" & Zone == "Zone3" & YR == 1, 
-    # weighted.var2(HWAH, SharePct)]
-    # annwv2[, sqrt(V1)] / solmu[, V1]  # checks
-    
     # CV due to soil
     annmu <- crm[, round(mean(HWAH)), by = .(WTH, SOL, Zone, SharePct)]
-    # cr[, .N, by = .(TNAM, SOL)][which(N > 62), ]
-    # crm[WTH == "AAAI" & SOL == "WI_LVUY032" & Zone == "Zone2a", ]
-    # crm[WTH == "AAAI" & SOL == "WI_LVUY032" & Zone == "Zone3", mean(HWAH)]
-    # annmu[WTH == "AAAI" & Zone == "Zone3", ]
-    # crm[WTH == "AAAI" & Zone == "Zone3" & SOL == "WI_LVUY032", mean(HWAH)]
-    # range(crm[, round(mean(HWAH)), by = .(WTH, SOL, Zone)][, V1] - 
-    # crm[, round(mean(HWAH)), by = .(WTH, SOL, Zone, SharePct)][, V1])
-    # crm[WTH == "AAAA" & Zone == "Zone3" & SOL == "WI_CLBW256", mean(HWAH)]
-    # annmu[WTH == "AAAA" & Zone == "Zone3" & SOL == "WI_CLBW256", ]
     annsolmu <- annmu[, weighted.mean(V1, SharePct), by = .(WTH, Zone)]
-    # sum(annsolmu$V1 - annmu[, weighted.mean(V1, SharePct), 
-    # by = .(WTH, Zone, SOL)][, V1])
     solcv <- annmu[, sqrt(weighted.var(V1, w = SharePct, na.rm = TRUE)), 
                    by = .(WTH, Zone)][, V1 / annsolmu[, V1] * 100]
     scvnm <- paste0("scv", snm)
@@ -254,13 +230,13 @@ yield_fix <- function(x = r[[1]], w, na.rm = TRUE) {
 }
 
 # ra
+w <- matrix(ncol = 3, nrow = 3, rep(1, 9))
 yld_rl <- lapply(crops, function(x) {  # x <- crops[[1]]
-  yr <- lapply(c("S", "R", "I"), function(y) {  #y <- "S"
+  yr <- lapply(c("S", "R", "I"), function(y) {  # y <- "S"
     ylds <- yld_rasts[[x]]
     nms <- names(ylds)
     cnms <- nms[grep(paste0("y.*._", y), nms)]
     r <- dt_to_raster(ylds[, c("x", "y", cnms), with = FALSE], CRSobj = gcs)
-    w <- matrix(ncol = 3, nrow = 3, rep(1, 9))
     rfoc <- sapply(1:nlayers(r), function(i) rfoc <- yield_fix(r[[i]], w = w))
     names(rfoc) <- names(r)
     rs <- stack(rfoc)
@@ -270,11 +246,95 @@ yld_rl <- lapply(crops, function(x) {  # x <- crops[[1]]
 })
 names(yld_rl) <- crops
 
-for(i in 1:length(yld_rl)) {
-  rl <- yld_rl[[i]]
+```
+
+## Short-term soybean fix
+
+Potential soybean yields are too low for Zambia, so we will adjust them up with FAO-GAEZ yields 
+
+```{r, eval = FALSE}
+faonms <- dir(p_fao, full.names = TRUE)
+file.rename(faonms, gsub("res02crav6190|yld_package", "", faonms))
+faonms <- dir(p_fao, full.names = TRUE)
+p_faosoy <- full_path(p_fao, c("soybean_I", "soybean_R", "soybean_S"))
+file.rename(faonms, full_path(p_fao, c("soybean_I", "soybean_R", "soybean_S")))
+faonms <- dir(p_faosoy, full.names = TRUE)
+renm <- paste0(p_faosoy, c("soybean_I", "soybean_R", "soybean_S"), ".tif")
+file.rename(faonms[grep("res02_crav6190", faonms)], renm)
+
+# load in tiffs, crop and mask to Zambia
+faosoy <- lapply(renm, function(x) raster(x))
+names(faosoy) <- c("soybean_I", "soybean_R", "soybean_S")
+faosoy <- lapply(faosoy, function(x) {
+  r <- crop(x, yld_rl$soybean$S)
+  ro <- mask(r, yld_rl$soybean$S[[1]])
+})
+faosoy <- faosoy[names(faosoy)[3:1]]  # rearrange
+plot(faosoy[[2]])
+
+# dssat soy mean yield grids
+dssatsoy_mu <- sapply(yld_rl$soybean, function(x) {
+  r <- calc(x[[grep("ymu", names(x))]], mean)
+})
+sapply(dssatsoy_mu, function(x) cellStats(x, mean))
+
+# Find mean yield differences
+soydiff <- lapply(1:3, function(x) {
+  faosoy[[x]] - dssatsoy_mu[[x]]
+})
+soydiffmsk <- lapply(soydiff, function(x) x < 0) # poss and negative
+
+# Liuwa plains and wetland yields much higher than should be. Don't adjust
+
+bias <- sapply(1:3, function(x) {
+  r1 <- mask(soydiff[[x]], soydiffmsk[[x]] == 0, maskvalue = 0)
+  r2 <- mask(soydiff[[x]], soydiffmsk[[x]] == 1, maskvalue = 0)
+  c("mu1" = cellStats(r1, mean), "mu2" = cellStats(r2, mean), 
+    "med1" =  quantile(r1, probs = 0.5), "med2" =  quantile(r2, probs = 0.5))
+})
+
+# calculate bias offset for different management types, filtering out wetland
+# areas. Interpolate between rainfed subsistence and commercial because of 
+# of overly high (3,500 kg/ha) rainfed high input bias
+biasu <- bias[c(1, 3), ]
+biasu[, 2] <- rowMeans(bias[c(1, 3), c(1, 3)]) # replace with interpolated
+biasd <- bias[c(2, 4), ]  # down adjustment for wetlands
+biasd[, 2] <- rowMeans(bias[c(2, 4), c(1, 3)]) # replace with interpolated
+
+# median and mean bias about the same
+# fix dssat yields, test first on just the mean yields
+par(mfrow = c(2, 2))
+soyadjtest <- lapply(1:3, function(x) {  # x = 1
+  r1 <- (dssatsoy_mu[[x]] + biasu[2, x]) * (soydiffmsk[[x]] == 0)
+  r2 <- (dssatsoy_mu[[x]]) * (soydiffmsk[[x]] == 1)
+  r3 <- r1 + r2
+  plot(r3)
+})
+
+# Fix all of them now
+soyfix <- lapply(1:3, function(x) {
+  ri <- yld_rl$soybean[[x]]
+  r1 <- (ri + biasu[2, x]) * (soydiffmsk[[x]] == 0)
+  r2 <- ri * (soydiffmsk[[x]] == 1)
+  r3 <- r1 + r2
+  names(r3) <- names(ri)
+  r3
+})
+names(soyfix) <- names(yld_rl$soybean)
+```
+
+
+```{r, eval = FALSE}
+yld_rl2 <- list(yld_rl$maize, soyfix)
+names(yld_rl2) <- crops
+
+for(i in 1:length(yld_rl2)) {
+  rl <- yld_rl2[[i]]
   for(j in 1:length(rl)) {
     fnm <- full_path(p_yield, paste0(crops[i], "_", names(rl)[j], "_10K.tif"))
-    writeRaster(rl[[j]], filename = fnm)
+    writeRaster(rl[[j]], filename = fnm, overwrite = TRUE)
+    layernms <- names(rl[[j]])
+    save(layernms, file = gsub("\\.tif", "\\.rda", fnm))
   }
 }
 ```
@@ -283,7 +343,7 @@ for(i in 1:length(yld_rl)) {
 
 ## How to make 1 km grids/data.tables
 
-This provides the methods for taking 10 km grids, averaging them across cultivars within management treatments, and then reseampling to 1 km grids. This is approximately the approach that will be used to make inputs for the tradeoff model. Other methods to explore include blending different types of management practice, e.g. X% of each cell is irrigated, Y% is rainfed commercial, Z% is subsistence. 
+This provides the methods for taking 10 km grids, averaging them across cultivars within management treatments, and then resampling to 1 km grids. This is approximately the approach that will be used to make inputs for the tradeoff model. Other methods to explore include blending different types of management practice, e.g. X% of each cell is irrigated, Y% is rainfed commercial, Z% is subsistence. 
 ```{r, eval=FALSE}
 yld_mus <- lapply(crops, function(x) {  # x <- crops[[1]]
   ymu <- lapply(c("S", "R", "I"), function(y) {  #y <- "S"

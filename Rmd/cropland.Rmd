@@ -90,6 +90,7 @@ srepl <- fao[Crop == "Soybeans" & var == "prod" & Year == "2011" &
                provcode != 3433, 116539 - sum(Value)]
 fao[Crop == "Soybeans" & var == "prod" & Year == "2011" & 
                 provcode == 3433, Value := srepl]
+save(fao, file = full_path(p_devel, "fao-yields.rda"))
 
 # Planted area and production 2010-2014 for Zambia
 muprod <- lapply(c("Maize", "Soybeans"), function(x) {
@@ -102,6 +103,7 @@ mupa <- lapply(c("Maize", "Soybeans"), function(x) {
       by = Year]
 })
 names(mupa) <- c("maize", "soy")
+# mean(muprod$soy[, V1] / mupa$soy[, V1])
 
 # Read in USDA harvested area and production to get difference in harvested area
 # and planted area
@@ -114,6 +116,7 @@ usda <- rbindlist(lapply(1:length(fnms), function(x){
 cols <- names(usda)[4:9]
 usda_ylds <- usda[var == "prod", cols, with = FALSE] / 
   usda[var == "harvarea", cols, with = FALSE]
+save(usda, file = full_path(p_devel, "usda-yields.rda"))
 
 # FAO references start year, it seems for maize, but soybean is correct year
 yp <- unlist(usda[var == "prod" & crop == "maize", cols, with = FALSE] * 1000)

@@ -64,6 +64,8 @@ sm <- mask(s, mgrid)
 # keep for assessing impacts
 writeRaster(sm, filename = full_path(p_bd, "ZA-vegremain.tif"), 
             overwrite = TRUE)
+vegnames <- gsub("\\.tif", "", gsub("veg", "v", vnms))
+save(vegnames, file = full_path(p_bd, "ZA-vegremain.rda"))
 
 # Sum for total - the inverse of this will be the farmable areas
 remfrac <- calc(s, sum)
