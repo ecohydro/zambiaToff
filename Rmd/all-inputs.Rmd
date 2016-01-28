@@ -25,7 +25,9 @@ Bring all datasets in, create farmable area mask, mask them, and convert to data
         + `ZA-cost.tif` - cost distance
         + `maize|soybean_S|R|I_10km,tif` - variants thereof (P|I). Separate variants of these must be created prior to model runtime. A function will be creatd here to facilitate that.  
     + Impact only:
-        + `ZA-vegremain.tif` - vegetation remaining grid, for assessing conversion impacts. 
+        + `ZA-bd.tif` - vegetation remaining grid, for assessing conversion impacts. 
+        + `intactness.tif` - measure of intactness
+        + `ZA-pas.tif` - protected areas, to see how many forest reserves get hit
     + Masking/allocation
         + `farmable-1k.tif` - slope-based farmable area mask
         + `water-1k.tif` - water-based farmable area mask
@@ -53,14 +55,16 @@ p_production <- full_path(p_proj, "external/data/production")
 # Load in data
 mgrid <- raster(full_path(p_basedat, "ZA-grid.tif"))
 cropland <- raster(full_path(p_crop, fname = "cropland-1k.tif"))
-bd <- raster(full_path(p_bd, fname = "bdprior.tif"))
-vegr <- brick(full_path(p_bd, fname = "ZA-vegremain.tif"))
+cons <- raster(full_path(p_bd, fname = "cons-priorities.tif"))
+bd <- brick(full_path(p_bd, fname = "ZA-vegremain.tif"))
 load(full_path(p_bd, fname = "ZA-vegremain.rda"))
-names(vegr) <- vegnames
+names(bd) <- vegnames
 carbon <- brick(full_path(p_carb, fname = "ZA-carbon.tif"))
 names(carbon) <- c("veg", "soil")
 cost <- raster(full_path(p_cost, fname = "ZA-cost.tif"))
-ynms <- dir(p_yield, pattern = "tif")
+pas <- raster(full_path(p_bd, "ZA-pas.tif"))
+intact <- raster(full_path(p_bd, "intactness.tif"))
+ynms <- dir(p_yield, pattern = "FAO.tif")  # FAO adjusted now
 ynms <- sapply(c("S", "R", "I"), function(x) ynms[grep(x, ynms)])
 ynms <- ynms[c(1, 3, 5, 2, 4, 6)]
 ylds <- lapply(ynms, function(x) {
@@ -70,7 +74,7 @@ ylds <- lapply(ynms, function(x) {
   names(b) <- layernms
   b
 })
-names(ylds) <- gsub("_10K", "", ynms)
+names(ylds) <- gsub("_10K|\\.tif|_FAO", "", ynms)
 
 # mask materials
 remfrac <- raster(full_path(p_bd, fname = "ZA-remfrac.tif"))
@@ -87,7 +91,8 @@ avail <- remfrac - water
 avail[avail < 0] <- 0
 avail <- avail - (1 - farmable)
 avail[avail < 0] <- 0
-avail <- avail * (bd < 0.962)  # remove PAs entirely (1 if nps, 0.962 if GMAs)
+avail <- avail * (cons < 0.962)  # remove PAs entirely (1 if nps, 0.962 if GMAs)
+names(avail) <- "convertible"
 # plot(avail)
 ```
 
@@ -95,15 +100,53 @@ That creates the farmland availability mask that is needed.
 
 ## Stack and mask all grids
 ```{r, eval = FALSE}
+# deal with yields
+potmaize <- ylds$maize_R  # just taking rainfed commercial potential to start
+w <- matrix(nrow = 5, ncol = 5, rep(1, 5 * 5))  # have to filter b/c artifacts
+potmaizef <- focal(potmaize[[1]], w = w, fun = mean, na.rm = TRUE)
+potsoy <- ylds$soybean_R  # just taking rainfed commercial potential to start
+potsoy[potsoy > 5] <- 5 #round(cellStats(potsoy, mean), 1)  # really high fix
+potsoyf <- focal(potsoy[[1]], w = w, fun = mean, na.rm = TRUE)
+# potsoy <- mask(potsoyf, potsoy)  # crop yield
 
+yield_fix <- function(x = r[[1]], w, na.rm = TRUE) {
+  r <- focal(x, w = w, fun = mean, na.rm = na.rm)
+  rmsk <- (!is.na(r) & is.na(x)) * r
+  x[is.na(x)] <- 0
+  rfix <- x + rmsk  # add back in edge bits
+}
+
+w <- matrix(nrow = 3, ncol = 3, rep(1, 9))
+potsoyf2 <- yield_fix(potsoyf[[1]], w)
+potmaizef2 <- yield_fix(potmaizef[[1]], w)
+plot(potmaizef2)
 # first get rid of all NA area in all grids
 # start with yield grids
-yldmask <- calc(stack(ylds), sum)
-yldmask2 <- disaggregate(yldmask, fact = 10)
-yldmask3 <- resample(yldmask, yldmask2)
-yldmask4 <- projectRaster(yldmask3, mgrid)
-yldmask5 <- mask(yldmask4, mgrid)
-plot(yldmask5)
+# yldmask <- calc(stack(ylds), sum)
+
+# Function to disaggregate and reproject yield rasters
+yld_disagg <- function(x, msk, fact = 10) {
+  r <- disaggregate(x, fact = 10)
+  r2 <- resample(x, r)
+  r3 <- projectRaster(r2, msk)
+  r4 <- mask(r3, msk)
+  r4
+}
+
+ylds_1k <- lapply(list(potmaizef2, potsoyf2), function(x) {
+  yld_disagg(x, msk = mgrid)
+})
+ylds_s <- stack(ylds_1k) 
+names(ylds_s) <- c("maize", "soy")
+ylds_s <- round(ylds_s, 1)  
+# plot(ylds_s)
+
+# yldmask <- calc(stack(potmaizef2, potsoyf2), sum)
+# yldmask2 <- disaggregate(yldmask, fact = 10)
+# yldmask3 <- resample(yldmask, yldmask2)
+# yldmask4 <- projectRaster(yldmask3, mgrid)
+# yldmask5 <- mask(yldmask4, mgrid)
+# plot(yldmask5)
 
 # now with other
 carbonf <- stack(lapply(1:nlayers(carbon), function(x) {
@@ -112,20 +155,27 @@ carbonf <- stack(lapply(1:nlayers(carbon), function(x) {
   r
 })) 
 
+# pas and intactness
+intpa <- stack(intact, pas)
+
 mgridc <- crop(mgrid, avail)
-inlist <- list("convertible" = avail, "vegremain" = vegr, "carbon" = carbonf, 
-               "cost" = cost, "bd" = bd, "cropland" = cropland)
+inlist <- list("convertible" = avail, "bd" = bd, "carbon" = carbonf, 
+               "cost" = cost, "cons" = cons, "cropland" = cropland, 
+               "intpa" = intpa, "p_yield" = ylds_s)
 inlist <- lapply(inlist, function(x) crop(x, mgridc))
 inlist2 <- lapply(inlist, function(x) calc(x, mean))
 inlist3 <- calc(stack(inlist2), mean)
+# inlist4 <- calc(stack(inlist3, crop(ylds_s, mgridc)), mean)
 
 # filter NA values
-nafilt <- calc(stack(!is.na(inlist3), !is.na(crop(yldmask5, mgridc))), sum)
+# nafilt <- calc(stack(!is.na(inlist3), !is.na(crop(yldmask5, mgridc))), sum)
+nafilt <- !is.na(inlist3)
 # plot(nafilt)
 # plot(!is.na(calc(vegr, mean)))
 # plot(!is.na(crop(yldmask5, mgridc)), col = c("transparent", "red"), add = TRUE)
-msk <- nafilt == maxValue(nafilt)
+msk <- nafilt == maxValue(nafilt)  # freq(nafilt)
 msk[msk == 0] <- NA
+# plot(msk)
 
 # updated mask
 mgridf <- mask(mgridc, msk)
@@ -133,9 +183,12 @@ valinds <- which(!is.na(values(mgridf)))
 outlist <- inlist[names(inlist) != "cropland"]
 
 # write out new data.tables
+### make sure convertible writes out column header name properly
 cnames <- "ZA"  
-onms <- names(inlist)
-onms[onms == "bd"] <- "cons-priorities"
+onms <- names(outlist)
+onms[onms == "cons"] <- "cons-priorities"
+onms[onms == "p_yield"] <- "potential-yields"
+
 for(i in 1:length(outlist)) { # i <- 1
   fnm <- full_path(p_production, paste0(cnames, "-", onms[i], ".csv"))
   DT <- as.data.table(outlist[[i]], xy = FALSE)[valinds, ]
@@ -151,27 +204,46 @@ fnm <- full_path(p_production, paste0(cnames, "-mask.csv"))
 write.table(base, file = fnm, sep = ",", col.names = TRUE, row.names = FALSE)
 # plot(dt_to_raster(base, mgridf@crs))
 
+# # data.table them
+# cnames <- "ZA"  
+# fnm <- full_path(p_production, paste0(cnames, "-potential-yields.csv"))
+# DT <- as.data.table(ylds_s, xy = FALSE)[valinds, ]
+# # DT[which(is.na(DT))]
+# write.table(DT, file = fnm, sep = ",", col.names = TRUE, row.names = FALSE)
 ```
+
+# Copy over files to the correct directory
+```{r, eval}
+p_mod <- full_path(p_proj, "agroEcoTradeoff/external/data/dt/latest/")
+p_master <- "~/Dropbox/projects/agroEcoTradeoff/external/data/dt/latest/"
+fnms <- dir(p_production)
+file.copy(dir(p_production, full.names = TRUE), full_path(p_mod, fnms),
+          overwrite = TRUE)
+file.copy(dir(p_production, full.names = TRUE), full_path(p_master, fnms),
+          overwrite = TRUE)
+
+```
+
 
 ## Yield grids
 ```{r, eval = FALSE}
-# Function to disaggregate and reproject yield rasters
-yld_disagg <- function(x, msk, fact = 10) {
-  r <- disaggregate(x, fact = 10)
-  r2 <- resample(x, r)
-  r3 <- projectRaster(r2, msk)
-  r4 <- mask(r3, msk)
-  r4
-}
+# # Function to disaggregate and reproject yield rasters
+# yld_disagg <- function(x, msk, fact = 10) {
+#   r <- disaggregate(x, fact = 10)
+#   r2 <- resample(x, r)
+#   r3 <- projectRaster(r2, msk)
+#   r4 <- mask(r3, msk)
+#   r4
+# }
 
-# Function to aggregate yields within a particular yield brick
-# stat <- "50"; cults <- paste0("9900", c("08", "09", "10"))
-yield_stat <- function(x, stat = "mu", mgmnt = "S", cults, fun = mean) {
-  repstr <- paste0(paste0(stat, "_", mgmnt), cults, collapse = "|")
-  cnms <- names(x)[grep(repstr, names(x))]
-  print(cnms)
-  calc(x[[cnms]], fun = fun)
-}
+# # Function to aggregate yields within a particular yield brick
+# # stat <- "50"; cults <- paste0("9900", c("08", "09", "10"))
+# yield_stat <- function(x, stat = "mu", mgmnt = "S", cults, fun = mean) {
+#   repstr <- paste0(paste0(stat, "_", mgmnt), cults, collapse = "|")
+#   cnms <- names(x)[grep(repstr, names(x))]
+#   print(cnms)
+#   calc(x[[cnms]], fun = fun)
+# }
 # rm(stat, mgmnt, cults, fun, x, cnms, repstr)
 
 # Let's make an initial yield combination for model development that is
@@ -181,51 +253,74 @@ yield_stat <- function(x, stat = "mu", mgmnt = "S", cults, fun = mean) {
 # 2. Rainfed commerical, hybrid cultivars, median yields, 40%
 # 3. Irrigated maize, hybrid cultivars, median yields, 10%
 
-maize <- list("S" = yield_stat(x = ylds$maize_S.tif, "50", "S", 
-                               paste0("000", 1:4)), 
-              "R" = yield_stat(x = ylds$maize_R.tif, "50", "R", 
-                               paste0("000", 3:4)), 
-              "I" = yield_stat(x = ylds$maize_I.tif, "50", "I", 
-                               paste0("000", 3:4)))
-wgts <- c(0.5, 0.4, 0.1)
-maizewgt <- lapply(1:length(wgts), function(x) maize[[x]] * wgts[x])
-potmaize <- calc(stack(maizewgt), sum)  # potential maize yield
+# maize <- list("S" = yield_stat(x = ylds$maize_S.tif, "50", "S", 
+#                                paste0("000", 1:4)), 
+#               "R" = yield_stat(x = ylds$maize_R.tif, "50", "R", 
+#                                paste0("000", 3:4)), 
+#               "I" = yield_stat(x = ylds$maize_I.tif, "50", "I", 
+#                                paste0("000", 3:4)))
+# wgts <- c(0.5, 0.4, 0.1)
+# maizewgt <- lapply(1:length(wgts), function(x) maize[[x]] * wgts[x])
+# potmaize <- calc(stack(maizewgt), sum)  # potential maize yield
+
+# wgts <- c(0.2, 0.7, 0.1)
+# mznms <- names(ylds)[grep("maize", names(ylds))]
+# # maizewgt <- lapply(1:length(wgts), function(x) ylds[[mznms[x]]] * wgts[x])
+# # potmaize <- calc(stack(maizewgt), sum)  # potential maize yield
+# potmaize <- ylds$maize_R  # just taking rainfed commercial potential to start
+# plot(ylds$maize_I)
+
 
 # Soybean
 # 1. Subsistence management, all 3 cultivars, median yields, 20%
 # 2. Rainfed commerical, all 3cultivars, median yields, 70%
 # 3. Irrigated maize, all 3 cultivars, median yields, 10%
-soy <- list("S" = yield_stat(x = ylds$soybean_S.tif, "50", "S", 
-                             paste0("9900", c("08", "09", "10"))), 
-            "R" = yield_stat(x = ylds$soybean_R.tif, "50", "R", 
-                             paste0("9900", c("08", "09", "10"))), 
-            "I" = yield_stat(x = ylds$soybean_I.tif, "50", "I", 
-                             paste0("9900", c("08", "09", "10"))))
-wgts <- c(0.2, 0.7, 0.1)
-soywgt <- lapply(1:length(wgts), function(x) soy[[x]] * wgts[x])
-potsoy <- calc(stack(soywgt), sum)  # potential maize yield
+# soy <- list("S" = yield_stat(x = ylds$soybean_S.tif, "50", "S", 
+#                              paste0("9900", c("08", "09", "10"))), 
+#             "R" = yield_stat(x = ylds$soybean_R.tif, "50", "R", 
+#                              paste0("9900", c("08", "09", "10"))), 
+#             "I" = yield_stat(x = ylds$soybean_I.tif, "50", "I", 
+#                              paste0("9900", c("08", "09", "10"))))
+# wgts <- c(0.2, 0.7, 0.1)
+# soywgt <- lapply(1:length(wgts), function(x) soy[[x]] * wgts[x])
+# potsoy <- calc(stack(soywgt), sum)  # potential maize yield
 # plot(potmaize); cellStats(potmaize, mean)
 # plot(potsoy); cellStats(potsoy, mean)
 # plot(potmaize)
 # plot(potsoy)
+# potsoy <- ylds$soybean_R  # just taking rainfed commercial potential to start
+# potsoy[potsoy > 5] <- round(cellStats(potsoy, mean), 1)
+# w <- matrix(nrow = 5, ncol = 5, rep(1, 5 * 5))  # have to filter b/c artifacts
+# potsoyf <- focal(potsoy[[1]], w = w, fun = mean, na.rm = TRUE)
+# potsoy <- mask(potsoyf, potsoy)  # crop yield
+# 
+# yield_fix <- function(x = r[[1]], w, na.rm = TRUE) {
+#   r <- focal(x, w = w, fun = mean, na.rm = na.rm)
+#   rmsk <- (!is.na(r) & is.na(x)) * r
+#   x[is.na(x)] <- 0
+#   rfix <- x + rmsk  # add back in edge bits
+# }
+# 
+# w <- matrix(3, 3, rep(1, 9))
+# potsoyf2 <- yield_fix(potsoy[[1]], w)
+# potmaizef2 <- yield_fix(potmaize[[1]], w)
 
 # Disaggregate potential yields, stack, and round
-ylds_1k <- lapply(list(potmaize, potsoy), function(x) {
-  yld_disagg(x, msk = mgridf)
-})
-ylds_s <- stack(ylds_1k) 
-names(ylds_s) <- c("maize", "soy")
-ylds_s <- round(ylds_s)  
-
-# data.table them
-cnames <- "ZA"  
-fnm <- full_path(p_production, paste0(cnames, "-potential-yields.csv"))
-DT <- as.data.table(ylds_s, xy = FALSE)[valinds, ]
-write.table(DT, file = fnm, sep = ",", col.names = TRUE, row.names = FALSE)
-
-
-
-
+# ylds_1k <- lapply(list(potmaizef2, potsoyf2), function(x) {
+#   yld_disagg(x, msk = mgridf)
+# })
+# ylds_s <- stack(ylds_1k) 
+# names(ylds_s) <- c("maize", "soy")
+# ylds_s <- round(ylds_s, 1)  
+# # plot(ylds_s)
+# 
+# # data.table them
+# cnames <- "ZA"  
+# fnm <- full_path(p_production, paste0(cnames, "-potential-yields.csv"))
+# DT <- as.data.table(ylds_s, xy = FALSE)[valinds, ]
+# # DT[which(is.na(DT))]
+# write.table(DT, file = fnm, sep = ",", col.names = TRUE, row.names = FALSE)
+# 
 
 ```
 

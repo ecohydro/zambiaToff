@@ -1,0 +1,479 @@
+---
+title: "WB-IFAD presentation"
+author: "Lyndon Estes"
+date: "January 26, 2016"
+output: 
+  html_document:
+    highlight: tango
+    theme: spacelab
+    toc: yes 
+    number_sections: yes
+
+---
+
+# Initial slides for running model
+```{r}
+library(agroEcoTradeoff)
+setwd("agroEcoTradeoff")
+p_model <- set_base_path()
+p_main <- "/Users/lestes/Dropbox/publications/zambiaToff/private/zambiaToff/"
+p_figures <- full_path(p_main, "paper/figures/presentation/")
+p_bd <- full_path(p_main, "external/input_devel/biodiversity")
+library(rworldxtra)
+data("countriesHigh")
+# load other data here
+
+```
+
+
+## To make
+
+### Meeting demand on existing land versus getting it all from new land
+
+Existing yields are 2.3 t/ha for maize and 2 for soy.  Potential mean yields are 4.43 for maize and 3.4 for soybean, based on 2015-2050 projected changes from Bruinsma.  
+
+Scenario: maize demand 2X, soy demand 5X
+
+```{r, eval=FALSE}
+path <- "external/data/dt/latest/"
+il <- input_handler(input_key = "ZA", ybetas = list(1, 1), ybeta_update = 0, 
+                    path = path)
+
+targ <- c("maize" = 3, "soy" = 6)
+currprodmod <- c(1, 1)
+target <- targets(prod_targ = targ, currprod = il$currprod, 
+                  currprodmod = currprodmod)
+mzgap <- 4.43 / 2.3
+soygap <- 3.4 / 2
+# 3224 / 1674; 2124 / 1257
+
+# gap closing test
+# y2 <- 7.5  # future yield
+# y1 <- 5  # current yield
+# ha <- 10  # hectares
+# prod <- c(y2, y1) * ha  # future and current production
+# (y1 + (2.5 * 0.25)) * ha  
+# # future production with 25% of possible yield increase met
+# (((prod[2] * y2 / y1) - prod[2]) * 0.25 + prod[2]) / prod[2] * prod[2]
+
+# closing 75% of yield gap
+cprodmod_h <- ((((il$currprod * c(mzgap, soygap)) - il$currprod) * 
+                  1) + il$currprod) / il$currprod
+# assume 75% gap for each
+targ_high <- targets(targ, il$currprod, cprodmod_h)
+# (1 + ((mzgap - 1) * 0.75) * mzgap) * il$currprod
+# (il$currprod - 1 + ((mzgap - 1) * 0.75) * il$currprod)
+
+# closing 25% of yield gap
+cprodmod_l <- ((((il$currprod * c(mzgap, soygap)) - il$currprod) * 
+                  0.25) + il$currprod) / il$currprod
+# assume 75% gap for each
+# targ_low <- targets(targ, il$currprod, cprodmod_l)
+targ_low <- targets(targ, il$currprod, currprodmod = 1)
+
+# Run model
+cbetas <- c("Y" = 0.5, "C" = 0, "BD" = 0, "COST" = 0.5)
+thigh <- tradeoff_mod(prod_targ = targ, cbetas = cbetas, 
+                      ybetas = list(1, 1), exist_list = il, 
+                      currprodmod = cprodmod_h, input_key = "ZA", 
+                      silent = FALSE)
+tlow <- tradeoff_mod(prod_targ = targ, cbetas = cbetas, 
+                     ybetas = list(1, 1), exist_list = il, 
+                     #currprodmod = cprodmod_l, input_key = "ZA", 
+                     currprodmod = 1, input_key = "ZA", 
+                     silent = FALSE)
+thigh$impacts
+tlow$impacts
+
+CRSobj <- CRS(il$sp$crs)
+
+# rasters
+rhigh <- dt_to_raster(thigh$conv, CRSobj)
+rhigh <- calc(rhigh * c(1, 2), sum)
+rlow <- dt_to_raster(tlow$conv, CRSobj)
+rlow <- calc(rlow * c(1, 2), sum)
+
+zambia <- countriesHigh[countriesHigh@data$SOVEREIGNT == "Zambia", ]
+zambia <- spTransform(zambia, CRSobj)
+p_figs <- full_path(p_main, "paper/figures/presentation/")
+# p_roads <- full_path(p_main, "external/input_devel/roads/tmdpfr_links.sqlite")
+load(full_path(p_model, "external/data/parks_roads.rda"))
+# roads <- readOGR(p_roads, layer = "tmdpfr_links")
+# pas <- raster(full_path(p_bd, "ZA-pas.tif"))
+# pmask <- !is.na(pas)
+# pmask[pmask == 0] <- NA
+
+# impact plots
+i1 <- tlow$impacts
+imp_plot(dtr = rlow, impacts = i1, fnm = "low_closure.png", 
+         ftitle = "Current Yield")
+i2 <- thigh$impacts
+imp_plot(dtr = rhigh, impacts = i2, fnm = "high_closure.png", 
+         ftitle = "FAO-Projected Yield")
+dr <- (rlow > 0) - (rhigh > 0)
+plot(dr) #; freq(dr)
+```
+
+### Optimal for each parameter
+```{r, eval=FALSE}
+cbetas <- c("Y" = 1, "C" = 0, "BD" = 0, "COST" = 0)
+Y <- tradeoff_mod(prod_targ = targ, cbetas = cbetas, ybetas = list(1, 1),
+                  exist_list = il, currprodmod = 1, input_key = "ZA",
+                  silent = FALSE)
+cbetas <- c("Y" = 0, "C" = 1, "BD" = 0, "COST" = 0)
+C <- tradeoff_mod(prod_targ = targ, cbetas = cbetas, ybetas = list(1, 1),
+                  exist_list = il, currprodmod = 1, input_key = "ZA",
+                  silent = FALSE)
+cbetas <- c("Y" = 0, "C" = 0, "BD" = 1, "COST" = 0)
+BD <- tradeoff_mod(prod_targ = targ, cbetas = cbetas, ybetas = list(1, 1),
+                   exist_list = il, currprodmod = 1, input_key = "ZA",
+                   silent = FALSE)
+consr <- dt_list_to_raster(il$mask, list(il$cons), CRSobj)
+cbetas <- c("Y" = 0, "C" = 0, "BD" = 0, "COST" = 1)
+COST <- tradeoff_mod(prod_targ = targ, cbetas = cbetas, ybetas = list(1, 1),
+                     exist_list = il, currprodmod = 1, 
+                     input_key = "ZA", silent = FALSE)
+
+Yr <- calc(dt_to_raster(Y$conv, CRSobj) * c(1, 2), sum)
+Cr <- calc(dt_to_raster(C$conv, CRSobj) * c(1, 2), sum)
+BDr <- calc(dt_to_raster(BD$conv, CRSobj) * c(1, 2), sum)
+COSTr <- calc(dt_to_raster(COST$conv, CRSobj) * c(1, 2), sum)
+
+cnms <- names(cbetas)
+mnms <- paste(c("Yield", "Carbon Protection", "Biodiversity Protection", 
+                "Cost Minimization"), "Prioritized")
+for(i in 1:length(cnms)) { # i = 1
+  print(cnms[i])
+  i1 <- get(cnms[i])$impacts
+  imp_plot(dtr = get(paste0(cnms[i], "r")), impacts = i1, 
+           fnm = paste0(cnms[i], ".png"), ftitle = mnms[i])  
+}
+
+```
+
+### Equal Weights
+```{r, eval = FALSE}
+cbetas <- c("Y" = 0.25, "C" = 0.25, "BD" = 0.25, "COST" = 0.25)
+YBCD <- tradeoff_mod(prod_targ = targ, cbetas = cbetas, ybetas = list(1, 1),
+                     exist_list = il, currprodmod = 1, input_key = "ZA",
+                     silent = FALSE)
+YBCDr <- calc(dt_to_raster(YBCD$conv, CRSobj) * c(1, 2), sum)
+imp_plot(dtr = YBCDr, impacts = YBCD$impacts, 
+         fnm = "YBCD.png", ftitle = "Ag 25%, C 25%, BIOD 25%, COST 25%")  
+
+```
+
+
+
+### Optimal expansion based on selected weights
+```{r, eval = FALSE}
+yblist <- list(yb1 <- c(1, 1))
+step <- 0.1
+# cnames <- c("Y", "C", "BD", "COST"); step = 0.05
+cnames <- c("Y", "C", "BD", "COST"); step = 0.2
+# cnames <- c("Y", "C", "BD"); step = 0.25#, "BD", "COST"); step = 0.2
+pareto_steps(cnames, step)
+Yv = "conv_area"; Cv = "tot_C"; BDv = "priority"; COSTv = "mu_cost"
+Yst = sum; Cst = sum; BDst = mean; COSTst = mean
+a <- Sys.time()
+print(a)
+pare <- pareto(cnames, step, targ, yblist = list(1, 1),
+               input_key = "ZA", Yv, Cv, BDv, COSTv, Yst, Cst, BDst, COSTst,
+               todisk = TRUE, silent = FALSE, ncl = 8, path = path)
+Sys.time() - a  # 1.75 minutes
+pare[, plot(Y, C)]
+
+parms <- batch_params(list(c(1, 1)), list(targ), pareto_steps(cnames, step))
+
+ott <- data.frame(pare)
+ott$colors <- rainbow(length(ott$ind))
+ott$ind <- seq(1, length(ott$ind))
+
+odfs <- lapply(cnames, function(x) {
+  if(x %in% colnames(ott)) {
+    odf <- ott[order(ott[, x]), ]
+  } else{ 
+    odf <- NULL
+  }
+  odf
+})
+
+pvec <- cnames
+tvec <- c("by Area", "by C", "by BIOD", "by Cost")
+yvec <- c("Area km^2", "C Mt", "BIOD", "Time")
+div <- c(1 / 100, 1 / 100000, 100, 1)
+dfs <- which(sapply(odfs, is.data.frame))
+png(full_path(p_figs, "pareto_weights.png"), height = 700, width = 1000)
+if(length(dfs) == 2) {
+  par(mfcol = c(2, 2), oma = c(2, 5, 1, 0), mar = c(1, 1, 1, 1) + 0.1, 
+      xaxs = "i", mgp = c(1, 0.1, 0), tcl = -0.2)
+} else if(length(dfs) == 3) {
+  par(mfcol = c(3, 2), oma = c(2, 5, 1, 0), mar = c(1, 1, 1, 1) + 0.1, 
+      xaxs = "i", mgp = c(1, 0.1, 0), tcl = -0.2)
+} else if(length(dfs) == 4) {
+  par(mfcol = c(4, 2), oma = c(2, 5, 1, 0), mar = c(1, 1, 1, 1) + 0.1, 
+      xaxs = "i", mgp = c(1, 0.1, 0), tcl = -0.2)
+}
+for(i in 1:2) {  #i <- 1
+  d <- odfs[[i]]
+  if(!is.null(d)) {
+    for(j in 1:length(pvec)) {  # j <- 1
+      if(pvec[[j]] %in% colnames(d)) {
+        barplot(round(d[, pvec[j]] * div[j]), names.arg = d$ind, col = d$colors,
+                yaxt = "n", las = 2, cex.axis = 0.3)
+        if(j == 1) mtext(tvec[i], side = 3)
+        if(i == 1) mtext(yvec[j], side = 2, cex = 0.8, line = 3)
+        if(i == 1) {
+          axis(2, las = 2, cex = 0.6)
+        } else {
+          axis(2, labels = FALSE)
+        }
+      }
+    } 
+  }
+}
+dev.off()
+quantile(0:100, probs = seq(0, 1, 0.1))
+
+# Figure out which meets multiple objective simultaneously
+pdeciles <- pare[, lapply(.SD, function(x) {
+  quantile(x, probs = seq(0, 1, 0.1))[-1]
+  }), .SD = 1:4]
+# pdeciles <- cbind("deciles" = paste0(seq(10, 100, 10), "th"), pdeciles)
+
+prange <- pare[, lapply(.SD, range), .SD = 1:4]
+pdiff <- prange[, lapply(.SD, function(x) diff(x) * 0.4 + min(x))]
+swvec <- as.matrix(pdiff)[1, ]
+tmat <- sweep(as.matrix(pare)[, 1:4], MARGIN = 2, swvec, `<=`)
+tmat[tmat == "TRUE"] <- 1
+
+best_ind <- which(rowSums(tmat[, 1:4]) == 4)
+parms[best_ind, 1:4]
+pare[best_ind, ]
+
+# alternative scenario
+pdiff2 <- prange[, lapply(.SD, function(x) diff(x) * 0.2 + min(x))]
+pdiff3 <- prange[, lapply(.SD, function(x) diff(x) * 0.6 + min(x))]
+pdiff4 <- cbind(pdiff2[, 1:2, with = FALSE], pdiff3[, 3:4, with = FALSE])
+
+swvec <- as.matrix(pdiff4)[1, ]
+tmat <- sweep(as.matrix(pare)[, 1:4], MARGIN = 2, swvec, `<=`)
+tmat[tmat == "TRUE"] <- 1
+ind1 <- which(rowSums(tmat[, 1:4]) == 4)  # no solution
+
+swvec <- as.matrix(pdiff2)[1, 1:2]
+tmat <- sweep(as.matrix(pare)[, 1:2], MARGIN = 2, swvec, `<=`)
+tmat[tmat == "TRUE"] <- 1
+second_ind <- which(rowSums(tmat[, 1:2]) == 2)
+
+parms[second_ind, 1:4]
+pare[best_ind, ]
+
+
+# sapply(1:nrow(pdeciles) {
+#   #swvec <- as.matrix(pdeciles[deciles == "20th", cnames, with = FALSE])[1, ]
+#   swvec <- as.matrix(pdeciles[deciles == "20th", cnames, with = FALSE])[1, ]
+#   tmat <- sweep(as.matrix(pare)[, 1:4], MARGIN = 2, swvec, `<=`)
+#   parms
+# })
+# pare[, lapply(.SD, function(x) )]
+
+```
+
+### Create map of those weight combinations
+```{r, eval = FALSE}
+cbetas <- parms[best_ind, 1:4]
+tobest <- tradeoff_mod(prod_targ = targ, cbetas = cbetas, 
+                       ybetas = list(1, 1), exist_list = il, 
+                       currprodmod = 1, input_key = "ZA", silent = FALSE)
+rbest <- calc(dt_to_raster(tobest$conv, CRSobj) * c(1, 2), sum)
+ib <- tobest$impacts
+imp_plot(dtr = rbest, impacts = ib, fnm = "preferred_scenario.png", 
+         ftitle = "Ag 40%, C 0%, BIOD 40%, COST 20%")
+
+cbetas <- parms[second_ind, 1:4]
+tosecond <- tradeoff_mod(prod_targ = targ, cbetas = cbetas, 
+                         ybetas = list(1, 1), exist_list = il, 
+                         currprodmod = 1, input_key = "ZA", 
+                         silent = FALSE)
+rsecond <- calc(dt_to_raster(tosecond$conv, CRSobj) * c(1, 2), sum)
+i2b <- tosecond$impacts
+imp_plot(dtr = rsecond, impacts = i2b, fnm = "second_scenario.png", 
+         ftitle = "Ag 60%, C 40%, BIOD 0%, COST 0%")
+
+```
+
+### Heat map from all combinations
+```{r, eval = FALSE}
+bpath <- full_path(p_model, "external/output/batch/dt/")
+load(full_path(bpath, "bcode.rda"))
+fnames <- dir(full_path(bpath, bcode), pattern = "csv", full.names = TRUE)
+DT <- lapply(fnames, function(x) fread(x)[, rowSums(.SD)])
+DTbind <- data.table(do.call(cbind, DT))
+DTsum <- data.table(DTbind[, rowSums(.SD)])
+DTspat <- cbind(il$mask[, .(x, y)], DTsum)
+DTb <- dt_to_raster(DTspat, CRSobj)
+DTbpct <- DTb / maxValue(DTb) * 100
+
+DTbpct[DTbpct == 0] <- NA
+
+png(full_path(p_figs, "heat.png"), height = 700, width = 700)
+ccols <- c("grey90", "orange", "red")
+pacols <- c("transparent", rgb(1, 0, 0, alpha = 0.1),
+            rgb(0, 0, 1, alpha = 0.1), "transparent")
+par(mar = c(1, 1, 1, 3))
+plot(zambia, col = "grey90", border = "transparent")
+plot(DTbpct, col = rev(heat.colors(20)), add = TRUE)
+# plot(dtr, legend = FALSE, col = ccols, add = TRUE)
+plot(pas[pas@data$type == "gma", ], add = TRUE, col = pacols[2],
+     border = FALSE)
+plot(pas[pas@data$type == "npark", ], add = TRUE, col = pacols[3],
+     border = FALSE)
+plot(roads, add = TRUE, lwd = 0.1, col = "grey")
+dev.off()
+
+```
+
+### Slide showing an area equal to 200% of need
+```{r, eval = FALSE}
+cbetas <- parms[best_ind, 1:4]
+targ200 <- c("maize" = 6, "soy" = 12)
+to200 <- tradeoff_mod(prod_targ = targ200, cbetas = cbetas, 
+                      ybetas = list(1, 1), exist_list = il, 
+                      currprodmod = 1, input_key = "ZA", silent = FALSE)
+r200 <- calc(dt_to_raster(to200$conv, CRSobj) * c(1, 2), sum)
+ib <- to200$impacts
+imp_plot(dtr = r200, impacts = ib, fnm = "demand2X.png", 
+         ftitle = "Maize 6X, Soy 12X")
+```
+
+### Our areas versus proposed farm blocks
+```{r, eval = FALSE}
+# fb <- "~/Dropbox/projects/agroEcoTradeoff/external/base_data/farm-blocks.tif"
+# fblocks <- raster(fb)
+fbp <- "/Users/lestes/Dropbox/data/zari/misc/NEW4GEO/Fblocks.sqlite"
+fb <- readOGR(fbp, layer = "fblocks")
+fbalb <- spTransform(fb, CRSobj)
+fbalb$ID <- 1:nrow(fbalb)
+fbalb@data <- fbalb@data[, "ID", drop = FALSE]
+fnm <- full_path(p_main, "external/input_devel/other/fblocks_alb.sqlite")
+writeOGR(fbalb, dsn = fnm, layer = "fblocks_alb", driver = "SQLite")
+# First rasterize farm blocks
+# require(gdalUtils)
+# onm <- full_path(p_main, "external/input_devel/other/fblocks_alb.tif")
+# gdal_rasterize(src_datasource = fnm, l = "fblocks_alb", ot = "Byte", 
+#                a = "ID", tr = res(r200), at = TRUE, co = "COMPRESS=LZW",
+#                dst_filename = fnm, te = bbox(r200)[1:4], of = "GTiff", 
+#                verbose = TRUE)
+fbr <- rasterize(fbalb, r200)
+fbr[is.na(fbr)] <- 0
+fbr[fbr > 0] <- 1
+fbr <- mask(fbr, r200)
+
+r200sum <- r200 > 0
+fbint <- (r200sum == 1 & fbr == 1) * 3 + (r200sum == 1 & fbr == 0) * 2 +
+  (r200sum == 0 & fbr == 1) * 1
+png(full_path(p_figs, "fblock-overlap.png"), height = 700, width = 700)
+ccols <- c("grey90", "tan", "green3", "red")
+pacols <- c("transparent", rgb(1, 0, 0, alpha = 0.1),
+            rgb(0, 0, 1, alpha = 0.1), "transparent")
+par(mar = c(1, 1, 1, 3))
+plot(zambia, col = "grey90", border = "transparent")
+plot(fbint, col = ccols, add = TRUE, legend = FALSE)
+# plot(dtr, legend = FALSE, col = ccols, add = TRUE)
+plot(pas[pas@data$type == "gma", ], add = TRUE, col = pacols[2],
+     border = FALSE)
+plot(pas[pas@data$type == "npark", ], add = TRUE, col = pacols[3],
+     border = FALSE)
+plot(roads, add = TRUE, lwd = 0.1, col = "grey")
+legend("bottomright", 
+       legend = c("Farm blocks", "Converted", "Converted in farm blocks", 
+                  "NatParks", "GMAs"),
+       pch = 15, col = c(ccols[2:4], pacols[2:3]), bty = "n", pt.cex = 3,
+       cex = 1.5)
+dev.off()
+
+
+```
+
+### Slide showing clustering
+
+### Slide showing clustering along proposed road improvement areas
+
+### Remaining Natural Vegetation Types
+
+```{r, eval = FALSE}
+p_bd <- full_path(p_main, "external/input_devel/biodiversity")
+remfrac <- raster(full_path(p_bd, "ZA-remfrac.tif"))
+png(full_path(p_figs, "remveg.png"), height = 700, width = 700)
+par(mar = c(1, 1, 1, 1))
+plot(remfrac, axes = FALSE, box = FALSE)
+dev.off()
+
+```
+
+### Background Slides
+```{r, eval = FALSE}
+brasts <- dt_list_to_raster(il$mask, 
+                            il[c("p_yield", "carbon", "cons", "cost")], 
+                            CRSobj)
+brasts <- lapply(brasts, function(x) x[[-c(1:2)]])
+
+# Yields
+png(full_path(p_figs, "yields.png"), height = 350, width = 700)
+par(mfrow = c(1, 2), mar = c(0, 0, 0, 3), oma = c(0, 0, 0, 2))
+for(i in 1:2) {
+  plot(zambia, col = "grey90", border = "transparent")
+  plot(brasts$p_yield[[i]], add = TRUE)
+  plot(pas[pas@data$type == "gma", ], add = TRUE, col = pacols[2], border = F)
+  plot(pas[pas@data$type == "npark", ], add = TRUE, col = pacols[3], border = F)
+  plot(roads, add = TRUE, lwd = 0.1, col = "grey")
+  if(i == 2) {
+    legend("bottomright", legend = c("NatParks", "GMAs"),
+           pch = 15, col = pacols[2:3], bty = "n", pt.cex = 3,
+           cex = 1.5)
+  }
+}
+dev.off()
+
+# Carbon loss
+closs <- brasts$carbon[[1]] + brasts$carbon[[1]] * 0.25
+png(full_path(p_figs, "pot-C-loss.png"), height = 700, width = 700)
+par(mar = c(1, 1, 1, 3))
+plot(closs, axes = FALSE, box = FALSE)
+plot(pas[pas@data$type == "gma", ], add = TRUE, col = pacols[2], border = F)
+plot(pas[pas@data$type == "npark", ], add = TRUE, col = pacols[3], border = F)
+plot(roads, add = TRUE, lwd = 0.1, col = "grey")
+legend("bottomright", legend = c("NatParks", "GMAs"),
+       pch = 15, col = pacols[2:3], bty = "n", pt.cex = 3,
+       cex = 1.5)
+dev.off()
+
+# Cost
+png(full_path(p_figs, "cost.png"), height = 700, width = 700)
+par(mar = c(1, 1, 1, 3))
+plot(brasts$cost, axes = FALSE, box = FALSE)
+plot(pas[pas@data$type == "gma", ], add = TRUE, col = pacols[2], border = F)
+plot(pas[pas@data$type == "npark", ], add = TRUE, col = pacols[3], border = F)
+plot(roads, add = TRUE, lwd = 0.1, col = "grey")
+legend("bottomright", legend = c("NatParks", "GMAs"),
+       pch = 15, col = pacols[2:3], bty = "n", pt.cex = 3,
+       cex = 1.5)
+dev.off()
+
+# Biodiversity
+png(full_path(p_figs, "biodiversity.png"), height = 700, width = 700)
+par(mar = c(1, 1, 1, 3))
+plot(brasts$cons, axes = FALSE, box = FALSE)
+plot(pas[pas@data$type == "gma", ], add = TRUE, col = pacols[2], border = F)
+plot(pas[pas@data$type == "npark", ], add = TRUE, col = pacols[3], border = F)
+plot(roads, add = TRUE, lwd = 0.1, col = "grey")
+legend("bottomright", legend = c("NatParks", "GMAs"),
+       pch = 15, col = pacols[2:3], bty = "n", pt.cex = 3,
+       cex = 1.5)
+dev.off()
+
+```
+
+
+

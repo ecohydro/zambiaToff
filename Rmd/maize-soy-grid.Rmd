@@ -75,15 +75,21 @@ weighted.var2 <- function(x, w, na.rm = FALSE) {
 # We're going to start by mapping the CV of the soil versus the inter-annual
 # variability in the data, just to the 0.25 degree resolution
 # read in different grids, start with Maize
-crops <- list.dirs(p_crop, full.names = FALSE)[-1]
+crops <- dir(p_crop, pattern = "maize|soybean", full.names = FALSE)
 cv_rasts <- lapply(crops, function(X) {
-  # X <- crops[1]
-  fnms <- dir(full_path(p_crop, X))
+  # X <- crops[2]
+  fnms <- dir(full_path(p_crop, X), pattern = X)
   fl <- unlist(lapply(c("S", "R", "I"), function(x) {
     fnms[grep(paste0(paste0(x, "0"), "|", paste0(x, "9")), fnms)]
   }))  # reorder to read subsistence first
   idt <- copy(IDr)
-  for(y in 1:length(fl)) { # y <- 2
+  
+  # idt[, zoneid := rep(0, nrow(idt))]
+  # for(i in 1:length(unique(idt$Zone))) {
+  #  idt[Zone == unique(idt$Zone)[i], zoneid := i]
+  # }  
+  
+  for(y in 1:length(fl)) { # y <- 3
     print(paste("Processing", fl[y]))
     cr <- fread(input = full_path(p_crop, paste0(X, "/", fl[y])))
     cr[, "YR" := RUNNO - min(RUNNO) + 1, by = .(TNAM, Zones)]  # unique year  
@@ -104,7 +110,7 @@ cv_rasts <- lapply(crops, function(X) {
     setnames(anncv, "V1", paste0("acv", snm))
     idt <- idt[anncv]
     setkeyv(idt, c("WTH", "Zone"))
-  
+    
     # CV due to soil
     annmu <- crm[, round(mean(HWAH)), by = .(WTH, SOL, Zone, SharePct)]
     annsolmu <- annmu[, weighted.mean(V1, SharePct), by = .(WTH, Zone)]
@@ -165,10 +171,10 @@ Creating 10 km grids for 10th, 50th, 90th percentile yields for each cultivar un
 ```{r, eval=FALSE}
 nmso <- c("10", "50", "90")  # naming vector for quantile variables
 probs <- c(0.1, 0.5, 0.9)  # quantiles to get
-crops <- list.dirs(p_crop, full.names = FALSE)[-1]  # dir names
+crops <- dir(p_crop, pattern = "maize|soybean", full.names = FALSE)
 yld_rasts <- lapply(crops, function(X) {
-  # X <- crops[1]
-  fnms <- dir(full_path(p_crop, X))
+  # X <- crops[2]
+  fnms <- dir(full_path(p_crop, X), pattern = X)
   fl <- unlist(lapply(c("S", "R", "I"), function(x) {
     fnms[grep(paste0(paste0(x, "0"), "|", paste0(x, "9")), fnms)]
   }))  # reorder to read subsistence first
@@ -214,6 +220,12 @@ lapply(crops, function(x) {
                    paste0("external/data/", x, "_yields_10km.csv"))
   write.csv(yld_rasts[[x]], file = fnm, row.names = FALSE)
 })
+yld_rasts <- lapply(crops, function(x) {
+  fnm <- full_path(p_root,
+                   paste0("external/data/", x, "_yields_10km.csv"))
+  fread(fnm)
+})
+names(yld_rasts) <- crops
 
 # Take average of mean yields across the different cultivar types. 
 # This will give 1 set of yields for each of the three management scenarios
@@ -236,7 +248,8 @@ yld_rl <- lapply(crops, function(x) {  # x <- crops[[1]]
     ylds <- yld_rasts[[x]]
     nms <- names(ylds)
     cnms <- nms[grep(paste0("y.*._", y), nms)]
-    r <- dt_to_raster(ylds[, c("x", "y", cnms), with = FALSE], CRSobj = gcs)
+    r <- dt_to_raster(ylds[, c("x", "y", cnms), with = FALSE], 
+                      CRSobj = CRS(gcs))
     rfoc <- sapply(1:nlayers(r), function(i) rfoc <- yield_fix(r[[i]], w = w))
     names(rfoc) <- names(r)
     rs <- stack(rfoc)
@@ -246,16 +259,31 @@ yld_rl <- lapply(crops, function(x) {  # x <- crops[[1]]
 })
 names(yld_rl) <- crops
 
+# cellStats(yld_rl$maize$R[["ymu_R0002"]], mean)
+# cellStats(yld_rl$soybean$I[["ymu_I990008"]], mean)
+plot(yld_rl$soybean$S[["ymu_S990008"]])
+plot(yld_rl$soybean$R[["ymu_R990008"]])
+plot(yld_rl$maize$R[["y50_R0003"]])
 ```
 
-## Short-term soybean fix
+## Yield bias correction
+### Soybean fix based on GAEZ data
 
-Potential soybean yields are too low for Zambia, so we will adjust them up with FAO-GAEZ yields 
+Potential soybean yields are too low for Zambia, so we will adjust them up with FAO-GAEZ yields. This doesn't seem necessary for maize, because our potential yield averages are at or below the GYGA rainfed yield potentials, per the figures and tables below. 
+
+```{r, eval = FALSE} 
+cellStats(yld_rl$maize$S[["ymu_S0001"]], mean)
+plot(yld_rl$maize$R[["ymu_R0002"]])
+plot(yld_rl$maize$S[["ymu_S0002"]])
+
+```
+
+This is one approach for bias-correction. 
 
 ```{r, eval = FALSE}
-faonms <- dir(p_fao, full.names = TRUE)
-file.rename(faonms, gsub("res02crav6190|yld_package", "", faonms))
-faonms <- dir(p_fao, full.names = TRUE)
+# faonms <- dir(p_fao, full.names = TRUE)
+# file.rename(faonms, gsub("res02crav6190|yld_package", "", faonms))
+# faonms <- dir(p_fao, full.names = TRUE)
 p_faosoy <- full_path(p_fao, c("soybean_I", "soybean_R", "soybean_S"))
 file.rename(faonms, full_path(p_fao, c("soybean_I", "soybean_R", "soybean_S")))
 faonms <- dir(p_faosoy, full.names = TRUE)
@@ -321,9 +349,10 @@ soyfix <- lapply(1:3, function(x) {
   r3
 })
 names(soyfix) <- names(yld_rl$soybean)
+
 ```
 
-
+Write that out. 
 ```{r, eval = FALSE}
 yld_rl2 <- list(yld_rl$maize, soyfix)
 names(yld_rl2) <- crops
@@ -340,6 +369,109 @@ for(i in 1:length(yld_rl2)) {
 ```
 <a href="#top">Back to top</a>
 
+But now do the second fix.  Let's adjust yield relative to the actual and baseline and projected growth.  
+
+FAO projected growth to 2000-2050 is 69.4% for maize and 219% for soybean. Current mean yields are from FAO 2010-2014 data and USDA
+
+```{r, eval = FALSE}
+load(full_path(p_cropland, "currprod.rda"))
+load(full_path(p_cropland, "usda-yields.rda"))
+load(full_path(p_cropland, "fao-yields.rda"))
+cols <- names(usda)[4:9]
+usda_ylds <- usda[var == "prod", cols, with = FALSE] / 
+  usda[var == "harvarea", cols, with = FALSE]
+usda_mu <- round(rowMeans(usda_ylds), 1)
+
+muprod <- lapply(c("Maize", "Soybeans"), function(x) {
+  fao[Crop == x & var == "prod" & Year %in% c(2008:2015), sum(Value), 
+      by = Year]
+})
+names(muprod) <- c("maize", "soy")
+mupa <- lapply(c("Maize", "Soybeans"), function(x) {
+  fao[Crop == x & var == "pa" & Year %in% c(2008:2015), sum(Value), 
+      by = Year]
+})
+names(mupa) <- c("maize", "soy")
+fao_mu <- c("maize" = mean(muprod$maize[, V1] / mupa$maize[, V1]), 
+            "soy" = mean(muprod$soy[, V1] / mupa$soy[, V1]))
+
+# current yields, mean of USDA and FAO
+curr_mu <- round(colMeans(rbind(usda_mu, fao_mu)), 1)  # 2.3 maize, 2.0 soy
+
+# Calculate the mean yields for the country in each management scenario (across 
+# cultivar types)
+ydiffs <- lapply(crops, function(x) {
+  yr <- lapply(c("S", "R", "I"), function(y) {
+    r <- yld_rl[[x]][[y]]
+    nms <- grep("mu", names(r))
+    rmu <- cellStats(calc(r[[nms]], mean), mean)
+    rvar <- r / rmu
+    names(rvar) <- names(r)
+    list("ratio" = rvar, "mu" = rmu)
+  })
+  names(yr) <- c("S", "R", "I")
+  yr
+})
+names(ydiffs) <- crops
+
+# calculate the mean ratio
+yrats <- lapply(1:2, function(x) { # x <- 1
+  yr <- lapply(c("S", "R", "I"), function(y) {  # y <- 1
+     # inner loop if needed
+     X <- crops[x]
+     nms <- grep("mu", names(ydiffs[[X]][[y]]$ratio))
+     r <- ydiffs[[X]][[y]]$ratio[[nms]]
+     rmu <- calc(r, mean)
+     rmu 
+  })
+  names(yr) <- c("S", "R", "I")
+  yr
+})
+names(yrats) <- crops
+
+# Take the DSSAT means and figure out how much they differ relative to their 
+# overall mean across management types - use as management specific ratio
+dssat_mus <- sapply(ydiffs, function(x) sapply(x, function(y) y$mu))
+dssat_adj <- sweep(dssat_mus, MARGIN = 2,  colMeans(dssat_mus), FUN = `/`)
+
+# Bruinsma 2007-2050 growth
+bruinsma <- c(maize = 3224 / 1674, soy = 2124 / 1257)
+
+# adjusted DSSAT factors
+potmus <- curr_mu * c(bruinsma)  # 4.43 maize, 3.4 soy
+potmu_ds <- sweep(dssat_adj, MARGIN = 2,  potmus, FUN = `*`)
+
+# w <- matrix(ncol = 5, nrow = 5, rep(1, 25))
+# plot(focal(yrats$maize$S, w), fun = mean, na.rm = TRUE)
+# plot(yrats$maize$S * potmu_ds["S", "maize"])
+# plot(yrats$maize$R * potmu_ds["R", "maize"])
+# plot(yrats$soybean$S * potmu_ds["S", "soybean"])
+
+# finally create adjust yield rasters
+ynew <- lapply(crops, function(x) { # x <- 1
+  yr <- lapply(c("S", "R", "I"), function(y) {  # y <- 1
+     r <- yrats[[x]][[y]] * potmu_ds[y, x]
+  })
+  names(yr) <- c("S", "R", "I")
+  yr
+})
+names(ynew) <- crops
+
+# writout
+for(i in 1:length(ynew)) {
+  rl <- ynew[[i]]
+  for(j in 1:length(rl)) {
+    fnm <- full_path(p_yield, 
+                     paste0(crops[i], "_", names(rl)[j], "_10K_FAO.tif"))
+    writeRaster(rl[[j]], filename = fnm, overwrite = TRUE)
+    layernms <- names(rl[[j]])
+    save(layernms, file = gsub("\\.tif", "\\.rda", fnm))
+  }
+}
+
+
+
+```
 
 ## How to make 1 km grids/data.tables
 

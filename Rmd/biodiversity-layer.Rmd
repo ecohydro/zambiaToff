@@ -123,6 +123,7 @@ pas <- npsr + freservesr  # sum them
 reclmat <- cbind(0:5, c(0:3, 1, 2))
 pas <- reclassify(pas, reclmat)
 pas <- mask(pas, mgrid)
+writeRaster(pas, filename = full_path(p_bd, "ZA-pas.tif"))
 # plot(pas)
 # plot(freservesr)
 
@@ -252,18 +253,22 @@ bdf <- calc(stack(bdr, pafix), max)
 # plot(remfrac)
 # plot(bdf)
 
-writeRaster(bdf, file = full_path(p_bd, "bdprior.tif"), overwrite = TRUE)
-vprops <- cbind("var" = c("area", "rarity", "priority"),
-                rbind(vtots / nrow(veg_dt), wgti, data.table(t(wgts_prop_np))))
-save(vprops, file = full_path(p_bd, "vprops.rda"))
+writeRaster(bdf, file = full_path(p_bd, "cons-priorities.tif"), 
+            overwrite = TRUE)
+bdprops <- cbind("var" = c("area", "rarity", "priority"),
+                 rbind(vtots / nrow(veg_dt), data.table(t(wgtsn)), 
+                       data.table(t(wgts_prop_np))))
+names(bdprops) <- gsub("veg", "v", names(bdprops))
+save(bdprops, file = full_path(p_bd, "ZA-bdprops.rda"))
+# load(full_path(p_bd, "ZA-bdprops.rda"))
 
 ```
 
 ## Resulting model inputs
 
-`vprops.rda` - table of veg type area, rarity value, and prioritization value
+`ZA-bdprops.rda` - table of veg type area, rarity value, & prioritization value
 
-`bdprior.tif` - biodiversity prioritization grid
+`cons-priorities.tif` - biodiversity prioritization grid
 
 `ZA-vegremain.tif` - vegetation remaining grid, for assessing conversion impacts
 

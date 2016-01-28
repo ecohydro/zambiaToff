@@ -104,6 +104,7 @@ mupa <- lapply(c("Maize", "Soybeans"), function(x) {
 })
 names(mupa) <- c("maize", "soy")
 # mean(muprod$soy[, V1] / mupa$soy[, V1])
+# mean(muprod$maize[, V1] / mupa$maize[, V1])
 
 # Read in USDA harvested area and production to get difference in harvested area
 # and planted area
