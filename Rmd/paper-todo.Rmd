@@ -1,0 +1,59 @@
+---
+title: "Paper To-Do"
+author: "Lyndon Estes"
+date: "January 29, 2016"
+output: 
+  html_document:
+    highlight: tango
+    theme: spacelab
+    toc: yes 
+    number_sections: yes
+---
+
+# To-Do List for Paper
+
+A summary of data and model upgrades and analyses to-do.  
+
+# Data fixes remaining
+
+## Crops
+
++ Near-term: See if we can bias-correct using NPP.  
++ Longer-term: DSSAT yields -> machine learning (Nate)
+
+## Biodiversity: 
+
++ Near-term: Code in impact based on intactness + protected weight
++ Longer-term: Code in Newbold model (Laura and Tobias)
+
+# Analyses and timeline
+
+To figure out the analysis, we need to know what questions we are asking first: 
+
+1. Is there a way for Zambia to meet a potentially much larger agricultural development target but for substantially much lower environmental cost than conventional development approaches?  
+
+    + Supporting analysis: 
+        + Run model over multiple permutations of weights for just cost and yield benefit.  
+            i. Probably separately for each crop. 
+            ii. Counting tonnage of overlap for both crops could be way of further adjusting demand projections. i.e. You figure that if an area shows up as allocated to each crop, you need to increase production targets by twice that amount, because 1) the crops will have to be grown in rotation and 2) that means you are only getting that amount of crop out of that land once in every two (or more, maybe 3, depending on typical rotation) year.  
+            iii. This approach avoids problem of optimal allocation
+        + Do the same but for just carbon and biodiversity objectives.  
+        + Assess overlaps between both sets of heat maps. 
+            i. This will give insight into the degree to which agricultural and conservation goals intersect.
+                a. We can also look at how far apart goals are within each two subsets. How much range is there in results for the different combinations of benefit and cost for agriculture (this is analagous to considering variations in prices and how they affect profitability)? How much do carbon and biodiversity conservation objectives agree? 
+            ii. How far away does the overlap between both objectives leave us from where we need to be in hitting the target, if we only developed those areas?             iii. Then we ask what we ask how much do we have to enlarge the area to hit the targets, and what is the universe of weight combinations that allow you to achieve to achieve 50% of the production target, 75%, 95%, when sum weight is being put on at least one of the agricultural (yield + cost) and one of the conservation measures.     
+
+2. What will the costs be under the selected universe of weights that allow you to achieve the 75%, 95%, etc. of production targets?
+
+   + Ranges of costs in terms of lost carbon, biodiversity, and production/earnings.  
+
+
+Analysis/fix | Drop-dead date | Date Finished
+------------- | -------------  | -------------
+NPP-crop correct  | 29 Jan |
+Biodiversity fix  | 31 Jan |
+Crop overlaps | ??? |
+Yield variability |  ??? |
+Combined optimization, back out weights? |  ???
+
+

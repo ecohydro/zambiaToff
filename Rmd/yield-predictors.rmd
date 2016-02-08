@@ -1,0 +1,802 @@
+---
+title: "Yield Mapping"
+author: "Lyndon Estes"
+date: "January 31, 2016"
+output: 
+  html_document:
+    highlight: tango
+    theme: spacelab
+    toc: yes 
+    number_sections: yes
+---
+
+# Predict DSSAT yields onto finer soil map
+
+```{r, eval = FALSE}
+library(agroEcoTradeoff)
+library(rCropMod)
+library(matrixStats)
+library(doMC)
+
+p_root <- lmisc::set_base_path()
+p_crop <- "~/Dropbox/data/agricultural/zambia/dssat/"
+p_cropmod <- "~/Dropbox/projects/rCropMod/external/ext_data/"
+p_soil <- "~/DSSAT45/SOIL/"
+p_basedat <- paste0("/Users/lestes/Dropbox/projects/agroEcoTradeoff/external/",
+                    "base_data/")
+p_clim <- fp(p_root, "external/input_devel/climate")
+p_climo <- "~/Dropbox/data/climate/rainfall/zambia/precip/"
+p_yield <- fp(p_root, "external/input_devel/yield")
+p_pgf <- "~/Dropbox/data/climate/afdm/pgf_bc/zambia/"
+
+# Read in Zambia grid
+mgrid <- raster(full_path(p_basedat, "ZA-grid.tif"))
+
+# Zambia provinces
+p_prov <- paste0("/Users/lestes/Dropbox/data/zari/infrastructure/zambia/", 
+                 "rda_dump/Final Shape files RDA/")
+prov <- readOGR(fp(p_prov, "prov.shp"), layer = "prov")
+
+# Read in original soil-climate data from rCropMod
+soilgrid <- raster(fp(p_cropmod, "af_soil_grid.tif"))  # soil grid
+soilshare <- fread(fp(p_cropmod, "af_soil_share.csv"))  # share of profiles
+
+# Read in soil-climate grid from Di's work
+ID <- fread(full_path(p_crop, "Soil_clim_match_ID_master.csv"))
+ID[, V1 := NULL]
+setkeyv(ID, c("WTH", "SOL", "Zone"))
+ID[, SharePct := as.numeric(SharePct)]
+zone <- sort(unique(ID$Zone))
+for(i in 1:length(zone)) ID[Zone == zone[i], zoneid := i]
+setkeyv(ID, c("WTH", "Zone"))
+# ID[, FID := 1:.N]
+IDr <- subset(unique(ID[, .(x, y, ID, WTH, Zone, zoneid)]))
+setkeyv(IDr, c("WTH", "Zone"))
+# ID[SOL == "WI_ARBW438"]
+gcs <- "+proj=longlat +datum=WGS84"
+idgr <- dt_to_raster(IDr[, .(x, y, ID, zoneid)], CRS(gcs))
+# plot(idgr)
+
+# Yield data selection points
+# GSOD points
+gsod <- fread(fp(p_clim, "gsod.txt"), stringsAsFactors = FALSE)
+setnames(gsod, names(gsod), c("nms", "x", "y", "n"))
+gsod <- gsod[, 1:3, with = FALSE]
+gsod[, nms := paste0("g", nms)]
+# plot(idgr)
+# points(zamgsod)  # not representative enough
+
+# ZMD rainfall stations
+nms <- c('CHIPAT01', 'CHIPEP01', 'CHOMA001', 'ISOKA001', 'KABOMP01', 'KABWE001',
+         'KAFIRO01', 'KAFUE001', 'KALABO01', 'KAOMA001', 'KASAMA01', 'KASEMP01',          'KAWAMB01', 'LIVING01', 'LUNDAZ01', 'LUSAKA01', 'LUSAKA02', 'LUSITU01',          'MAGOYE01', 'MANSA001', 'MBALA001', 'MFUWE001', 'MISAMF01', 'MKUSHI01',          'MONGU002', 'MPIKA001') 
+x <- c(32.58, 28.38, 27.07, 32.63, 24.20, 28.47, 28.12, 27.92, 22.70, 24.80,
+       31.13, 25.85, 29.08, 25.82, 33.20, 28.32, 28.45, 29.37, 27.60, 28.85, 
+       31.33, 31.93, 31.25, 29.33, 23.15, 31.43)  
+y <- c(-13.55, -17.33, -16.83, -10.12, -13.60, -14.45, -12.60, -15.77, -14.95,
+       -14.80, -10.22, -13.53, -9.80, -17.82, -12.28, -15.42, -15.32, -16.30,
+       -16.00, -11.10, -8.85, -13.27, -10.10, -14.00, -15.25, -11.90)
+zmd <- cbind.data.frame(nms = as.character(nms), x, y, 
+                        stringsAsFactors = FALSE)
+write.csv(zmd, file = fp(p_climo, "zmd-stations.csv"))
+
+# bring together GSOD and ZMD stations
+zmd_gsod <- rbind(zmd, gsod)
+coordinates(zmd_gsod) <- c("x", "y")
+
+# Select those intersecting Zambia
+gint <- rgeos::gIntersects(prov, zmd_gsod, byid = TRUE)
+sel <- unname(which(apply(gint, 1, function(x) sum(which(x))) > 0))
+zmet <- zmd_gsod[sel, ]
+# str(zmet)
+
+# buffer the ZMD stations by ~20 km to see if any GSOD stations fall within that
+zbuffer <- rgeos::gBuffer(zmet[1:26, ], byid = TRUE, width = 0.3)
+zbuffer <- spChFIDs(zbuffer, as.character(1:nrow(zbuffer)))
+gint <- rgeos::gIntersects(zbuffer, zmet[27:nrow(zmet), ], byid = TRUE)
+sel <- unname(which(apply(gint, 1, function(x) sum(which(x))) > 0))
+desel <- c(27:nrow(zmet))[sel]
+# plot(zmet[-desel, ], pch = 16, cex = 0.5)
+# points(zmet[desel, ], pch = 16, cex = 0.5, col = "red")
+# plot(prov, add = TRUE)
+zmetf <- zmet[-desel, ]
+
+zmetsamps <- extract(idgr, zmetf, cellnumbers = TRUE)
+zmetsamps <- cbind(xyFromCell(idgr, zmetsamps[, "cells"]), zmetsamps)
+
+zmet_dt <- data.table(data.frame(zmetsamps))[, .(x, y)]
+setkeyv(zmet_dt, c("x", "y"))
+setkeyv(IDr, c("x", "y"))
+IDr_ss <- IDr[zmet_dt]  # pick up IDs, soils, wth variables
+setkeyv(IDr_ss, c("WTH", "Zone"))
+# IDr_ss[, plot(x, y)]
+# points(zmet_dt, pch = 16, cex = 0.5)
+# tst <- extract(idgr, zmet_dt)
+# all(tst[order(tst[, 1]), 2] == zmetsamps[order(zmetsamps[, 4]), 5])
+
+# alternative for yield data selection points:
+# Creatre stratified, representative random sample of 50 pts from ID/zone grid
+# ztab <- freq(idgr$zoneid)[-5, ]
+# ztabs <- round((ztab[, 2] / sum(ztab[, 2])) * 50)
+# set.seed(34)
+# gsamps <- do.call(rbind, lapply(1:4, function(i) {
+#   gsamp <- sampleRandom(idgr$zoneid == i, size = ztabs[i], cells = TRUE)
+#   sampxy <- xyFromCell(idgr, gsamp[, "cell"])
+# }))
+# plot(idgr$ID)  # unique(values(idgr$ID))
+# length(which(!is.na(values(idgr$ID))))
+# length(which(!is.na(unique(values(idgr$ID)))))
+# points(gsamps, pch = 16, cex = 0.5)
+# 
+# # merge those points with the main ID grid
+# gsamps_dt <- data.table(gsamps)
+# setkeyv(gsamps_dt, c("x", "y"))
+# setkeyv(IDr, c("x", "y"))
+# IDr_ss <- IDr[gsamps_dt]  # pick up IDs, soils, wth variables
+# setkeyv(IDr_ss, c("WTH", "SOL", "Zone"))
+# IDr_ss[, plot(x, y)]
+# points(gsamps, pch = 16, cex = 0.5)
+
+
+# sgrid <- fread(fp(p_cropmod, "Soil_clim_match_ID.csv"), 
+#                stringsAsFactors = FALSE)
+# setnames(sgrid, old = c("V1", "X", "Y", "WeatherGrid", "SoilType"), 
+#          new = c("ID", "x", "y", "WTH", "SOL"))
+# wgs <- "+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0"
+# sr <- dt_to_raster(sgrid[, list(ID, x, y)], CRSobj = wgs)
+# setkeyv(sgrid, c("x", "y"))
+# sgrid[SOL == "WI_ARBW438"]
+```
+
+# Full DSSAT yield grids
+```{r, eval = FALSE}
+crops <- dir(p_crop, pattern = "maize|soybean", full.names = FALSE)
+fylds <- lapply(crops, function(X) {  # X <- "maize"
+  fnms <- dir(full_path(p_crop, X), pattern = X)
+  fl <- unlist(lapply(c("S", "R"), function(x) {
+    fnms[grep(paste0(paste0(x, "0"), "|", paste0(x, "9")), fnms)]
+  }))  # reorder to read subsistence first
+  # idt <- copy(IDr)
+  # key(idt)
+  idt <- copy(ID)
+  idt <- subset(unique(idt[, .(x, y, WTH, Zone, SharePct)]))
+  setkeyv(idt, c("WTH", "Zone"))
+  for(y in 1:length(fl)) { # y <- 1
+    # setcolorder(idt, c(4, 7:8, 5:6, 1:3))
+    print(paste("Processing", fl[y]))
+    cr <- fread(input = full_path(p_crop, paste0(X, "/", fl[y])))
+    cr[, "YR" := RUNNO - min(RUNNO) + 1, by = .(TNAM, Zones)]  # unique year  
+    setnames(cr, c("SOIL_ID...", "WSTA....", "Zones"), c("SOL", "WTH", "Zone"))
+    cr[, WTH := substr(WTH, 1, 4)]
+    cr[, c("V1", "RUNNO", "TRNO", "TNAM") := NULL]
+    setkeyv(cr, c("WTH", "Zone"))
+    
+    crm <- merge(cr, idt, by = c("WTH", "Zone"))
+
+    # nms <- names(crm)[c(6:7, 8, 1:2, 4, 9, 5, 3)]
+    
+    # Soil averaged yields
+    solmu <- crm[, round(weighted.mean(HWAH, w = SharePct)), 
+                 by = .(WTH, Zone, YR)]
+    snm <- gsub("*.*_|\\.csv", "", fl[y])
+    
+    # Yield means
+    v <- solmu[, round(mean(V1)), by = .(WTH, Zone)]
+    setnames(v, "V1", paste0("Y", snm))
+    idt <- idt[v]
+    setkeyv(idt, c("WTH", "Zone"))
+    idt
+  }
+  idt
+})
+names(fylds) <- crops
+
+rdt <- fylds$maize[, c(1:2, grep("YS", names(fylds$maize))), with = FALSE]
+mzs <- dt_to_raster(rdt, raster()@crs)
+rdt <- fylds$maize[, c(1:2, grep("YR", names(fylds$maize))), with = FALSE]
+mzr <- dt_to_raster(rdt, raster()@crs)
+rdt <- fylds$soybean[, c(1:2, grep("YS", names(fylds$soybean))), with = FALSE]
+soys <- dt_to_raster(rdt, raster()@crs)
+rdt <- fylds$soybean[, c(1:2, grep("YR", names(fylds$soybean))), with = FALSE]
+soyr <- dt_to_raster(rdt, raster()@crs)
+
+# par(mar = rep(0, 4))
+# plot(calc(mzs, mean))
+# plot(zmetf, pch = 16, cex = 0.5, add = TRUE)
+
+```
+
+
+# Extract subset of DSSAT yields, soils, climate data
+## Yield
+```{r, eval=FALSE}
+# merge function for lists of data.tables
+mymerge <- function(x, y) merge(x, y, all = TRUE)
+
+# Yield data for those points
+mannms <- c("S", "R")
+ylds <- lapply(crops, function(X) {
+  # X <- crops[1]
+  fnms <- dir(full_path(p_crop, X), pattern = X)
+  fl <- unlist(lapply(mannms, function(x) {
+    fnms[grep(paste0(paste0(x, "0"), "|", paste0(x, "9")), fnms)]
+  }))  # reorder to read subsistence first
+  # fl <- fl[1:3]
+  crml <- lapply(1:length(fl), function(y) { # y <- 1
+    idt <- copy(IDr_ss)
+    print(paste("Processing", fl[y]))
+    cr <- fread(input = full_path(p_crop, paste0(X, "/", fl[y])))
+    cr[, "YR" := RUNNO - min(RUNNO) + 1, by = .(TNAM, Zones)]  # unique year  
+    setnames(cr, c("SOIL_ID...", "WSTA....", "Zones"), c("SOL", "WTH", "Zone"))
+    cr[, WTH := substr(WTH, 1, 4)]
+    cr[, c("V1", "RUNNO", "TRNO", "TNAM") := NULL]
+    setkeyv(cr, c("WTH", "Zone", "SOL"))
+
+    # merge IDs with subset location
+    # crm <- cr[idt]
+    crm <- merge(cr, idt)
+    # crm[, SharePct := NULL]
+    nms <- names(crm)[c(7:8, 6, 1:2, 9, 3, 5, 4)]
+    setcolorder(crm, nms)
+    mid <- 1:nrow(crm)
+    crm <- cbind(mid, crm)
+    keys <- c("mid", "x", "y", "ID", "WTH", "Zone", "zoneid", "SOL", "YR")
+    setkeyv(crm, keys)
+    # setcolorder(crm, c(nms[grep("HWAH", nms, invert = TRUE)], "HWAH"))
+    newnm <- gsub(".*._||\\.csv", "", fl[y])
+    setnames(crm, "HWAH", newnm)
+    crm
+  })
+  yldmerge <- Reduce(mymerge, crml)
+  ynms <- names(yldmerge)
+  # yldred <- data.table(round(do.call(cbind, lapply(mannms, function(x) {
+    # yldmerge[, rowMeans(.SD), .SDcols = grep(paste0(x, "[0-9]"), ynms)]
+  # }))))
+  # calculate 
+  for(i in mannms) {
+    onms <- list(paste0("YLD", i), grep(paste0(i, "[0-9]"), ynms))
+    yldmerge[, c(onms[[1]]) := round(rowMeans(.SD)), .SDcols = onms[[2]]]
+    yldmerge[, c(onms[[2]]) := NULL]
+  }
+  
+  # Internal check on yield means
+  if(length(crml) == 8) crind <- list("S" = 1:4, "R" = 5:8, "I" = 9:12) 
+  if(length(crml) == 6) crind <- list("S" = 1:3, "R" = 4:6, "I" = 7:9) 
+  for(ii in sample(1:nrow(yldmerge), size = 20)) {
+    for(jj in 1:length(mannms)) {  # jj = 2
+      a <- yldmerge[ii, ]
+      b <- sapply(crind[[jj]], function(x) {
+        crml[[x]][mid == a$mid, ][[ncol(crml[[x]])]]
+      })
+      if(a[[paste0("YLD", mannms[jj])]] != round(mean(b))) {
+        print(paste("Yield mismatch at", ii, mannms[jj]))
+      }
+    }
+  }
+  
+  # swap in averaged yields
+  # yldmerge[, mid := NULL]
+  # yldmerge <- cbind(yldmerge, yldred)
+  yldmerge
+})
+names(ylds) <- crops
+
+```
+
+
+## Soil
+
+Note: Using an updated version of `read_dssat_prof.R` from the rCropMod library. It needs to be rebuilt into that library.  Here it is being sourced before runnign the next section. 
+```{r, eval = FALSE}
+pts <- IDr_ss[, .(x, y)]
+# pts <- cbind.data.frame("x" = 27.4738917, "y" = -16.2783358)  # in Zambia
+coordinates(pts) <- ~x+y
+soilid <- extract(soilgrid, pts)  # grid id corresponding to point
+profs <- soilshare[CELL5M %in% soilid]  # profiles at that point
+profdat <- read_dssat_prof(solfile = full_path(p_soil, "WI.SOL"), 
+                           profiles = profs$SoilProfile) 
+solvars <- unique(gsub("[[:digit:]]", "", names(profdat)))
+lnms <- names(profdat)
+
+# max depth in profile
+mdepth <- rowMaxs(as.matrix(profdat[, .SD, .SDcols = grep("slb", lnms)]), 
+                  na.rm = TRUE)
+
+# use depths as weights to calculate mean values of soil parameters to 1 m
+# but need to fill to stop at 1 m, and also correct for soils that don't get to 
+# 1 m.  Assume values for deepest horizon where deepest < 1 m are the values to 
+# 1 m. Truncate horizon that spans 1 m at 1 m, makes this deepest horizon in 
+# calc. Horizon depths become weights for weighted mean. 
+tst <- profdat[, .SD , .SDcols = grep("slb", lnms)]
+dtest <- function(x) {
+  o <- x
+  o[is.na(o)] <- -10000
+  if(all(o < 100)) {
+    o[which.max(o)] <- 100
+  } else if(any(o > 100)) {
+    o[which(o > 100)[1]] <- 100
+  }
+  o[o < 0] <- NA
+  o
+}
+depvec <- t(apply(as.matrix(tst), 1, dtest))  # fix depths
+
+infill <- function(x, ind) {
+  o <- x
+  o0 <- which(o < 0)
+  if(length(o0) > 0) {
+    for(i in 1:length(o0)) {
+      if(o0[i] < max(ind) & o0[i] > min(ind)) {
+        o[o0[i]] <- mean(o[o0[i] - 1], o[o0[i] + 1])
+      } else if(o0[i] == max(ind)) {
+        o[o0[i]] <- o[o0[i] - 1]
+      } else if(o0[i] == min(ind)) {
+        o[o0[i]] <- o[o0[i] + 1]
+      }
+    }
+  }  
+  o
+}
+
+# calculate mean values to 1 m depth  
+solvarsr <- solvars[solvars %in% 
+                     c("sbdm", "sloc", "slcl", "slsi", "slhw")]
+solvals <- do.call(cbind, lapply(solvarsr, function(i) {  # i <- annvars[2]
+  mat <- as.matrix(profdat[, .SD , .SDcols = grep(i, lnms)])
+  oval <- sapply(1:nrow(mat), function(j) {  # j <- 6
+    ind <- which(!is.na(depvec[j, ]))
+    matv <- mat[j, ind]
+    matv <- infill(x = matv, ind)
+    weighted.mean(matv, depvec[j, ind], na.rm = TRUE)
+  })
+  oval
+}))
+colnames(solvals) <- solvarsr
+
+# finalize
+sol1m <- cbind("pro" = profdat[, pro], data.table(solvals))
+```
+
+## Climate
+### Indices
+```{r, eval = FALSE}
+sdate <- "1948/01/01"
+edate <- "2010/12/31"
+dts <- seq.Date(as.Date(sdate), as.Date(edate), "days")
+yrs <- as.numeric(substr(dts, 1, 4))
+ano <- unique(yrs)
+mos <- as.numeric(substr(dts, 6, 7))
+dys <- as.numeric(substr(dts, 9, 10))
+
+# variabes to derive: MAP, N raindays, rainfall depth, n rain days, 
+# n dry days in Jan and Feb, mean max temp, N days > 30, annual mean temp, 
+# GDD > 30, average daily SRAD
+# set up indices for selecting dates
+ystrt <- which(mos == 7 & dys == 15) 
+ystrt <- ystrt[-length(ystrt)]
+yend <- which(mos == 7 & dys == 14)[-1]
+# set up seasonal index
+sind <- rep(0, length(dts))  # whole year spanning growing season
+for(i in 1:length(ystrt)) sind[ystrt[i]:yend[i]] <- i
+sindu <- unique(sind)[-1]
+janind <- rep(0, length(dts))  # january of each year
+for(i in sindu) janind[which(sind == i & mos == 1)] <- i
+febind <- rep(0, length(dts))  # feb of each year
+for(i in sindu) febind[which(sind == i & mos == 2)] <- i
+ndjfind <- rep(0, length(dts))  # djf of each growing season
+for(i in sindu) ndjfind[which(sind == i & mos %in% c(1, 2, 11, 12))] <- i
+octind <- rep(0, length(dts))  # feb of each year
+for(i in sindu) octind[which(sind == i & mos == 10)] <- i
+
+sindu2 <- sindu[sindu %in% which(ano %in% 1979:2010)]
+
+```
+
+### Rainfall
+```{r, eval=FALSE}
+prec <- brick(fp(p_pgf, "prec.Zambia.nc"))
+
+# functions for raindays
+nrday <- function(x) length(which(x > 0))  # raindays
+ndry <- function(x) length(which(x == 0))
+sdepth <- function(x) mean(x[x > 0])  # storm depth
+
+# storm depth in NDJF
+# sdeps <- lapply(sindu2, function(x) { # x <- sindu2[1]
+#   print(x)
+#   ryr <- prec[[which(ndjfind == x)]]
+#   r <- calc(ryr, sdepth)
+#   names(r) <- as.character(ano[x])
+#   r
+# })
+# sdeps <- stack(sdeps)
+# 
+# # storm depth in NDJF
+# rdays <- lapply(sindu2, function(x) { # x <- sindu2[1]
+#   print(x)
+#   ryr <- prec[[which(djfind == x)]]
+#   r <- calc(ryr, nrday)
+#   names(r) <- as.character(ano[x])
+#   r
+# })
+# rdays <- stack(rdays)
+# 
+# # dry days in January
+# drydaysj <- lapply(sindu2, function(x) { # x <- sindu2[1]
+#   print(x)
+#   ryr <- prec[[which(janind == x)]]
+#   r <- calc(ryr, ndry)
+#   names(r) <- as.character(ano[x])
+#   r
+# })
+# drydaysj <- stack(drydaysj)
+# 
+# # dry days in February
+# drydaysf <- lapply(sindu2, function(x) { # x <- sindu2[1]
+#   print(x)
+#   ryr <- prec[[which(febind == x)]]
+#   r <- calc(ryr, ndry)
+#   names(r) <- as.character(ano[x])
+#   r
+# })
+# drydaysf <- stack(drydaysf)
+
+registerDoMC(7)
+
+# total season rainfall
+rftot <- stack(foreach(i = 1:length(sindu2)) %dopar% { #  i <- 1
+  ind <- which(sind == sindu2[i])
+  calc(prec[[ind]], sum)
+})
+writeRaster(rftot, filename = fp(p_clim, "rftot.tif"), overwrite = TRUE)
+
+# total season rainfall
+ndjftot <- stack(foreach(i = 1:length(sindu2)) %dopar% { #  i <- 1
+  ind <- which(ndjfind == sindu2[i])
+  calc(prec[[ind]], sum)
+})
+writeRaster(ndjftot, filename = fp(p_clim, "ndjftot.tif"), overwrite = TRUE)
+
+# january rainfall
+jantot <- stack(foreach(i = 1:length(sindu2)) %dopar% { #  i <- 1
+  ind <- which(janind == sindu2[i])
+  calc(prec[[ind]], sum)
+})
+writeRaster(jantot, filename = fp(p_clim, "jantot.tif"), overwrite = TRUE)
+
+# february total
+febtot <- stack(foreach(i = 1:length(sindu2)) %dopar% { #  i <- 1
+  ind <- which(febind == sindu2[i])
+  calc(prec[[ind]], sum)
+})
+writeRaster(febtot, filename = fp(p_clim, "febtot.tif"), overwrite = TRUE)
+
+# february total
+octtot <- stack(foreach(i = 1:length(sindu2)) %dopar% { #  i <- 1
+  ind <- which(octind == sindu2[i])
+  calc(prec[[ind]], sum)
+})
+writeRaster(octtot, filename = fp(p_clim, "octtot.tif"), overwrite = TRUE)
+
+# par(mfrow = c(6, 6), mar = c(0, 0, 0, 0))
+# for(i in 1:nlayers(octtot)) {
+#   plot(octtot[[i]], axes = FALSE, box = FALSE)
+#   plot(prov, add = TRUE, zlim = c(0, 1000))
+# }
+# which(1980:2010 %in% ) 
+# pre2005 <- calc(octtot[[1:26]], mean)
+# post2005 <- calc(octtot[[27:31]], mean)
+# 
+# par(mfrow = c(1, 2), mar = c(0, 0, 0, 0))
+# plot(pre2005, axes = FALSE, box = FALSE, zlim = c(0, 400))
+# plot(prov, add = TRUE)
+# plot(post2005, axes = FALSE, box = FALSE, zlim = c(0, 400))
+# plot(prov, add = TRUE)
+# 
+# par(mfrow = c(1, 1), mar = c(0, 0, 0, 0))
+# plot((pre2005 - post2005) / pre2005 * 100, zlim = c(-100, 100))
+# plot(prov, add = TRUE)
+
+# plot(rftot[[1]] - ndjftot[[1]])
+# plot(ndjftot[[1]]); plot(rftot[[1]])
+
+# plot out to show artifacts at 1 degree boundaries
+# p_prov <- paste0("/Users/lestes/Dropbox/data/zari/infrastructure/zambia/", 
+#                  "rda_dump/Final Shape files RDA/")
+# prov <- readOGR(fp(p_prov, "prov.shp"), layer = "prov")
+# plot(rftot[[1]])
+# plot(calc((ryr > 0), sum))
+# plot(sdeps[[1]])
+# plot(rdays[[23]])
+```
+
+### Temperature
+```{r, eval = FALSE}
+tmax <- brick(fp(p_pgf, "Tmax.Zambia.nc")) 
+tmin <- brick(fp(p_pgf, "Tmin.Zambia.nc"))
+
+# Create tmean variable
+tmu <- foreach(i = 1:length(sindu2)) %dopar% { #  i <- 1
+  ind <- which(sind == sindu2[i])
+  tmu <- (tmax[[ind]] + tmin[[ind]]) / 2 - 273.15
+}
+
+# Functions
+# GDD between 8-30 degrees
+gdd830 <- function(x) {
+  a <- x[x < 30] - 8
+  sum(ifelse(a < 0, 0, a))
+}
+# x <- sample(4:40, size = 100, replace = T)
+# gdd830(x)
+
+# killing degree days
+kdd <- function(x) {
+  a <- x - 30
+  sum(ifelse(a < 0, 0, a))
+}
+# plot(calc(tmu[[1]], kdd))
+
+# frequency of days with T > 30
+ftmax30 <- function(x) length(x[x > 30])
+
+# growing degree day and killing degree days
+kdd <- stack(kdy <- foreach(i = 1:length(tmu)) %dopar% calc(tmu[[i]], kdd))
+writeRaster(kdd, filename = fp(p_clim, "kdd.tif"))
+gdd <- stack(gdy <- foreach(i = 1:length(tmu)) %dopar% calc(tmu[[i]], gdd830))
+writeRaster(gdd, filename = fp(p_clim, "gdd.tif"))
+
+# tmax greater than 30, Jan and Feb
+nkilljan <- stack(foreach(i = 1:length(sindu2)) %dopar% { #  i <- 1
+  ind <- which(janind == sindu2[i])
+  calc(tmax[[ind]] - 273.15, ftmax30)
+})
+writeRaster(nkilljan, filename = fp(p_clim, "nkilljan.tif"))
+nkillfeb <- stack(foreach(i = 1:length(sindu2)) %dopar% { #  i <- 1
+  ind <- which(febind == sindu2[i])
+  calc(tmax[[ind]] - 273.15, ftmax30)
+})
+writeRaster(nkillfeb, filename = fp(p_clim, "nkillfeb.tif"))
+
+# mean tmax in NDJF
+tmax_gs <- stack(foreach(i = 1:length(sindu2)) %dopar% { #  i <- 1
+  ind <- which(ndjfind == sindu2[i])
+  calc(tmax[[ind]] - 273.15, mean)
+})
+writeRaster(tmax_gs, filename = fp(p_clim, "tmax_gs.tif"))
+
+# mean tmax whole year
+tmax_ano <- stack(foreach(i = 1:length(sindu2)) %dopar% { #  i <- 1
+  ind <- which(sind == sindu2[i])
+  calc(tmax[[ind]] - 273.15, mean)
+})
+writeRaster(tmax_ano, filename = fp(p_clim, "tmax_ano.tif"))
+
+```
+
+### Solar radiation
+```{r, eval = FALSE}
+srad <- brick(fp(p_pgf, "Rs.Zambia.nc")) 
+
+# convert to MJ m^2 
+mjday <- function(x) x / 1000000 * (3600 * 24)
+
+# total and mean solar radiation for the growing season
+srtot_gs <- stack(foreach(i = 1:length(sindu2)) %dopar% { #  i <- 1
+  ind <- which(ndjfind == sindu2[i])
+  mj <- mjday(srad[[ind]])
+  calc(mj, sum)
+})
+writeRaster(srtot_gs, filename = fp(p_clim, "srtot_gs.tif"))
+srmu_gs <- stack(foreach(i = 1:length(sindu2)) %dopar% { #  i <- 1
+  ind <- which(ndjfind == sindu2[i])
+  mj <- mjday(srad[[ind]])
+  calc(mj, mean)
+})
+writeRaster(srmu_gs, filename = fp(p_clim, "srmu_gs.tif"))
+
+# total and mean gs for whole year
+srtot_ano <- stack(foreach(i = 1:length(sindu2)) %dopar% { #  i <- 1
+  ind <- which(sind == sindu2[i])
+  mj <- mjday(srad[[ind]])
+  calc(mj, sum)
+})
+writeRaster(srtot_ano, filename = fp(p_clim, "srtot_ano.tif"))
+srmu_ano <- stack(foreach(i = 1:length(sindu2)) %dopar% { #  i <- 1
+  ind <- which(sind == sindu2[i])
+  mj <- mjday(srad[[ind]])
+  calc(mj, mean)
+})
+writeRaster(srmu_ano, filename = fp(p_clim, "srmu_ano.tif"))
+```
+
+## Assemble datasets
+
+1. Predictors: 
+    + Weather/climate: 
+        +`rftot`, `ndjftot`, `jantot`, `febtot` for rainfall; `kdays`, `gdd`, `f30jan`, `f30feb`, `tmax_gs`, `tmax_ano` for temperature; `srtot_gs`, `srmu_gs`, `srtot_ano`, and `srmu_ano` for solar radiation
+    + Soil: mean soil properties within top 1 m
+    + Management variables: Codes S, R, I
+2. Predictands: mean yields across cultivars within each management type
+
+```{r, eval = FALSE}
+# Organize rainfall
+climnms <- c("rftot", "ndjftot", "jantot", "febtot", "octtot", "kdd", "gdd", 
+             "nkilljan", "nkillfeb", "tmax_ano", "tmax_gs", "srtot_ano",
+             "srtot_mu", "srtot_gs", "srmu_gs")
+bnms <- sapply(climnms, function(x) dir(p_clim, pattern = x, full.names = TRUE))
+
+blist <- lapply(bnms, function(x) {
+  b <- brick(x)
+  names(b) <- paste0("Y", 1:nlayers(b))
+  b
+})
+
+onms <- c("MAP", "MSP", "JP", "FP", "OP", "KDD", "GDD", "NKJ", "NKF", "ATMX",
+          "STMX", "SSRT", "SSRM", "ASRT", "ASRM")
+climl <- lapply(1:length(blist), function(x) {
+  r <- blist[[x]]
+  names(r) <- paste0(onms[x], 1:nlayers(r))
+  r
+})
+names(climl) <- onms
+
+
+# rfnms <- c("MAP", "MSP", "JP", "FP", "OP")
+# rfl <- list(rftot, ndjftot, jantot, febtot, octtot)
+# rfl <- lapply(1:length(rfl), function(x) {
+#   r <- rfl[[x]]
+#   names(r) <- paste0(rfnms[x], 1:nlayers(r))
+#   r
+# })
+# names(rfl) <- rfnms 
+# 
+# # Organize temp
+# tnms <- c("KDD", "GDD", "NKJ", "NKF", "ATMX", "STMX")
+# tfl <- list(kdd, gdd, nkilljan, nkillfeb, tmax_ano, tmax_gs)
+# tfl <- lapply(1:length(tfl), function(x) {
+#   r <- tfl[[x]]
+#   names(r) <- paste0(tnms[x], 1:nlayers(r))
+#   r
+# })
+# names(tfl) <- tnms 
+# 
+# # Organize srad
+# snms <- c("SSRT", "SSRM", "ASRT", "ASRM")
+# sfl <- list(srtot_gs, srmu_gs, srtot_ano, srmu_ano)
+# sfl <- lapply(1:length(sfl), function(x) {
+#   r <- sfl[[x]]
+#   names(r) <- paste0(snms[x], 1:nlayers(r))
+#   r
+# })
+# names(sfl) <- snms 
+
+# melt predictors
+xy <- unique(ylds$maize[, .(x, y)])
+# xy[, ind := 1:.N]
+cols <- c("x", "y")
+xy[, (cols) := lapply(.SD, function(x) round(x, 5)), .SDcols = cols]
+
+# climate predictors
+climvals <- lapply(1:length(climl), function(i) extract(x = climl[[i]], xy))
+climxy <- lapply(climvals, function(x) {  # x <- rvals[[1]]
+  rmelt <- melt(cbind(xy, x), id = 1:2)
+  setnames(rmelt, "value", unique(gsub("[0-9]", "", rmelt$variable)))
+  rmelt[, variable := gsub("[[:alpha:]]", "", variable)]
+  setnames(rmelt, "variable", "YR")
+  rmelt[, ind := 1:.N]
+  setkeyv(rmelt, c("ind", "x", "y", "YR"))
+  rmelt
+})
+climpreds <- Reduce(mymerge, climxy)
+climpreds[, YR := as.integer(YR)]
+setkeyv(climpreds, c("x", "y", "YR"))
+
+# # rainfall
+# rvals <- lapply(1:length(rfl), function(i) extract(x = rfl[[i]], xy))
+# rvxy <- lapply(rvals, function(x) {  # x <- rvals[[1]]
+#   rmelt <- melt(cbind(xy, x), id = 1:2)
+#   setnames(rmelt, "value", unique(gsub("[0-9]", "", rmelt$variable)))
+#   rmelt[, variable := gsub("[[:alpha:]]", "", variable)]
+#   setnames(rmelt, "variable", "YR")
+#   # rmelt[, (cols) := lapply(.SD, as.character), .SDcols = cols]
+#   rmelt[, ind := 1:.N]
+#   setkeyv(rmelt, c("ind", "x", "y", "YR"))
+#   rmelt
+# })
+# rfpreds <- Reduce(mymerge, rvxy)
+# 
+# # temperature
+# tvals <- lapply(1:length(tfl), function(i) extract(x = tfl[[i]], xy))
+# tvxy <- lapply(tvals, function(x) {  # x <- tvals[[3]]
+#   rmelt <- melt(cbind(xy, x), id = 1:2)
+#   setnames(rmelt, "value", unique(gsub("[0-9]", "", rmelt$variable)))
+#   rmelt[, variable := gsub("[[:alpha:]]", "", variable)]
+#   setnames(rmelt, "variable", "YR")
+#   # rmelt[, (cols) := lapply(.SD, as.character), .SDcols = cols]
+#   rmelt[, ind := 1:.N]
+#   setkeyv(rmelt, c("ind", "x", "y", "YR"))
+#   rmelt
+# })
+# tfpreds <- Reduce(mymerge, tvxy)
+# 
+# 
+# # srad
+# svals <- lapply(1:length(sfl), function(i) extract(x = sfl[[i]], xy))
+# svxy <- lapply(svals, function(x) {  # x <- rvals[[1]]
+#   rmelt <- melt(cbind(xy, x), id = 1:2)
+#   setnames(rmelt, "value", unique(gsub("[0-9]", "", rmelt$variable)))
+#   rmelt[, variable := gsub("[[:alpha:]]", "", variable)]
+#   setnames(rmelt, "variable", "YR")
+#   # rmelt[, (cols) := lapply(.SD, as.character), .SDcols = cols]
+#   rmelt[, ind := 1:.N]
+#   setkeyv(rmelt, c("ind", "x", "y", "YR"))
+#   rmelt
+# })
+# sfpreds <- Reduce(mymerge, svxy)
+
+# Join all climate predictors
+# climpreds <- Reduce(mymerge, list(rfpreds, tfpreds, sfpreds))
+# climpreds[, YR := as.integer(YR)]
+# setkeyv(climpreds, c("x", "y", "YR"))
+
+setnames(sol1m, "pro", "SOL")
+setkey(sol1m, "SOL")
+sols1mu <- unique(sol1m)
+
+# merge together all the data
+regdat <- lapply(ylds, function(i) {  # i <- ylds[[1]]
+  i[, (cols) := lapply(.SD, function(x) round(x, 5)), .SDcols = cols]
+  setkeyv(i, c("x", "y", "SOL"))
+  m1 <- merge(i, sols1mu)
+  m1[, YR := as.integer(YR)]
+  setkeyv(m1, c("x", "y", "YR"))
+  m2 <- merge(m1, climpreds)
+})
+
+# Checking merges
+set.seed(234)
+samp <- sample(1:nrow(regdat$maize), size = 20)
+for(ii in samp) {  # ii <- samp[5]
+  a <- regdat$maize[ii, ]; b <- regdat$soybean[ii, ]
+  d <- ID[WTH == a$WTH & zoneid == a$zoneid & SOL == a$SOL]
+  e <- ylds$maize[WTH == b$WTH & zoneid == b$zoneid & SOL == b$SOL[1] & 
+                  YR == b$YR][1, ]
+  f <- ylds$soybean[WTH == b$WTH & zoneid == b$zoneid & SOL == b$SOL[1] & 
+                    YR == b$YR][1, ]
+  # SOIL climate match
+  for(i in list(b, d, e, f)) {
+    # i <- d
+    for(j in c("zoneid", "WTH", "SOL")) {
+      # print(j)
+      if(a[[j]] != i[[j]]) print(paste("mismatch at", j, "row", ii))
+    }
+    for(j in c("x", "y")) {
+      # print(j)
+      if(round(a[[j]], 5) != round(i[[j]], 5)) {  # round because IDr wasn't
+        print(paste("mismatch at", j, "row", ii))
+      }
+    }
+  }
+  for(i in c("YLDS", "YLDR")) { # i <- "YLDS"
+    if(a[[i]] != e[[i]]) print(paste("maize mismatch at", i, "row", ii))
+    if(b[[i]] != f[[i]]) print(paste("maize mismatch at", i, "row", ii))
+  }
+}
+
+
+# ylds[[1]][ID == 6968 & zoneid == 1]
+regdat <- lapply(regdat, function(i) {
+  setcolorder(i, c(5, 1:4, 6:ncol(i)))
+  i <- setkey(i, "mid")
+  i
+})
+
+regdt <- rbindlist(lapply(names(regdat), function(x) {
+  CROP <- x
+  cbind(CROP, regdat[[x]])
+}))
+save(regdt, file = fp(p_yield, "empirical/regdat.rda"))
+
+
+```
+

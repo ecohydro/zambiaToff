@@ -15,10 +15,6 @@ output:
 Based on simulated potential yields run by Di Tian. 
 ```{r, eval = FALSE}
 library(agroEcoTradeoff)
-# library(data.table)
-library(lmisc)
-# library(dtraster)
-# devtools::install_github("PrincetonUniversity/lmisc")
 
 p_root <- lmisc::set_base_path()
 p_crop <- "~/Dropbox/data/agricultural/zambia/dssat/"
@@ -261,20 +257,30 @@ names(yld_rl) <- crops
 
 # cellStats(yld_rl$maize$R[["ymu_R0002"]], mean)
 # cellStats(yld_rl$soybean$I[["ymu_I990008"]], mean)
-plot(yld_rl$soybean$S[["ymu_S990008"]])
-plot(yld_rl$soybean$R[["ymu_R990008"]])
-plot(yld_rl$maize$R[["y50_R0003"]])
 ```
 
 ## Yield bias correction
-### Soybean fix based on GAEZ data
+### Approach 1: soybean fix based on GAEZ data
 
 Potential soybean yields are too low for Zambia, so we will adjust them up with FAO-GAEZ yields. This doesn't seem necessary for maize, because our potential yield averages are at or below the GYGA rainfed yield potentials, per the figures and tables below. 
 
 ```{r, eval = FALSE} 
-cellStats(yld_rl$maize$S[["ymu_S0001"]], mean)
-plot(yld_rl$maize$R[["ymu_R0002"]])
-plot(yld_rl$maize$S[["ymu_S0002"]])
+# cellStats(yld_rl$maize$S[["ymu_S0001"]], mean)
+p_scratch <- fp(p_root, "paper/figures/scratch")
+for(i in crops) {  # i <- "maize"
+  for(j in c("S", "R", "I")) {  # j <- "S"
+    yr <- yld_rl[[i]][[j]]
+    yrmu <- calc(yr[[grep("mu", names(yr))]], mean)
+    png(fp(p_scratch, paste0(i, "_", j, "_mu.png")), width = 700, height = 700)
+    par(mar = c(0, 0, 2, 0))
+    plot(yrmu, axes = FALSE, box = FALSE)
+    dev.off()
+  }
+}
+# plot(yld_rl$soybean$R[["ymu_R990008"]])
+# plot(yld_rl$maize$R[["y50_R0003"]])
+# plot(yld_rl$maize$R[["ymu_R0002"]])
+# plot(yld_rl$maize$S[["ymu_S0002"]])
 
 ```
 
@@ -368,6 +374,8 @@ for(i in 1:length(yld_rl2)) {
 }
 ```
 <a href="#top">Back to top</a>
+
+### Approach 2: Bias correct against FAO Stats
 
 But now do the second fix.  Let's adjust yield relative to the actual and baseline and projected growth.  
 
@@ -472,6 +480,221 @@ for(i in 1:length(ynew)) {
 
 
 ```
+
+### Approach 3: Bias-correct against MODIS NPP
+```{r, eval = FALSE}
+# MODIS NPP
+p_npp <- "~/Dropbox/data/npp/mod17a3/"
+npp <- lapply(dir(p_npp, full.names = TRUE), function(x) {
+  r <- crop(raster(x), yld_rl$maize$S)
+  named_out(r, paste0("NPP", gsub("MOD.*.NPP_|.tif", "", basename(x))))
+})
+names(npp) <- sapply(npp, function(x) names(x))
+
+# Zambia provinces
+p_prov <- paste0("/Users/lestes/Dropbox/data/zari/infrastructure/zambia/", 
+                 "rda_dump/Final Shape files RDA/")
+prov <- readOGR(fp(p_prov, "prov.shp"), layer = "prov")
+prov@proj4string <- npp[[1]]@crs
+prov$ID <- 1:nrow(prov)
+
+
+# load in cropland 1 km layer
+cropland <- raster(fp(p_cropland, "cropland-1k.tif"))
+croplandgcs <- projectRaster(cropland, npp[[1]])
+croplandmsk <- croplandgcs > 0  # select pixels having any cropland
+provr <- rasterize(prov, croplandmsk, field = "ID")
+
+# select out those pixels from NPP
+nppcrops <- lapply(npp, function(x) croplandmsk * x * 0.1)
+
+s <- stack(provr, croplandgcs, stack(npp))
+npp_dt <- as.data.table(s)
+setnames(npp_dt, c("layer", "cropland.1k"), c("prov", "cland"))
+npp_dt <- npp_dt[!is.na(cland) | !is.na(prov), ]
+npp_dt <- npp_dt[!is.na(prov), ]
+npp_dt <- npp_dt[!is.na(cland), ]
+# plot(dt_to_raster(npp_dt[, .(x, y, cland)], prov@proj4string))
+
+# calculate weighted means by province
+npp_mu <- npp_dt[, lapply(.SD, function(x) {
+  sum(x * 0.1 * cland, na.rm = TRUE) / sum(cland)
+}), by = prov, .SDcols = c("cland", names(npp))]
+npp_dt[, sum(cland), by = prov]
+
+npp_mu2 <- npp_dt[, lapply(.SD, function(x) {
+  weighted.mean(x * 0.1, w = cland, na.rm = TRUE)
+}), by = prov, .SDcols = c("cland", names(npp))]  # slightly diff. rounding?
+
+npp_mu <- merge(npp_mu, prov@data[, c("PROVINCE", "ID")], by.x = "prov", 
+                by.y = "ID")
+
+# FAO country-stat data, which have problems, it seems (see checks below)
+prod <- fao[Crop %in% c("Maize", "Soybeans") & var == "prod", ]
+setnames(prod, "Value", "prod")
+setkeyv(prod, c("prov", "Year", "Crop"))
+prod[, c("var", "provcode", "cropcode", "Flag") := NULL]
+pa <- fao[Crop %in% c("Maize", "Soybeans")  & var == "pa", ]
+pa[Crop == "Soybeans", hist(pa)]
+setnames(pa, "Value", "pa")
+setkeyv(pa, c("prov", "Year", "Crop"))
+pa[, c("var", "provcode", "cropcode", "Flag") := NULL]
+
+# prodpa <- prod[pa]
+# prodpa[, yld := prod / pa]
+# prodpa[Crop == "Soybeans" & Year %in% 2007:2009 & prov == "Western"]
+# fao[Year == 2011 & Crop == "Soybeans"]
+
+# plot(npp_mu2$NPP2008, npp_mu$NPP2008)
+# prodpa[Crop == "Maize" & Year == 2011, ]
+# prodpa[Crop == "Maize" & prov == "Southern", 
+#        plot(Year, yld, type = "l", ylim = c(0, 6))]
+# cols <- rainbow(9)
+# for(i in 1:9) {
+#   prodpa[Crop == "Maize" & prov == unique(prodpa$prov)[i], 
+#          lines(Year, yld, col = cols[i])]
+# }
+# prodpa[Crop == "Soybeans" & prov == "Southern", 
+#        plot(Year, yld, type = "l", ylim = c(0, 6))]
+# for(i in 1:9) {
+#   prodpa[Crop == "Soybeans" & prov == unique(prodpa$prov)[i], 
+#          lines(Year, yld, col = cols[i])]
+# }
+
+# Actually forget the above, too unreliable. Use the PHS data I found from ZARI, # cross-checked against FAO country level production and harvested area data 
+# (to make PHS and CFS)
+p_phs <- "~/Dropbox/data/agricultural/zambia/phs/"
+phs <- data.table(readxl::read_excel(fp(p_phs, "phs-1986-2014.xlsx")))
+setnames(phs, "YEAR", "Year")
+
+# reshape it
+phs_rs <- rbindlist(lapply(names(phs)[-c(1:3)], function(x) {
+  DT <- phs[, c("Year", "crop", x), with = FALSE]
+  setnames(DT, x, "yld")
+  DT[, prov := x]
+}))
+setkeyv(phs_rs, c("Year", "prov", "crop"))
+# phs_rs[crop == "maize", mean(yld, na.rm = TRUE), by = Year][, plot(Year,V1)]
+# plot(phs_rs$Year[phs_rs$crop == "maize"], phs_rs$yld[phs_rs$crop == "maize"])
+
+npp_murs <- rbindlist(lapply(names(npp), function(x) { 
+  DT <- npp_mu[, c("PROVINCE", x), with = FALSE]
+  DT[, Year := gsub("NPP", "", x)]
+  setnames(DT, c("PROVINCE", x), c("prov", "NPP"))
+  DT
+}))
+npp_murs[, Year := as.numeric(Year)]
+setkeyv(npp_murs, c("Year", "prov"))
+
+# prodmg <- prodpa[npp_murs]
+tlm <- lm((a = 1:10) ~ (b = 1:10))
+plot(tlm$model[, 2], tlm$model[, 1])
+str(tlm)
+prodmg <- phs_rs[npp_murs]
+mznpp <- prodmg[crop == "maize", lapply(.SD, mean), .SDcols = c("yld", "NPP"),
+                by = prov]
+prodmg[crop == "soybean", lapply(.SD, mean), .SDcols = c("yld", "NPP"),
+       by = prov][, summary(lm(yld ~ NPP))]
+prodmg[crop == "soybean", lapply(.SD, mean), .SDcols = c("yld", "NPP"),
+       by = prov][, plot(NPP, yld)]
+
+prodmg[crop == "maize", lapply(.SD, mean), .SDcols = c("yld", "NPP"),
+                by = prov][,  {
+                  plot(yld ~ NPP)
+                  npplm = lm(yld ~ NPP)
+                  abline(npplm)
+                  summary(npplm)
+                }]
+```
+
+The relationship between mean annual NPP over croplands and maize, both by province, is:
+
+```
+Call:
+lm(formula = yld ~ NPP)
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-0.85083 -0.10149  0.05117  0.26377  0.40294 
+
+Coefficients:
+             Estimate Std. Error t value Pr(>|t|)  
+(Intercept) -2.369097   1.531678  -1.547   0.1658  
+NPP          0.006685   0.002326   2.874   0.0238 *
+---
+Signif. codes:  
+0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 0.4277 on 7 degrees of freedom
+Multiple R-squared:  0.5413,	Adjusted R-squared:  0.4758 
+F-statistic: 8.262 on 1 and 7 DF,  p-value: 0.02384
+```
+Soy on the other hand has no clear relationship, probably because it is a minor crop and covers only a small portion of the area.  
+
+Now to correct DSSAT yields using these NPP
+```{r, eval=FALSE}
+p_bd <- fp(p_root, "external/input_devel/biodiversity")
+remfrac <- raster(full_path(p_bd, fname = "ZA-remfrac.tif"))
+
+# calculate mean NPP of relatively undisturbed pixels in neighborhoods 
+remmsk <- remfrac > 0.9  # areas having greater > 90% intact
+
+w <- matrix(nrow = 5, ncol = 5, rep(1, 25))
+remmsk[remmsk == 0] <- NA
+
+nppmu <- calc(stack(npp) * 0.1, mean)
+nppalb <- projectRaster(nppmu, remmsk)
+nppalb <- raster::mask(nppalb, remmsk)
+
+# moving window
+npp_fmu <- focal(nppalb, w, fun = mean, na.rm = TRUE)
+npp_fmx <- focal(nppalb, w, fun = max, na.rm = TRUE)
+plot(npp_fmx)
+plot(npp_fmu)
+
+# NPP to Z-score
+npp_z <- (npp_fmu - cellStats(npp_fmu, mean)) / cellStats(npp_fmu, sd)
+
+
+dr <- disaggregate(yld_rl[["maize"]][["R"]]$ymu_R0002, fact = 10)
+dralb <- projectRaster(dr, npp_fmu)
+par(mfrow = c(1, 2), mar = rep(0, 4))
+plot(npp_z); plot(dralb)
+plot(dralb, npp_fmu)
+
+plot(dr2alb)
+
+
+dr_z <- (dralb - cellStats(dralb, mean)) / cellStats(dralb, sd)
+plot(npp_z)
+
+dr2 <- disaggregate(yld_rl[["soybean"]][["R"]]$ymu_R990008, fact = 10)
+dr2alb <- projectRaster(dr2, npp_fmu)
+par(mar = rep(0, 4))
+plot(dr2alb, npp_fmu)
+
+
+ydiffs <- lapply(crops, function(x) {
+  yr <- lapply(c("S", "R", "I"), function(y) {
+    r <- yld_rl[[x]][[y]]
+    nms <- grep("mu", names(r))
+    rmu <- cellStats(calc(r[[nms]], mean), mean)
+    rvar <- r / rmu
+    names(rvar) <- names(r)
+    list("ratio" = rvar, "mu" = rmu)
+  })
+  names(yr) <- c("S", "R", "I")
+  yr
+})
+names(ydiffs) <- crops
+
+
+plot(fpp_mu)
+
+
+```
+
+
 
 ## How to make 1 km grids/data.tables
 

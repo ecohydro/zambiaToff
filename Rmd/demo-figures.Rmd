@@ -35,9 +35,10 @@ Existing yields are 2.3 t/ha for maize and 2 for soy.  Potential mean yields are
 Scenario: maize demand 2X, soy demand 5X
 
 ```{r, eval=FALSE}
-path <- "external/data/dt/latest/"
-il <- input_handler(input_key = "ZA", ybetas = list(1, 1), ybeta_update = 0, 
-                    path = path)
+setwd("agroEcoTradeoff")
+path <- full_path(set_base_path(), "external/data/ZA")
+code <- run_code("ZA")
+il <- input_handler(path, ybetas = list(1, 1), ybeta_update = 0, code = code)
 
 targ <- c("maize" = 3, "soy" = 6)
 currprodmod <- c(1, 1)
@@ -97,7 +98,9 @@ zambia <- countriesHigh[countriesHigh@data$SOVEREIGNT == "Zambia", ]
 zambia <- spTransform(zambia, CRSobj)
 p_figs <- full_path(p_main, "paper/figures/presentation/")
 # p_roads <- full_path(p_main, "external/input_devel/roads/tmdpfr_links.sqlite")
-load(full_path(p_model, "external/data/parks_roads.rda"))
+load(full_path(p_model, "external/data/ZA/parks_roads.rda"))
+save(pas, roads, zambia, 
+     file = full_path(p_model, "external/data/ZA/parks_roads.rda"))
 # roads <- readOGR(p_roads, layer = "tmdpfr_links")
 # pas <- raster(full_path(p_bd, "ZA-pas.tif"))
 # pmask <- !is.na(pas)
