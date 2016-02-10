@@ -10,7 +10,7 @@ output:
     number_sections: yes
 ---
 
-# Predict DSSAT yields onto finer soil map
+# Develop predictors for two-stage yield model
 
 ```{r, eval = FALSE}
 library(agroEcoTradeoff)
@@ -19,6 +19,7 @@ library(rCropMod)
 library(matrixStats)
 library(doMC)
 
+setwd("~/Dropbox/publications/zambiaToff/private/zambiaToff/")
 p_root <- lmisc::set_base_path()
 p_crop <- "~/Dropbox/data/agricultural/zambia/dssat/"
 p_cropmod <- "~/Dropbox/projects/rCropMod/external/ext_data/"
@@ -30,6 +31,7 @@ p_climo <- "~/Dropbox/data/climate/rainfall/zambia/precip/"
 p_yield <- fp(p_root, "external/input_devel/yield")
 p_pgf <- "~/Dropbox/data/climate/afdm/pgf_bc/zambia/"
 p_sgrids <- "~/Dropbox/data/soil/"
+p_dssat <- fp(p_yield, "DSSAT")
 
 # Read in Zambia grid
 mgrid <- raster(full_path(p_basedat, "ZA-grid.tif"))
@@ -44,55 +46,66 @@ soilgrid <- raster(fp(p_cropmod, "af_soil_grid.tif"))  # soil grid
 soilshare <- fread(fp(p_cropmod, "af_soil_share.csv"))  # share of profiles
 
 # Read in soil-climate grid from Di's work
-ID <- fread(full_path(p_crop, "Soil_clim_match_ID_master.csv"))
-ID[, V1 := NULL]
-setkeyv(ID, c("WTH", "SOL", "Zone"))
-ID[, SharePct := as.numeric(SharePct)]
-zone <- sort(unique(ID$Zone))
-for(i in 1:length(zone)) ID[Zone == zone[i], zoneid := i]
-setkeyv(ID, c("WTH", "Zone"))
-# ID[, FID := 1:.N]
-IDr <- subset(unique(ID[, .(x, y, ID, WTH, Zone, zoneid)]))
-setkeyv(IDr, c("WTH", "Zone"))
-# ID[SOL == "WI_ARBW438"]
-gcs <- "+proj=longlat +datum=WGS84"
-idgr <- dt_to_raster(IDr[, .(x, y, ID, zoneid)], CRS(gcs))
+# ID <- fread(full_path(p_crop, "Soil_clim_match_ID_master.csv"))
+# ID[, V1 := NULL]
+# setkeyv(ID, c("WTH", "SOL", "Zone"))
+# ID[, SharePct := as.numeric(SharePct)]
+# zone <- sort(unique(ID$Zone))
+# for(i in 1:length(zone)) ID[Zone == zone[i], zoneid := i]
+# setkeyv(ID, c("WTH", "Zone"))
+# # ID[, FID := 1:.N]
+# IDr <- subset(unique(ID[, .(x, y, ID, WTH, Zone, zoneid)]))
+# setkeyv(IDr, c("WTH", "Zone"))
+# # ID[SOL == "WI_ARBW438"]
+# idgr <- dt_to_raster(IDr[, .(x, y, ID, zoneid)], CRS(gcs))
 # plot(idgr)
 
 # Yield data selection points
+gcs <- "+proj=longlat +datum=WGS84"
 load(fp(p_yield, "empirical/stations.rda"))
-zmetsamps <- extract(idgr, zmetf, cellnumbers = TRUE)
-zmetxy <- data.frame(zmetf)[, c("x", "y")]
+zmetf@proj4string <- CRS(gcs)
+
+# zmetsamps <- extract(idgr, zmetf, cellnumbers = TRUE)
+# zmetxy <- data.frame(zmetf)[, c("x", "y")]
+zmetxy <- data.table(data.frame(zmetf)[, 1:3])
+wthnms <- substr(zmetxy$nms, 1, 4)
+ginds <- grep("g", wthnms)
+combis <- expand.grid(data.frame(cbind(LETTERS, LETTERS, LETTERS)))[, 3:1]
+combis <- paste0(combis[, 1], combis[, 2], combis[, 3])
+wthnms[ginds] <- paste0("G", combis[1:length(ginds)])
+zmetxy <- cbind(data.table("WTH" = wthnms), zmetxy)
+
 # xFromCell(idgr, zmetsamps[, "cells"]) - zmetxy$x
 # yFromCell(idgr, zmetsamps[, "cells"]) - zmetxy$y
 # zmetsamps <- cbind(xyFromCell(idgr, zmetsamps[, "cells"]), zmetsamps)
-zmetsamps <- cbind(zmetxy, zmetsamps)  # harmonize with DSSAT zmetfxy
+# zmetsamps <- cbind(zmetxy, zmetsamps)  # harmonize with DSSAT zmetfxy
 
 # zmet_dt <- data.table(data.frame(zmetsamps))[, .(x, y)]
-zmet_dt <- data.table(data.frame(zmetsamps))
-# setkeyv(zmet_dt, c("x", "y"))
-setkeyv(zmet_dt, c("ID", "zoneid"))
-
-# setkeyv(IDr, c("x", "y"))
-setkeyv(IDr, c("ID", "zoneid"))
-IDr_ss <- merge(IDr, zmet_dt)
-# IDr_ss <- IDr[zmet_dt]  # pick up IDs, soils, wth variables
-IDr_ss[, c("x.x", "y.x", "cells") := NULL]
-setnames(IDr_ss, c("x.y", "y.y"), c("x", "y"))
-setkeyv(IDr_ss, c("WTH", "Zone"))
+# zmet_dt <- data.table(data.frame(zmetsamps))
+# # setkeyv(zmet_dt, c("x", "y"))
+# setkeyv(zmet_dt, c("ID", "zoneid"))
+# 
+# # setkeyv(IDr, c("x", "y"))
+# setkeyv(IDr, c("ID", "zoneid"))
+# IDr_ss <- merge(IDr, zmet_dt)
+# # IDr_ss <- IDr[zmet_dt]  # pick up IDs, soils, wth variables
+# IDr_ss[, c("x.x", "y.x", "cells") := NULL]
+# setnames(IDr_ss, c("x.y", "y.y"), c("x", "y"))
+# setkeyv(IDr_ss, c("WTH", "Zone"))
 
 # Collect soils up here also 
-pts <- IDr_ss
+# pts <- IDr_ss
 # pts <- cbind.data.frame("x" = 27.4738917, "y" = -16.2783358)  # in Zambia
-coordinates(pts) <- ~x+y
-soilid <- extract(soilgrid, pts)  # grid id corresponding to point
-IDr_ss[, soilid := soilid]
-profs <- soilshare[CELL5M %in% soilid]  # profiles at that point
-profs[, SharePct := NULL]
-IDr_ss <- merge(IDr_ss, profs, by.x = "soilid", by.y = "CELL5M")
-IDr_ss[, soilid := NULL]
-setnames(IDr_ss, "SoilProfile", "SOL")
-setkeyv(IDr_ss, c("Zone", "WTH", "SOL"))
+# coordinates(pts) <- ~x+y
+# soilid <- extract(soilgrid, pts)  # grid id corresponding to point
+# soilid <- extract(soilgrid, zmetf)  # grid id corresponding to point
+# IDr_ss[, soilid := soilid]
+# profs <- soilshare[CELL5M %in% soilid]  # profiles at that point
+# profs[, SharePct := NULL]
+# IDr_ss <- merge(IDr_ss, profs, by.x = "soilid", by.y = "CELL5M")
+# IDr_ss[, soilid := NULL]
+# setnames(IDr_ss, "SoilProfile", "SOL")
+# setkeyv(IDr_ss, c("Zone", "WTH", "SOL"))
 
 # IDr_ss[, plot(x, y)]
 # points(zmet_dt, pch = 16, cex = 0.5)
@@ -135,158 +148,170 @@ setkeyv(IDr_ss, c("Zone", "WTH", "SOL"))
 
 # Full DSSAT yield grids
 ```{r, eval = FALSE}
-# crops <- dir(p_crop, pattern = "maize|soybean", full.names = FALSE)
-crops <- dir(p_crop, pattern = "maize", full.names = FALSE)  # only maize now
-fylds <- lapply(crops, function(X) {  # X <- "maize"
-  fnms <- dir(full_path(p_crop, X), pattern = X)
-  fl <- unlist(lapply(c("S", "R"), function(x) {
-    fnms[grep(paste0(paste0(x, "0"), "|", paste0(x, "9")), fnms)]
-  }))  # reorder to read subsistence first
-  # idt <- copy(IDr)
-  # key(idt)
-  idt <- copy(ID)
-  idt <- subset(unique(idt[, .(x, y, WTH, Zone, SharePct)]))
-  setkeyv(idt, c("WTH", "Zone"))
-  for(y in 1:length(fl)) { # y <- 1
-    # setcolorder(idt, c(4, 7:8, 5:6, 1:3))
-    print(paste("Processing", fl[y]))
-    cr <- fread(input = full_path(p_crop, paste0(X, "/", fl[y])))
-    cr[, "YR" := RUNNO - min(RUNNO) + 1, by = .(TNAM, Zones)]  # unique year  
-    setnames(cr, c("SOIL_ID...", "WSTA....", "Zones"), c("SOL", "WTH", "Zone"))
-    cr[, WTH := substr(WTH, 1, 4)]
-    cr[, c("V1", "RUNNO", "TRNO", "TNAM") := NULL]
-    setkeyv(cr, c("WTH", "Zone"))
-    
-    crm <- merge(cr, idt, by = c("WTH", "Zone"))
-
-    # nms <- names(crm)[c(6:7, 8, 1:2, 4, 9, 5, 3)]
-    
-    # Soil averaged yields
-    solmu <- crm[, round(weighted.mean(HWAH, w = SharePct)), 
-                 by = .(WTH, Zone, YR)]
-    snm <- gsub("*.*_|\\.csv", "", fl[y])
-    
-    # Yield means
-    v <- solmu[, round(mean(V1)), by = .(WTH, Zone)]
-    setnames(v, "V1", paste0("Y", snm))
-    idt <- idt[v]
-    setkeyv(idt, c("WTH", "Zone"))
-    idt
-  }
-  idt
-})
-names(fylds) <- crops
-
-rdt <- fylds$maize[, c(1:2, grep("YS", names(fylds$maize))), with = FALSE]
-mzs <- dt_to_raster(rdt, raster()@crs)
-rdt <- fylds$maize[, c(1:2, grep("YR", names(fylds$maize))), with = FALSE]
-mzr <- dt_to_raster(rdt, raster()@crs)
-
-# par(mar = rep(0, 4))
-plot(calc(mzs, max))
-plot(calc(mzr, mean))
-# plot(calc(soyr, mean))
-# plot(zmetf, pch = 16, cex = 0.5, add = TRUE)
+# # crops <- dir(p_crop, pattern = "maize|soybean", full.names = FALSE)
+# crops <- dir(p_crop, pattern = "maize", full.names = FALSE)  # only maize now
+# fylds <- lapply(crops, function(X) {  # X <- "maize"
+#   fnms <- dir(full_path(p_crop, X), pattern = X)
+#   fl <- unlist(lapply(c("S", "R"), function(x) {
+#     fnms[grep(paste0(paste0(x, "0"), "|", paste0(x, "9")), fnms)]
+#   }))  # reorder to read subsistence first
+#   # idt <- copy(IDr)
+#   # key(idt)
+#   idt <- copy(ID)
+#   idt <- subset(unique(idt[, .(x, y, WTH, Zone, SharePct)]))
+#   setkeyv(idt, c("WTH", "Zone"))
+#   for(y in 1:length(fl)) { # y <- 1
+#     # setcolorder(idt, c(4, 7:8, 5:6, 1:3))
+#     print(paste("Processing", fl[y]))
+#     cr <- fread(input = full_path(p_crop, paste0(X, "/", fl[y])))
+#     cr[, "YR" := RUNNO - min(RUNNO) + 1, by = .(TNAM, Zones)]  # unique year  
+#     setnames(cr, c("SOIL_ID...", "WSTA....", "Zones"), c("SOL", "WTH", "Zone"))
+#     cr[, WTH := substr(WTH, 1, 4)]
+#     cr[, c("V1", "RUNNO", "TRNO", "TNAM") := NULL]
+#     setkeyv(cr, c("WTH", "Zone"))
+#     
+#     crm <- merge(cr, idt, by = c("WTH", "Zone"))
+# 
+#     # nms <- names(crm)[c(6:7, 8, 1:2, 4, 9, 5, 3)]
+#     
+#     # Soil averaged yields
+#     solmu <- crm[, round(weighted.mean(HWAH, w = SharePct)), 
+#                  by = .(WTH, Zone, YR)]
+#     snm <- gsub("*.*_|\\.csv", "", fl[y])
+#     
+#     # Yield means
+#     v <- solmu[, round(mean(V1)), by = .(WTH, Zone)]
+#     setnames(v, "V1", paste0("Y", snm))
+#     idt <- idt[v]
+#     setkeyv(idt, c("WTH", "Zone"))
+#     idt
+#   }
+#   idt
+# })
+# names(fylds) <- crops
+# 
+# rdt <- fylds$maize[, c(1:2, grep("YS", names(fylds$maize))), with = FALSE]
+# mzs <- dt_to_raster(rdt, raster()@crs)
+# rdt <- fylds$maize[, c(1:2, grep("YR", names(fylds$maize))), with = FALSE]
+# mzr <- dt_to_raster(rdt, raster()@crs)
+# 
+# # par(mar = rep(0, 4))
+# plot(calc(mzs, max))
+# plot(calc(mzr, mean))
+# # plot(calc(soyr, mean))
+# # plot(zmetf, pch = 16, cex = 0.5, add = TRUE)
 
 ```
-
 
 # Extract subset of DSSAT yields, soils, climate data
 ## Yield
 ```{r, eval=FALSE}
-# merge function for lists of data.tables
-mymerge <- function(x, y) merge(x, y, all = TRUE)
-
-crops <- dir(p_crop, pattern = "maize", full.names = FALSE)  # only maize now
-# Yield data for those points
-mannms <- c("S", "R")
-ylds <- lapply(crops, function(X) {
-  # X <- crops[1]
-  fnms <- dir(full_path(p_crop, X), pattern = X)
-  fl <- unlist(lapply(mannms, function(x) {
-    fnms[grep(paste0(paste0(x, "0"), "|", paste0(x, "9")), fnms)]
-  }))  # reorder to read subsistence first
-  # fl <- fl[1:3]
-  crml <- lapply(1:length(fl), function(y) { # y <- 1
-    idt <- copy(IDr_ss)
-    print(paste("Processing", fl[y]))
-    cr <- fread(input = full_path(p_crop, paste0(X, "/", fl[y])))
-    cr[, "YR" := RUNNO - min(RUNNO) + 1, by = .(TNAM, Zones)]  # unique year  
-    setnames(cr, c("SOIL_ID...", "WSTA....", "Zones"), c("SOL", "WTH", "Zone"))
-    cr[, WTH := substr(WTH, 1, 4)]
-    cr[, c("V1", "RUNNO", "TRNO", "TNAM") := NULL]
-    setkeyv(cr, c("Zone", "WTH", "SOL"))
-
-    # merge IDs with subset location
-    # crm <- cr[idt]
-    crm <- merge(cr, idt)
-    # crm[, SharePct := NULL]
-    nms <- names(crm)[c(7:8, 6, 1:2, 9, 3, 5, 4)]
-    setcolorder(crm, nms)
-    mid <- 1:nrow(crm)
-    crm <- cbind(mid, crm)
-    keys <- c("mid", "x", "y", "ID", "WTH", "Zone", "zoneid", "SOL", "YR")
-    setkeyv(crm, keys)
-    # setcolorder(crm, c(nms[grep("HWAH", nms, invert = TRUE)], "HWAH"))
-    newnm <- gsub(".*._||\\.csv", "", fl[y])
-    setnames(crm, "HWAH", newnm)
-    crm
-  })
-  yldmerge <- Reduce(mymerge, crml)
-  ynms <- names(yldmerge)
-  # yldred <- data.table(round(do.call(cbind, lapply(mannms, function(x) {
-    # yldmerge[, rowMeans(.SD), .SDcols = grep(paste0(x, "[0-9]"), ynms)]
-  # }))))
-  # calculate 
-  for(i in mannms) {
-    onms <- list(paste0("YLD", i), grep(paste0(i, "[0-9]"), ynms))
-    # yldmerge[, c(onms[[1]]) := round(rowMeans(.SD)), .SDcols = onms[[2]]]
-    # Selecting rowMax here
-    yldmerge[, c(onms[[1]]) := apply(.SD, 1, max), .SDcols = onms[[2]]]
-    yldmerge[, c(onms[[2]]) := NULL]
-  }
+# mymerge <- function(x, y) merge(x, y, all = TRUE)
+crops <- c("maize", "soy")
+ylds <- lapply(crops, function(X) {  # X <- crops[2]
+  fnms <- dir(p_dssat, pattern = paste0(X, "_"), full.names = TRUE)
+  cr <- fread(fnms, stringsAsFactors = FALSE)
+  cr[, YR := RUNNO - min(RUNNO) + 1, by = .(XNAME, TRNO)]  # unique year  
+  cr[, c("SOIL_ID...", "RUNNO") := NULL]
   
-  # Internal check on yield means
-  if(length(crml) == 8) crind <- list("S" = 1:4, "R" = 5:8, "I" = 9:12) 
-  if(length(crml) == 6) crind <- list("S" = 1:3, "R" = 4:6, "I" = 7:9) 
-  for(ii in sample(1:nrow(yldmerge), size = 20)) {
-    for(jj in 1:length(mannms)) {  # jj = 2
-      a <- yldmerge[ii, ]
-      b <- sapply(crind[[jj]], function(x) {
-        crml[[x]][mid == a$mid, ][[ncol(crml[[x]])]]
-      })
-      #if(a[[paste0("YLD", mannms[jj])]] != round(mean(b))) {
-      if(a[[paste0("YLD", mannms[jj])]] != round(max(b))) {
-        print(paste("Yield mismatch at", ii, mannms[jj]))
-      }
-    }
-  }
-  
-  # swap in averaged yields
-  # yldmerge[, mid := NULL]
-  # yldmerge <- cbind(yldmerge, yldred)
-  yldmerge
+  # Yields. S becomes mean across cultivars, R becomes max of cultivars
+  cr2 <- cr[, round(mean(HWAH)), by = .(XNAME, x, y, WTH, PROF, YR)]
+  setnames(cr2, c("V1", "PROF"), c("YLDS", "SOL"))
+  cr2[, YLDR := cr[, round(max(HWAH)), by = .(XNAME, YR)][, V1]]
+  cr2
 })
 names(ylds) <- crops
 
-soy_ylds <- fread(fp(p_yield, "DSSAT/soy_ylds.csv"))
-# soy_ylds[, year := as.numeric(substr(PDAT, 1, 4))]
-soy_ylds[, YR := 1:31, by = .(XNAME, TRNO)]  # unique year
-soy_ylds[, c("RUNNO", "PROF", "PDAT", "MDAT", "PRCM") := NULL]
-setnames(soy_ylds, "SOIL_ID...", "SOL")
-
-# calculate mean and max as YLDS and YLDR
-soy_ylds2 <- soy_ylds[,  round(mean(HWAH)), by = .(XNAME, x, y, WTH, SOL, YR)]
-setnames(soy_ylds2, "V1", "YLDS")
-soy_ylds2[, YLDR := soy_ylds[,  round(max(HWAH)), by = .(XNAME, YR)][, V1]]
-soy_ylds2[, XNAME := NULL]
-
-ylds$maize[, c("ID", "Zone", "zoneid") := NULL]
-soy_ylds2 <- cbind(c("mid" = 1:nrow(soy_ylds2)), soy_ylds2)
-setnames(soy_ylds2, "V1", "mid")
-
-ylds <- list(ylds$maize, soy_ylds2)
-names(ylds) <- c("maize", "soybean")
+# crops <- dir(p_crop, pattern = "maize", full.names = FALSE)  # only maize now
+# # Yield data for those points
+# mannms <- c("S", "R")
+# ylds <- lapply(crops, function(X) {
+#   # X <- crops[1]
+#   fnms <- dir(full_path(p_crop, X), pattern = X)
+#   fl <- unlist(lapply(mannms, function(x) {
+#     fnms[grep(paste0(paste0(x, "0"), "|", paste0(x, "9")), fnms)]
+#   }))  # reorder to read subsistence first
+#   # fl <- fl[1:3]
+#   crml <- lapply(1:length(fl), function(y) { # y <- 1
+#     idt <- copy(IDr_ss)
+#     print(paste("Processing", fl[y]))
+#     cr <- fread(input = full_path(p_crop, paste0(X, "/", fl[y])))
+#     cr[, "YR" := RUNNO - min(RUNNO) + 1, by = .(TNAM, Zones)]  # unique year  
+#     setnames(cr, c("SOIL_ID...", "WSTA....", "Zones"), c("SOL", "WTH", "Zone"))
+#     cr[, WTH := substr(WTH, 1, 4)]
+#     cr[, c("V1", "RUNNO", "TRNO", "TNAM") := NULL]
+#     setkeyv(cr, c("Zone", "WTH", "SOL"))
+# 
+#     # merge IDs with subset location
+#     # crm <- cr[idt]
+#     crm <- merge(cr, idt)
+#     # crm[, SharePct := NULL]
+#     nms <- names(crm)[c(7:8, 6, 1:2, 9, 3, 5, 4)]
+#     setcolorder(crm, nms)
+#     mid <- 1:nrow(crm)
+#     crm <- cbind(mid, crm)
+#     keys <- c("mid", "x", "y", "ID", "WTH", "Zone", "zoneid", "SOL", "YR")
+#     setkeyv(crm, keys)
+#     # setcolorder(crm, c(nms[grep("HWAH", nms, invert = TRUE)], "HWAH"))
+#     newnm <- gsub(".*._||\\.csv", "", fl[y])
+#     setnames(crm, "HWAH", newnm)
+#     crm
+#   })
+#   yldmerge <- Reduce(mymerge, crml)
+#   ynms <- names(yldmerge)
+#   # yldred <- data.table(round(do.call(cbind, lapply(mannms, function(x) {
+#     # yldmerge[, rowMeans(.SD), .SDcols = grep(paste0(x, "[0-9]"), ynms)]
+#   # }))))
+#   # calculate 
+#   for(i in mannms) {
+#     onms <- list(paste0("YLD", i), grep(paste0(i, "[0-9]"), ynms))
+#     # yldmerge[, c(onms[[1]]) := round(rowMeans(.SD)), .SDcols = onms[[2]]]
+#     # Selecting rowMax here
+#     yldmerge[, c(onms[[1]]) := apply(.SD, 1, max), .SDcols = onms[[2]]]
+#     yldmerge[, c(onms[[2]]) := NULL]
+#   }
+#   
+#   # Internal check on yield means
+#   if(length(crml) == 8) crind <- list("S" = 1:4, "R" = 5:8, "I" = 9:12) 
+#   if(length(crml) == 6) crind <- list("S" = 1:3, "R" = 4:6, "I" = 7:9) 
+#   for(ii in sample(1:nrow(yldmerge), size = 20)) {
+#     for(jj in 1:length(mannms)) {  # jj = 2
+#       a <- yldmerge[ii, ]
+#       b <- sapply(crind[[jj]], function(x) {
+#         crml[[x]][mid == a$mid, ][[ncol(crml[[x]])]]
+#       })
+#       #if(a[[paste0("YLD", mannms[jj])]] != round(mean(b))) {
+#       if(a[[paste0("YLD", mannms[jj])]] != round(max(b))) {
+#         print(paste("Yield mismatch at", ii, mannms[jj]))
+#       }
+#     }
+#   }
+#   
+#   # swap in averaged yields
+#   # yldmerge[, mid := NULL]
+#   # yldmerge <- cbind(yldmerge, yldred)
+#   yldmerge
+# })
+# names(ylds) <- crops
+# 
+# soy_ylds <- fread(fp(p_yield, "DSSAT/soy_ylds.csv"))
+# # soy_ylds[, year := as.numeric(substr(PDAT, 1, 4))]
+# soy_ylds[, YR := 1:31, by = .(XNAME, TRNO)]  # unique year
+# soy_ylds[, c("RUNNO", "PROF", "PDAT", "MDAT", "PRCM") := NULL]
+# setnames(soy_ylds, "SOIL_ID...", "SOL")
+# 
+# # calculate mean and max as YLDS and YLDR
+# soy_ylds2 <- soy_ylds[,  round(mean(HWAH)), by = .(XNAME, x, y, WTH, SOL, YR)]
+# setnames(soy_ylds2, "V1", "YLDS")
+# soy_ylds2[, YLDR := soy_ylds[,  round(max(HWAH)), by = .(XNAME, YR)][, V1]]
+# soy_ylds2[, XNAME := NULL]
+# 
+# ylds$maize[, c("ID", "Zone", "zoneid") := NULL]
+# soy_ylds2 <- cbind(c("mid" = 1:nrow(soy_ylds2)), soy_ylds2)
+# setnames(soy_ylds2, "V1", "mid")
+# 
+# ylds <- list(ylds$maize, soy_ylds2)
+# names(ylds) <- c("maize", "soybean")
 
 ```
 
@@ -295,13 +320,15 @@ names(ylds) <- c("maize", "soybean")
 ### Profile data
 Note: Using an updated version of `read_dssat_prof.R` from the rCropMod library. It needs to be rebuilt into that library.  Here it is being sourced before runnign the next section. 
 ```{r, eval = FALSE}
-pts <- IDr_ss[, .(x, y)]
+# pts <- IDr_ss[, .(x, y)]
 # pts <- cbind.data.frame("x" = 27.4738917, "y" = -16.2783358)  # in Zambia
-coordinates(pts) <- ~x+y
-soilid <- extract(soilgrid, pts)  # grid id corresponding to point
+# coordinates(pts) <- ~x+y
+soilid <- extract(soilgrid, zmetf)  # grid id corresponding to point
+# soilid <- extract(soilgrid, pts)  # grid id corresponding to point
 profs <- soilshare[CELL5M %in% soilid]  # profiles at that point
 profdat <- read_fullSOL_prof(solfile = full_path(p_soil, "WI.SOL"), 
-                             profiles = profs$SoilProfile) 
+                             profiles = profs$SoilProfile)
+setnames(profdat, "prof", "SOL")
 solvars <- unique(gsub("[[:digit:]]", "", names(profdat)))
 lnms <- names(profdat)
 
@@ -363,7 +390,7 @@ solvals <- do.call(cbind, lapply(solvarsr, function(i) {  # i <- solvarsr[2]
 colnames(solvals) <- solvarsr
 
 # finalize
-sol1m <- cbind("prof" = profdat[, prof], data.table(solvals))
+sol1m <- cbind("SOL" = profdat[, SOL], data.table(solvals))
 # unique(ylds$soybean$SOL) %in% sol1m$prof
 ```
 
@@ -482,6 +509,9 @@ ndjfind <- rep(0, length(dts))  # djf of each growing season
 for(i in sindu) ndjfind[which(sind == i & mos %in% c(1, 2, 11, 12))] <- i
 octind <- rep(0, length(dts))  # feb of each year
 for(i in sindu) octind[which(sind == i & mos == 10)] <- i
+djfmind <- rep(0, length(dts))  # feb of each year
+for(i in sindu) djfmind[which(sind == i & mos  %in% c(12, 1:3))] <- i
+# cbind(yrs[sind == 1], mos[sind == 1], djfmind[sind == 1])
 
 sindu2 <- sindu[sindu %in% which(ano %in% 1979:2010)]
 
@@ -506,35 +536,6 @@ sdepth <- function(x) mean(x[x > 0])  # storm depth
 # })
 # sdeps <- stack(sdeps)
 # 
-# # storm depth in NDJF
-# rdays <- lapply(sindu2, function(x) { # x <- sindu2[1]
-#   print(x)
-#   ryr <- prec[[which(djfind == x)]]
-#   r <- calc(ryr, nrday)
-#   names(r) <- as.character(ano[x])
-#   r
-# })
-# rdays <- stack(rdays)
-# 
-# # dry days in January
-# drydaysj <- lapply(sindu2, function(x) { # x <- sindu2[1]
-#   print(x)
-#   ryr <- prec[[which(janind == x)]]
-#   r <- calc(ryr, ndry)
-#   names(r) <- as.character(ano[x])
-#   r
-# })
-# drydaysj <- stack(drydaysj)
-# 
-# # dry days in February
-# drydaysf <- lapply(sindu2, function(x) { # x <- sindu2[1]
-#   print(x)
-#   ryr <- prec[[which(febind == x)]]
-#   r <- calc(ryr, ndry)
-#   names(r) <- as.character(ano[x])
-#   r
-# })
-# drydaysf <- stack(drydaysf)
 
 registerDoMC(7)
 
@@ -551,6 +552,13 @@ ndjftot <- stack(foreach(i = 1:length(sindu2)) %dopar% { #  i <- 1
   calc(prec[[ind]], sum)
 })
 writeRaster(ndjftot, filename = fp(p_clim, "ndjftot.tif"), overwrite = TRUE)
+
+# DJFM season rainfall
+djfmtot <- stack(foreach(i = 1:length(sindu2)) %dopar% { #  i <- 1
+  ind <- which(djfmind == sindu2[i])
+  calc(prec[[ind]], sum)
+})
+writeRaster(djfmtot, filename = fp(p_clim, "djfmtot.tif"), overwrite = TRUE)
 
 # JFM season rainfall
 jfmtot <- stack(foreach(i = 1:length(sindu2)) %dopar% { #  i <- 1
@@ -580,25 +588,6 @@ octtot <- stack(foreach(i = 1:length(sindu2)) %dopar% { #  i <- 1
 })
 writeRaster(octtot, filename = fp(p_clim, "octtot.tif"), overwrite = TRUE)
 
-# par(mfrow = c(6, 6), mar = c(0, 0, 0, 0))
-# for(i in 1:nlayers(octtot)) {
-#   plot(octtot[[i]], axes = FALSE, box = FALSE)
-#   plot(prov, add = TRUE, zlim = c(0, 1000))
-# }
-# which(1980:2010 %in% ) 
-# pre2005 <- calc(octtot[[1:26]], mean)
-# post2005 <- calc(octtot[[27:31]], mean)
-# 
-# par(mfrow = c(1, 2), mar = c(0, 0, 0, 0))
-# plot(pre2005, axes = FALSE, box = FALSE, zlim = c(0, 400))
-# plot(prov, add = TRUE)
-# plot(post2005, axes = FALSE, box = FALSE, zlim = c(0, 400))
-# plot(prov, add = TRUE)
-# 
-# par(mfrow = c(1, 1), mar = c(0, 0, 0, 0))
-# plot((pre2005 - post2005) / pre2005 * 100, zlim = c(-100, 100))
-# plot(prov, add = TRUE)
-
 # plot(rftot[[1]] - ndjftot[[1]])
 # plot(ndjftot[[1]]); plot(rftot[[1]])
 
@@ -622,8 +611,14 @@ tmu <- foreach(i = 1:length(sindu2)) %dopar% { #  i <- 1
   ind <- which(sind == sindu2[i])
   tmu <- (tmax[[ind]] + tmin[[ind]]) / 2 - 273.15
 }
+writeRaster(stack(tmu), filename = fp(p_clim, "tmu.tif"), overwrite = TRUE)
 
 # Functions
+gddf <- function(x) {
+  a <- x - 8
+  sum(ifelse(a < 0, 0, a))
+}
+
 # GDD between 8-30 degrees
 gdd830 <- function(x) {
   a <- x[x < 30] - 8
@@ -645,8 +640,11 @@ ftmax30 <- function(x) length(x[x > 30])
 # growing degree day and killing degree days
 kdd <- stack(kdy <- foreach(i = 1:length(tmu)) %dopar% calc(tmu[[i]], kdd))
 writeRaster(kdd, filename = fp(p_clim, "kdd.tif"), overwrite = TRUE)
-gdd <- stack(gdy <- foreach(i = 1:length(tmu)) %dopar% calc(tmu[[i]], gdd830))
-writeRaster(gdd, filename = fp(p_clim, "gdd.tif"), overwrite = TRUE)
+gdd30 <- stack(gdy <- foreach(i = 1:length(tmu)) %dopar% calc(tmu[[i]], gdd830))
+writeRaster(gdd30, filename = fp(p_clim, "gdd30.tif"), overwrite = TRUE)
+gdd <- stack(gdy <- foreach(i = 1:length(tmu)) %dopar% calc(tmu[[i]], gddf))
+writeRaster(gdd30, filename = fp(p_clim, "gdd.tif"), overwrite = TRUE)
+
 
 # tmax greater than 30, Jan and Feb
 nkilljan <- stack(foreach(i = 1:length(sindu2)) %dopar% { #  i <- 1
@@ -690,12 +688,29 @@ srtot_gs <- stack(foreach(i = 1:length(sindu2)) %dopar% { #  i <- 1
   calc(mj, sum)
 })
 writeRaster(srtot_gs, filename = fp(p_clim, "srtot_gs.tif"), overwrite = TRUE)
-srmu_gs <- stack(foreach(i = 1:length(sindu2)) %dopar% { #  i <- 1
+srmu_gs1 <- stack(foreach(i = 1:length(sindu2)) %dopar% { #  i <- 1
   ind <- which(ndjfind == sindu2[i])
   mj <- mjday(srad[[ind]])
   calc(mj, mean)
 })
-writeRaster(srmu_gs, filename = fp(p_clim, "srmu_gs.tif"), overwrite = TRUE)
+writeRaster(srmu_gs1, filename = fp(p_clim, "srmu_gs1.tif"), overwrite = TRUE)
+
+# DJFM mean solar radiation
+srmu_gs2 <- stack(foreach(i = 1:length(sindu2)) %dopar% { #  i <- 1
+  ind <- which(djfmind == sindu2[i])
+  mj <- mjday(srad[[ind]])
+  calc(mj, mean)
+})
+writeRaster(srmu_gs2, filename = fp(p_clim, "srmu_gs2.tif"), overwrite = TRUE)
+
+# JFM mean solar radiation
+srmu_gs3 <- stack(foreach(i = 1:length(sindu2)) %dopar% { #  i <- 1
+  ind <- which(jfmind == sindu2[i])
+  mj <- mjday(srad[[ind]])
+  calc(mj, mean)
+})
+writeRaster(srmu_gs3, filename = fp(p_clim, "srmu_gs3.tif"), overwrite = TRUE)
+
 
 # total and mean gs for whole year
 srtot_ano <- stack(foreach(i = 1:length(sindu2)) %dopar% { #  i <- 1
@@ -717,16 +732,17 @@ writeRaster(srmu_ano, filename = fp(p_clim, "srmu_ano.tif"), overwrite = TRUE)
 
 1. Predictors: 
     + Weather/climate: 
-        +`rftot`, `ndjftot`, `jantot`, `febtot` for rainfall; `kdays`, `gdd`, `f30jan`, `f30feb`, `tmax_gs`, `tmax_ano` for temperature; `srtot_gs`, `srmu_gs`, `srtot_ano`, and `srmu_ano` for solar radiation
+        +`rftot`, `ndjftot`, `jantot`, `febtot` for rainfall; `kdays`, `gdd`, `f30jan`, `f30feb`, `tmax_gs`, `tmax_ano` for temperature; `srtot_gs`, `srmu_gs`, `srtot_ano`, and `srmu_ano` for solar radiation (plus others added on the way)
     + Soil: mean soil properties within top 1 m
-    + Management variables: Codes S, R, I
+    + Management parameters: Codes S, R, 
 2. Predictands: mean yields across cultivars within each management type
 
 ```{r, eval = FALSE}
 # Organize rainfall
-climnms <- c("rftot", "ndjftot", "jfmtot",  "jantot", "febtot", "octtot", "kdd",
-             "gdd", "nkilljan", "nkillfeb", "tmax_ano", "tmax_gs", "srtot_ano",
-             "srmu_ano", "srtot_gs", "srmu_gs")
+climnms <- c("rftot", "ndjftot", "^djfmtot", "^jfmtot", "jantot", "febtot",
+             "octtot", "kdd", "gdd\\.", "gdd30", "nkilljan", "nkillfeb",
+             "tmax_ano", "tmax_gs", "srtot_ano", "srmu_ano", "srtot_gs",
+             "srmu_gs1", "srmu_gs2", "srmu_gs3")
 bnms <- sapply(climnms, function(x) dir(p_clim, pattern = x, full.names = TRUE))
 
 blist <- lapply(bnms, function(x) {
@@ -735,8 +751,9 @@ blist <- lapply(bnms, function(x) {
   b
 })
 
-onms <- c("MAP", "MSP", "JFMP", "JP", "FP", "OP", "KDD", "GDD", "NKJ", "NKF", 
-          "ATMX", "STMX", "SSRT", "SSRM", "ASRT", "ASRM")
+onms <- c("MAP", "MSP", "DJFMP", "JFMP", "JP", "FP", "OP", "KDD", "GDD", 
+          "GDDL", "NKJ", "NKF", "ATMX", "STMX", "ASRT", "ASRM", "SSRT", "SSRMI",
+          "SSRMII", "SSRMIII")
 climl <- lapply(1:length(blist), function(x) {
   r <- blist[[x]]
   names(r) <- paste0(onms[x], 1:nlayers(r))
@@ -747,12 +764,14 @@ names(climl) <- onms
 # melt predictors
 xy <- unique(ylds$maize[, .(x, y)])
 # xy[, ind := 1:.N]
-cols <- c("x", "y")
-xy[, (cols) := lapply(.SD, function(x) round(x, 5)), .SDcols = cols]
+# cols <- c("x", "y")
+# xy[, (cols) := lapply(.SD, function(x) round(x, 5)), .SDcols = cols]
+# coordinates(xy) <- ~x+y
 
 # climate predictors
+mymerge <- function(x, y) merge(x, y, all = TRUE)
 climvals <- lapply(1:length(climl), function(i) extract(x = climl[[i]], xy))
-climxy <- lapply(climvals, function(x) {  # x <- rvals[[1]]
+climxy <- lapply(climvals, function(x) {  # x <- climvals[[18]]
   rmelt <- melt(cbind(xy, x), id = 1:2)
   setnames(rmelt, "value", unique(gsub("[0-9]", "", rmelt$variable)))
   rmelt[, variable := gsub("[[:alpha:]]", "", variable)]
@@ -765,59 +784,12 @@ climpreds <- Reduce(mymerge, climxy)
 climpreds[, YR := as.integer(YR)]
 setkeyv(climpreds, c("x", "y", "YR"))
 
-# # rainfall
-# rvals <- lapply(1:length(rfl), function(i) extract(x = rfl[[i]], xy))
-# rvxy <- lapply(rvals, function(x) {  # x <- rvals[[1]]
-#   rmelt <- melt(cbind(xy, x), id = 1:2)
-#   setnames(rmelt, "value", unique(gsub("[0-9]", "", rmelt$variable)))
-#   rmelt[, variable := gsub("[[:alpha:]]", "", variable)]
-#   setnames(rmelt, "variable", "YR")
-#   # rmelt[, (cols) := lapply(.SD, as.character), .SDcols = cols]
-#   rmelt[, ind := 1:.N]
-#   setkeyv(rmelt, c("ind", "x", "y", "YR"))
-#   rmelt
-# })
-# rfpreds <- Reduce(mymerge, rvxy)
-# 
-# # temperature
-# tvals <- lapply(1:length(tfl), function(i) extract(x = tfl[[i]], xy))
-# tvxy <- lapply(tvals, function(x) {  # x <- tvals[[3]]
-#   rmelt <- melt(cbind(xy, x), id = 1:2)
-#   setnames(rmelt, "value", unique(gsub("[0-9]", "", rmelt$variable)))
-#   rmelt[, variable := gsub("[[:alpha:]]", "", variable)]
-#   setnames(rmelt, "variable", "YR")
-#   # rmelt[, (cols) := lapply(.SD, as.character), .SDcols = cols]
-#   rmelt[, ind := 1:.N]
-#   setkeyv(rmelt, c("ind", "x", "y", "YR"))
-#   rmelt
-# })
-# tfpreds <- Reduce(mymerge, tvxy)
-# 
-# 
-# # srad
-# svals <- lapply(1:length(sfl), function(i) extract(x = sfl[[i]], xy))
-# svxy <- lapply(svals, function(x) {  # x <- rvals[[1]]
-#   rmelt <- melt(cbind(xy, x), id = 1:2)
-#   setnames(rmelt, "value", unique(gsub("[0-9]", "", rmelt$variable)))
-#   rmelt[, variable := gsub("[[:alpha:]]", "", variable)]
-#   setnames(rmelt, "variable", "YR")
-#   # rmelt[, (cols) := lapply(.SD, as.character), .SDcols = cols]
-#   rmelt[, ind := 1:.N]
-#   setkeyv(rmelt, c("ind", "x", "y", "YR"))
-#   rmelt
-# })
-# sfpreds <- Reduce(mymerge, svxy)
-
-# Join all climate predictors
-# climpreds <- Reduce(mymerge, list(rfpreds, tfpreds, sfpreds))
-# climpreds[, YR := as.integer(YR)]
-# setkeyv(climpreds, c("x", "y", "YR"))
-
-setnames(sol1m, "prof", "SOL")
+# soil predictors
 setkey(sol1m, "SOL")
 sols1mu <- unique(sol1m)
 
 # merge together all the data
+cols <- c("x", "y")
 regdat <- lapply(ylds, function(i) {  # i <- ylds[[1]]
   i[, (cols) := lapply(.SD, function(x) round(x, 5)), .SDcols = cols]
   setkeyv(i, c("x", "y", "SOL"))
@@ -827,11 +799,11 @@ regdat <- lapply(ylds, function(i) {  # i <- ylds[[1]]
   m2 <- merge(m1, climpreds)
 })
 
-all(regdat$maize$SOL == regdat$soybean$SOL)
-all(regdat$maize$x == regdat$soybean$x)
-all(regdat$maize$y == regdat$soybean$y)
-all(regdat$maize$OP == regdat$soybean$OP)
-all(regdat$maize$SLOC == regdat$soybean$SLOC)
+all(regdat$maize$SOL == regdat$soy$SOL)
+all(regdat$maize$x == regdat$soy$x)
+all(regdat$maize$y == regdat$soy$y)
+all(regdat$maize$OP == regdat$soy$OP)
+all(regdat$maize$SLOC == regdat$soy$SLOC)
 
 # Checking merges (disabled at present)
 # set.seed(234)
@@ -865,19 +837,19 @@ all(regdat$maize$SLOC == regdat$soybean$SLOC)
 
 
 # ylds[[1]][ID == 6968 & zoneid == 1]
-regdat <- lapply(regdat, function(i) {
-  setcolorder(i, c(5, 1:4, 6:ncol(i)))
-  setnames(i, "mid", "midold")
-  i <- cbind(data.table("mid" = 1:nrow(i)), i)
-  i <- setkey(i, "mid")
-  i
-})
-
-all(regdat$maize$SOL == regdat$soybean$SOL)
-all(regdat$maize$x == regdat$soybean$x)
-all(regdat$maize$y == regdat$soybean$y)
-all(regdat$maize$OP == regdat$soybean$OP)
-all(regdat$maize$SLOC == regdat$soybean$SLOC)
+# regdat <- lapply(regdat, function(i) {
+#   setcolorder(i, c(5, 1:4, 6:ncol(i)))
+#   setnames(i, "mid", "midold")
+#   i <- cbind(data.table("mid" = 1:nrow(i)), i)
+#   i <- setkey(i, "mid")
+#   i
+# })
+# 
+# all(regdat$maize$SOL == regdat$soybean$SOL)
+# all(regdat$maize$x == regdat$soybean$x)
+# all(regdat$maize$y == regdat$soybean$y)
+# all(regdat$maize$OP == regdat$soybean$OP)
+# all(regdat$maize$SLOC == regdat$soybean$SLOC)
 
 regdt <- rbindlist(lapply(names(regdat), function(x) {
   CROP <- x
