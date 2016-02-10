@@ -23,6 +23,7 @@ library(mgcv)
 p_root <- lmisc::set_base_path()
 p_clim <- fp(p_root, "external/input_devel/climate")
 p_yield <- fp(p_root, "external/input_devel/yield")
+p_sgrids <- fp(p_root, "external/input_devel/soil") 
 
 # Zambia provinces
 p_prov <- paste0("/Users/lestes/Dropbox/data/zari/infrastructure/zambia/", 
@@ -39,20 +40,21 @@ load(fp(p_yield, "empirical/regdat.rda"))
 ```{r, eval = FALSE}
 plot(prov)
 regdt[CROP == "maize", points(x, y, pch = 16, cex = 0.5)]
-regdt[CROP == "maize" & YLDS > 8000, 
+# regdt[CROP == "maize", plot(MAP, YLDS)]
+regdt[CROP == "maize" & YLDS > 9000, 
       points(x, y, pch = 16, cex = 0.5, col = "red")]
-regdt[CROP == "maize" & YLDS > 8000, 
-      points(x, y, pch = 16, cex = 0.5, col = "red")]
-regdt[CROP == "soybean" & YLDS > 1700, 
-      points(x, y, pch = 16, cex = 0.5, col = "blue")]
+# regdt[CROP == "soybean", plot(MAP, YLDR)]
+# regdt[CROP == "soybean" & YLDS > 1700, 
+#       points(x, y, pch = 16, cex = 0.5, col = "blue")]
 
 # Prune out yields > 8000 maize > 1700 soybean in subsistence case
-mzfilt <- regdt[CROP == "soybean" & YLDS > 1700, unique(.SD), 
-                .SDcols = c("x", "y", "SOL", "WTH", "Zone")]
-soyfilt <- regdt[CROP == "maize" & YLDS > 8000, unique(.SD), 
-                 .SDcols = c("x", "y", "SOL", "WTH", "Zone")]
-regnew <- regdt[!x %in% soyfilt$x | !y %in% soyfilt$y]
-# regnew[CROP == "maize", points(x, y, pch = 16, cex = 0.5, col = "green")]
+# soyfilt <- regdt[CROP == "soybean" & YLDS > 1700, unique(.SD), 
+#                 .SDcols = c("x", "y", "SOL", "WTH", "Zone")]
+mzfilt <- regdt[CROP == "maize" & YLDS > 9000, unique(.SD), 
+                .SDcols = c("x", "y", "SOL", "WTH")]
+# regnew <- regdt[!x %in% soyfilt$x | !y %in% soyfilt$y]
+regnew <- regdt[!x %in% mzfilt$x | !y %in% mzfilt$y]
+regnew[CROP == "maize", points(x, y, pch = 16, cex = 0.5, col = "green")]
 
 # regnew[CROP == "maize", hist(YLDS)]
 # regnew[CROP == "maize", hist(YLDR)]
@@ -67,16 +69,16 @@ regnew[CROP == "soybean", plot(MSP, YLDR, pch = 16, cex = 0.5)]
 regnew[CROP == "maize", plot(FP, YLDS, pch = 16, cex = 0.5)]
 regnew[CROP == "maize", plot(MSP, YLDS, pch = 16, cex = 0.5)]
 regnew[CROP == "maize", plot(MSP, YLDR, pch = 16, cex = 0.5)]
-regnew[CROP == "maize", plot(sloc, YLDS, pch = 16, cex = 0.5)]
-regnew[CROP == "maize", plot(sloc, YLDR, pch = 16, cex = 0.5)]
-regnew[CROP == "maize", plot(slcl, YLDS, pch = 16, cex = 0.5)]
-regnew[CROP == "maize", plot(slcl, YLDR, pch = 16, cex = 0.5)]
-regnew[CROP == "maize", plot(slsi, YLDS, pch = 16, cex = 0.5)]
-regnew[CROP == "maize", plot(slsi, YLDR, pch = 16, cex = 0.5)]
-regnew[CROP == "maize", plot(sbdm, YLDS, pch = 16, cex = 0.5)]
-regnew[CROP == "maize", plot(sbdm, YLDR, pch = 16, cex = 0.5)]
-regnew[CROP == "maize", plot(slhw, YLDS, pch = 16, cex = 0.5)]  # pH looks pred
-regnew[CROP == "maize", plot(slhw, YLDR, pch = 16, cex = 0.5)]  # pH looks pred
+regnew[CROP == "maize", plot(SLOC, YLDS, pch = 16, cex = 0.5)]
+regnew[CROP == "maize", plot(SLOC, YLDR, pch = 16, cex = 0.5)]
+regnew[CROP == "maize", plot(SLCL, YLDS, pch = 16, cex = 0.5)]
+regnew[CROP == "maize", plot(SLCL, YLDR, pch = 16, cex = 0.5)]
+regnew[CROP == "maize", plot(SLSI, YLDS, pch = 16, cex = 0.5)]
+regnew[CROP == "maize", plot(SLSI, YLDR, pch = 16, cex = 0.5)]
+regnew[CROP == "maize", plot(SBDM, YLDS, pch = 16, cex = 0.5)]
+regnew[CROP == "maize", plot(SBDM, YLDR, pch = 16, cex = 0.5)]
+regnew[CROP == "maize", plot(SLHW, YLDS, pch = 16, cex = 0.5)]  # pH looks pred
+regnew[CROP == "maize", plot(SLHW, YLDR, pch = 16, cex = 0.5)]  # pH looks pred
 regnew[CROP == "maize", plot(GDD, YLDS, pch = 16, cex = 0.5)]
 regnew[CROP == "maize", plot(KDD, YLDS, pch = 16, cex = 0.5)]
 # regnew[CROP == "maize", plot(log(KDD), YLDS, pch = 16, cex = 0.5)]
@@ -90,20 +92,19 @@ regnew[CROP == "maize", plot(SSRM, YLDS, pch = 16, cex = 0.5)]
 regnew[CROP == "maize", plot(ASRT, YLDS, pch = 16, cex = 0.5)]
 regnew[CROP == "maize", plot(ASRM, YLDS, pch = 16, cex = 0.5)]
 
-
 regnew[, round(cor(.SD), 2), .SDcols = names(regnew)[-c(1:13)]]
 
-summary(lm(YLDS ~ poly(sbdm, 2) + poly(slhw, 2), 
+summary(lm(YLDS ~ poly(SBDM, 2) + poly(SLHW, 2), 
            data = regnew[CROP == "maize", ]))
-summary(lm(YLDS ~ poly(slhw, 2), data = regnew[CROP == "maize", ]))
-summary(lm(YLDS ~ poly(sbdm, 2), data = regnew[CROP == "maize", ]))
+summary(lm(YLDS ~ poly(SLHW, 2), data = regnew[CROP == "maize", ]))
+summary(lm(YLDS ~ poly(SBDM, 2), data = regnew[CROP == "maize", ]))
 summary(lm(YLDS ~ poly(KDD, 2), data = regnew[CROP == "maize", ]))
 summary(lm(YLDR ~ poly(STMX, 2), data = regnew[CROP == "maize", ]))
 summary(lm(YLDS ~ poly(STMX, 2), data = regnew[CROP == "maize", ]))
 summary(lm(YLDS ~ KDD, data = regnew[CROP == "maize", ]))
 summary(lm(YLDS ~ poly(GDD, 2), data = regnew[CROP == "maize", ]))
 
-# p <- "sbdm"; d <- "YLDS"
+# p <- "SBDM"; d <- "YLDS"
 # regnew[CROP == "maize", {
 #   lm1 <- lm(get(d) ~ get(p))
 #   lm2 <- lm(get(d) ~ poly(get(p), 2))
@@ -131,97 +132,90 @@ reg_plotter <- function(dep, pred) {
   mtext(round(summary(lm2)$adj.r.squared, 4), side = 3, adj = 0.5)
 }
 # regnew[CROP == "maize", reg_plotter(YLDR, GDD)]  # 
-regnew[CROP == "maize", reg_plotter(YLDS, MAP)]  # P 0.045
-regnew[CROP == "maize", reg_plotter(YLDS, MSP)]  # P 0.039
-regnew[CROP == "maize", reg_plotter(YLDS, JP)]  # P 0.012
+regnew[CROP == "maize", reg_plotter(YLDS, MAP)]  # P 0.058
+regnew[CROP == "maize", reg_plotter(YLDS, MSP)]  # P 0.050
+regnew[CROP == "maize", reg_plotter(YLDS, JP)]  # P 0.0186
 # regnew[CROP == "maize", reg_plotter(YLDS, JP - mean(JP))]  # P 0.012
-regnew[CROP == "maize", reg_plotter(YLDS, FP)]  # P 0.005
-regnew[CROP == "maize", reg_plotter(YLDS, OP)]  # P 0.003
+regnew[CROP == "maize", reg_plotter(YLDS, FP)]  # P 0.009
+regnew[CROP == "maize", reg_plotter(YLDS, OP)]  # P 0.007
 
-regnew[CROP == "maize", reg_plotter(YLDS, slhw)]  # P 0.17
-regnew[CROP == "maize", reg_plotter(YLDS, sloc)]  # P 0.266
-# regnew[CROP == "maize", reg_plotter(YLDR, sloc)]  # P 
-regnew[CROP == "maize", reg_plotter(YLDS, slcl)]  # P 0.185
-regnew[CROP == "maize", reg_plotter(YLDS, sbdm)]  # 0.181
+regnew[CROP == "maize", reg_plotter(YLDS, SLHW)]  # P 0.16
+regnew[CROP == "maize", reg_plotter(YLDS, SLOC)]  # P 0.43
+# regnew[CROP == "maize", reg_plotter(YLDR, SLOC)]  # P 
+regnew[CROP == "maize", reg_plotter(YLDS, SLCL)]  # P 0.191
+regnew[CROP == "maize", reg_plotter(YLDS, SBDM)]  # 0.20
 # mtax pairings
 regnew[CROP == "maize", reg_plotter(YLDS, STMX)]  # P 0.07
-regnew[CROP == "maize", reg_plotter(YLDS, ATMX)]  # P 0.056 
+regnew[CROP == "maize", reg_plotter(YLDS, ATMX)]  # P 0.044 
 # NK
-regnew[CROP == "maize", reg_plotter(YLDS, NKJ)]  # L 0.054
-regnew[CROP == "maize", reg_plotter(YLDS, NKF)]  # P 0.027 
+regnew[CROP == "maize", reg_plotter(YLDS, NKJ)]  # L 0.056
+regnew[CROP == "maize", reg_plotter(YLDS, NKF)]  # P 0.024 
 # GDD/KDD
-regnew[CROP == "maize", reg_plotter(YLDS, GDD)]  # P 0.04
-regnew[CROP == "maize", reg_plotter(YLDS, KDD)]  # L 0.027
+regnew[CROP == "maize", reg_plotter(YLDS, GDD)]  # P 0.03
+regnew[CROP == "maize", reg_plotter(YLDS, KDD)]  # L 0.026
 # srad
-regnew[CROP == "maize", reg_plotter(YLDS, SSRT)]  # P 0.012 
-regnew[CROP == "maize", reg_plotter(YLDS, SSRM)]  # Same, picked up wrong one
-regnew[CROP == "maize", reg_plotter(YLDS, ASRT)]  # P 0.0288 
-regnew[CROP == "maize", reg_plotter(YLDS, ASRM)]  # P 0.0299
+regnew[CROP == "maize", reg_plotter(YLDS, SSRT)]  # P 0.015 
+regnew[CROP == "maize", reg_plotter(YLDS, SSRM)]  # 0.0155
+regnew[CROP == "maize", reg_plotter(YLDS, ASRT)]  # P 0.038 
+regnew[CROP == "maize", reg_plotter(YLDS, ASRM)]  # P 0.039
 
 # best predictors look to be
-# MAP, SLOC (but polynomial relationship odd), SLHW, slcl, sbdm, all good
+# MAP, SLOC (but polynomial relationship odd), SLHW, SLCL, SBDM, all good
 # STMX (linear KDD as a possible alternate), GDD, ASRM 
 
 #
 regnew[CROP == "maize", {
-  lm1 <- lm(YLDS ~ poly(MAP, 2) + poly(slhw, 2) + poly(slcl, 2) +
-              poly(sbdm, 2) + poly(GDD, 2) + KDD + poly(ASRM, 2))
+  lm1 <- lm(YLDS ~ poly(MAP, 2) + poly(SLHW, 2) + poly(SLCL, 2) +
+              poly(SBDM, 2) + poly(GDD, 2) + KDD + poly(ASRM, 2))
   summary(lm1)
   # plot(YLDS, predict(lm1))
-}]  # 0.4279
+}]  # 0.2941
 
 regnew[CROP == "maize", {
-  lm1 <- lm(YLDS ~ poly(MAP, 2) + poly(slhw, 2) + poly(slcl, 2) +
-              poly(sbdm, 2) + poly(GDD, 2) + poly(STMX, 2) + poly(ASRM, 2))
+  lm1 <- lm(YLDS ~ poly(MAP, 2) + poly(SLHW, 2) + poly(SLCL, 2) +
+              poly(SBDM, 2) + poly(GDD, 2) + poly(STMX, 2) + poly(ASRM, 2))
   summary(lm1)
   # plot(YLDS, predict(lm1))
-}]  # 0.4199
+}]  # 0.2926
 
 regnew[CROP == "maize", {
-  lm1 <- lm(YLDS ~ poly(MAP, 2) + poly(slhw, 2) + poly(sloc, 2) +
-              poly(sbdm, 2) + poly(GDD, 2) + poly(STMX, 2) + poly(ASRM, 2))
+  lm1 <- lm(YLDS ~ poly(MAP, 2) + poly(SLHW, 2) + poly(SLOC, 2) +
+              poly(SBDM, 2) + poly(GDD, 2) + poly(STMX, 2) + poly(ASRM, 2))
   summary(lm1)
   # plot(YLDS, predict(lm1))
-}]  # 0.4044 # SLOC doesn't give as much value, NS on linear
+}]  # 0.4244 # SLOC doesn't give as much value, NS on linear
 
 regnew[CROP == "maize", {
-  lm1 <- lm(YLDS ~ poly(MAP, 2) + OP + poly(slhw, 2) + poly(slcl, 2) +
-              poly(sbdm, 2) + poly(GDD, 2) + KDD + poly(ASRM, 2))
+  lm1 <- lm(YLDS ~ poly(MAP, 2) + OP + poly(SLHW, 2) + poly(SLCL, 2) +
+              poly(SBDM, 2) + poly(GDD, 2) + KDD + poly(ASRM, 2))
   summary(lm1)
   # plot(YLDS, predict(lm1))
-}]  # 0.4293  # Doesn't add much
+}]  # 0.2961  # Doesn't add much
 
 regnew[CROP == "maize", {
-  lm1 <- lm(YLDS ~ poly(MAP, 2) + OP + poly(slhw, 2) + poly(slcl, 2) +
-              poly(sbdm, 2) + poly(GDD, 2) + KDD + poly(ASRM, 2))
+  lm1 <- lm(YLDS ~ poly(MAP, 2) + JP + poly(SLHW, 2) + poly(SLCL, 2) +
+              poly(SBDM, 2) + poly(GDD, 2) + KDD + poly(ASRM, 2))
   summary(lm1)
   # plot(YLDS, predict(lm1))
-}]  # 0.4293  # Oct precip add a tiny bit, significant
+}]  # 0.2972  # Jan precip adds more R2, but makes MAP linear NS
 
 regnew[CROP == "maize", {
-  lm1 <- lm(YLDS ~ poly(MAP, 2) + JP + poly(slhw, 2) + poly(slcl, 2) +
-              poly(sbdm, 2) + poly(GDD, 2) + KDD + poly(ASRM, 2))
+  lm1 <- lm(YLDS ~ poly(MAP, 2) + FP + poly(SLHW, 2) + poly(SLCL, 2) +
+              poly(SBDM, 2) + poly(GDD, 2) + KDD + poly(ASRM, 2))
   summary(lm1)
   # plot(YLDS, predict(lm1))
-}]  # 0.4312  # Jan precip adds more R2, but makes MAP linear NS
+}]  # 0.303  # Feb precip even more R2, but makes MAP linear NS
 
 regnew[CROP == "maize", {
-  lm1 <- lm(YLDS ~ poly(MAP, 2) + FP + poly(slhw, 2) + poly(slcl, 2) +
-              poly(sbdm, 2) + poly(GDD, 2) + KDD + poly(ASRM, 2))
-  summary(lm1)
-  # plot(YLDS, predict(lm1))
-}]  # 0.4374  # Feb precip even more R2, but makes MAP linear NS
-
-regnew[CROP == "maize", {
-  lm1 <- lm(YLDS ~ poly(MAP, 2) + OP + poly(slhw, 2) + poly(slcl, 2) +
-              poly(sbdm, 2) + poly(GDD, 2) + KDD + poly(ASRM, 2) + x + y)
+  lm1 <- lm(YLDS ~ poly(MAP, 2) + OP + poly(SLHW, 2) + poly(SLCL, 2) +
+              poly(SBDM, 2) + poly(GDD, 2) + KDD + poly(ASRM, 2) + x + y)
   summary(lm1)
   plot(YLDS, predict(lm1))
 }]  # 0.4301  # Oct precip add a tiny bit, significant
 
 # regnew[CROP == "maize", {
-#   gam1 <- bam(YLDS ~ poly(MAP, 2) + OP + poly(slhw, 2) + poly(slcl, 2) +
-#               poly(sbdm, 2) + poly(GDD, 2) + KDD + poly(ASRM, 2) + s(x, y), 
+#   gam1 <- bam(YLDS ~ poly(MAP, 2) + OP + poly(SLHW, 2) + poly(SLCL, 2) +
+#               poly(SBDM, 2) + poly(GDD, 2) + KDD + poly(ASRM, 2) + s(x, y), 
 #              family = gaussian(link = "log"), method = "ML")
 #   summary(gam1)
 #   # plot(YLDS, predict(lm1))
@@ -240,10 +234,9 @@ regred <- copy(regnew[CROP == "maize"])
 regred[, mid2 := 1:.N]
 
 # regred[, c("Y10S", "Y90S") := as.integer(0)]
-
-regmu <- regnew[CROP == "maize", lapply(.SD, mean), 
-                by = list(CROP, WTH, Zone, SOL), 
-                .SDcols = names(regnew)[c(3:4, 11:ncol(regnew))]]
+regmu <- regred[CROP == "maize", lapply(.SD, mean), 
+                by = list(CROP, x, y, WTH, SOL), 
+                .SDcols = names(regred)[c(9:ncol(regred))]]
 regmu[, YST := "mu"]
 # regnew[CROP == "maize" & Zone == "Zone2a" & WTH == "AABS" & 
 #          SOL == "WI_CMZR003", mean(YLDS)]
@@ -259,19 +252,17 @@ DF <- DF[order(DF[, 2]), ]
 DF[round(nrow(DF) * 0.9), 3]
 sort(DF[, 2])
 
-a <- regnew[CROP == "maize" & Zone == "Zone3" & WTH == "AEQA" & 
-            SOL == "WI_RGTZ054", YLDS]
-b <- regnew[CROP == "maize" & Zone == "Zone3" & WTH == "AEQA" & 
-            SOL == "WI_RGTZ054", mid]
+a <- regnew[CROP == "maize" & WTH == "AEQA" & SOL == "WI_RGTZ054", YLDS]
+b <- regnew[CROP == "maize" & WTH == "AEQA" & SOL == "WI_RGTZ054", mid]
 qs(a, b, 0.9)
 sort(a)
 
 # Select out quantile values
 m10 <- regred[,
-  qs(YLDS, mid2, 0.1), by = list(CROP, WTH, Zone, SOL)
+  qs(YLDS, mid2, 0.1), by = list(CROP, x, y, WTH, SOL)
 ][, V1]
 m90 <- regred[,
-  qs(YLDS, mid2, 0.9), by = list(CROP, WTH, Zone, SOL) 
+  qs(YLDS, mid2, 0.9), by = list(CROP, x, y, WTH, SOL)
 ][, V1]
 
 # 
@@ -293,100 +284,144 @@ for(i in c("10", "mu", "90")) {
 regred2[CROP == "maize", mean(YLDS), by = YST]
 
 
-regred2[CROP == "maize", reg_plotter(YLDS, MAP)]  # P 0.071
-regred2[CROP == "maize", reg_plotter(YLDS, MSP)]  # P 0.039
-regred2[CROP == "maize", reg_plotter(YLDS, JP)]  # P 0.020
-regred2[CROP == "maize", reg_plotter(YLDS, FP)]  # P 0.017
+regred2[CROP == "maize", reg_plotter(YLDS, MAP)]  # P 0.1235
+regred2[CROP == "maize", reg_plotter(YLDS, MSP)]  # P 0.1097
+regred2[CROP == "maize", reg_plotter(YLDS, JP)]  # P 0.036
+regred2[CROP == "maize", reg_plotter(YLDS, FP)]  # P 0.026
 regred2[CROP == "maize",  summary(lm(YLDS ~ poly(FP, 2)))]
-regred2[CROP == "maize", reg_plotter(YLDS, 100 - slcl + slsi)]  # P 0.102
-regred2[CROP == "maize", reg_plotter(YLDS, slcl)]  # P 0.1879
-regred2[CROP == "maize", reg_plotter(YLDS, slsi)]  # P 0.03
+regred2[CROP == "maize", reg_plotter(YLDS, 100 - SLCL + SLSI)]  # P 0.1243
+regred2[CROP == "maize", reg_plotter(YLDS, SLCL)]  # P 0.19
+regred2[CROP == "maize", reg_plotter(YLDS, SLSI)]  # P 0.049
 
 regred2[CROP == "maize", {
-  lm1 <- lm(YLDS ~ poly(MAP, 2) + OP + poly(slhw, 2) + poly(slcl, 2) +
-              poly(sbdm, 2) + poly(GDD, 2) + KDD + poly(ASRM, 2) + x + y)
+  lm1 <- lm(YLDS ~ poly(MAP, 2) + OP + poly(SLHW, 2) + poly(SLCL, 2) +
+              poly(SBDM, 2) + poly(GDD, 2) + KDD + poly(ASRM, 2) + x + y)
   summary(lm1)
   # plot(YLDS, predict(lm1))
-}]  # 0.4301  # Oct precip add a tiny bit, significant
+}]  # 0.3324  # Oct precip add a tiny bit, significant
 
 regred2[CROP == "maize" & YST == "mu", {
-  lm1 <- lm(YLDS ~ poly(MAP, 2) + OP + poly(slhw, 2) + poly(slcl, 2) +
-              poly(sbdm, 2) + poly(GDD, 2) + KDD + poly(ASRM, 2) + x + y)
+  lm1 <- lm(YLDS ~ poly(MAP, 2) + OP + poly(SLHW, 2) + poly(SLCL, 2) +
+              poly(SBDM, 2) + poly(GDD, 2) + KDD + poly(ASRM, 2) + x + y)
   summary(lm1)
   # plot(YLDS, predict(lm1))
-}]  # 0.4301  # Oct precip add a tiny bit, significant
+}]  # 0.3271  # Oct precip add a tiny bit, significant
 
 regred2[CROP == "maize", {
-  lm1 <- lm(YLDS ~ poly(MAP, 2) + poly(JP, 2) + poly(slhw, 2) + poly(slcl, 2) +
-              poly(sbdm, 2) + poly(GDD, 2) + KDD + poly(ASRM, 2))
+  lm1 <- lm(YLDS ~ poly(MAP, 2) + poly(JP, 2) + poly(SLHW, 2) + poly(SLCL, 2) +
+              poly(SBDM, 2) + poly(GDD, 2) + KDD + poly(ASRM, 2))
   summary(lm1)
   # plot(YLDS, predict(lm1))
-}]  # 0.4301  # Oct precip add a tiny bit, significant
+}]  # 0.34  # Oct precip add a tiny bit, significant
 
 regred2[CROP == "maize", {
-  lm1 <- lm(YLDS ~ poly(MAP, 2) + poly(JP, 2) + poly(slhw, 2) + poly(sloc, 2) +
-              poly(sbdm, 2) + poly(GDD, 2) + KDD + poly(ASRM, 2))
+  lm1 <- lm(YLDS ~ poly(MAP, 2) + poly(JP, 2) + poly(SLHW, 2) + poly(SLOC, 2) +
+              poly(SBDM, 2) + poly(GDD, 2) + KDD + poly(ASRM, 2))
   summary(lm1)
   # plot(YLDS, predict(lm1))
-}]  # 0.4301  # Oct precip add a tiny bit, significant
+}]  # 0.466  # Oct precip add a tiny bit, significant
 
-
-regred2[CROP == "maize", {
-  gam1 <- gam(YLDS ~ s(MAP) + s(JP) + s(slhw) + s(slcl) + (sbdm) + s(GDD) +
-                KDD + s(ASRM), 
-            family = gaussian(link = "log"), method = "ML")
-}]
-
-gam1 <- gam(YLDS ~ s(MAP, k = 3) + s(JP, k = 3) + s(slhw, k = 3) + 
-              s(slcl, k = 3) + s(sbdm, k = 3) + s(GDD, k = 3) + KDD + 
+# Fit gams
+gam1 <- gam(YLDS ~ s(MAP, k = 3) + s(JP, k = 3) + s(SLHW, k = 3) + 
+              s(SLCL, k = 3) + s(SBDM, k = 3) + s(GDD, k = 3) + KDD + 
               s(ASRM, k = 3), family = gaussian(link = "log"), method = "ML", 
             data = regred2[CROP == "maize"])
-gam2 <- gam(YLDS ~ poly(MAP, 2) + poly(JP, 2) + poly(slhw, 2) + 
-              poly(slcl, 2) + poly(sbdm, 2) + poly(GDD, 2) + KDD + 
+gam2 <- gam(YLDS ~ poly(MAP, 2) + poly(JP, 2) + poly(SLHW, 2) + 
+              poly(SLCL, 2) + poly(SBDM, 2) + poly(GDD, 2) + KDD + 
               poly(ASRM, 2), family = gaussian(link = "log"), method = "REML", 
             data = regred2[CROP == "maize"])
-gam3 <- gam(YLDS ~ poly(MAP, 2) + poly(JP, 2) + poly(slhw, 2) + 
-              poly(slcl, 2) + poly(sbdm, 2) + poly(GDD, 2) + KDD + 
+gam3 <- gam(YLDS ~ poly(MAP, 2) + poly(JP, 2) + poly(SLHW, 2) + 
+              poly(SLCL, 2) + poly(SBDM, 2) + poly(GDD, 2) + KDD + 
               poly(ASRM, 2) + s(x, y), 
             family = gaussian(link = "log"), method = "REML", 
             data = regred2[CROP == "maize"])
-gam4 <- gam(YLDS ~ poly(MAP, 2) + poly(JP, 2) + poly(slhw, 2) + 
-              poly(slcl, 2) + poly(sbdm, 2) + poly(GDD, 2) + KDD + 
+gam4 <- gam(YLDS ~ poly(MAP, 2) + poly(JP, 2) + poly(SLHW, 2) + 
+              poly(SLCL, 2) + poly(SBDM, 2) + poly(GDD, 2) + KDD + 
               s(x, y), family = gaussian(link = "log"), method = "REML", 
             data = regred2[CROP == "maize"])
-gam5 <- gam(YLDS ~ poly(MAP, 2) + poly(JP, 2) + poly(slhw, 2) + 
-              poly(slcl, 2) + poly(sbdm, 2) + poly(GDD, 2) + KDD, 
+gam5 <- gam(YLDS ~ poly(MAP, 2) + poly(JP, 2) + poly(SLHW, 2) + 
+              poly(SLCL, 2) + poly(SBDM, 2) + poly(GDD, 2) + KDD, 
             family = gaussian(link = "log"), method = "REML", 
             data = regred2[CROP == "maize"])
-gam6 <- gam(YLDS ~ poly(MAP, 2) + poly(JP, 2) + poly(slhw, 2) + 
-              poly(slcl, 2) + poly(GDD, 2) + KDD, 
+gam6 <- gam(YLDS ~ poly(MAP, 2) + poly(JP, 2) + poly(SLHW, 2) + 
+              poly(SLCL, 2) + poly(GDD, 2) + KDD, 
             family = gaussian(link = "log"), method = "REML", 
             data = regred2[CROP == "maize"])
-gam7 <- gam(YLDS ~ poly(MAP, 2) + poly(slhw, 2) + 
-              poly(slcl, 2) + poly(GDD, 2) + KDD, 
+gam7 <- gam(YLDS ~ poly(MAP, 2) + poly(SLHW, 2) + 
+              poly(SLCL, 2) + poly(GDD, 2) + KDD, 
             family = gaussian(link = "log"), method = "REML", 
             data = regred2[CROP == "maize"])
-gam8 <- gam(YLDS ~ poly(MAP, 2) + slhw +  poly(slcl, 2) + poly(GDD, 2) + KDD, 
+gam8 <- gam(YLDS ~ poly(MAP, 2) + SLHW +  poly(SLCL, 2) + poly(GDD, 2) + KDD, 
             family = gaussian(link = "log"), method = "REML", 
             data = regred2[CROP == "maize"])
-gam9 <- gam(YLDS ~ poly(MAP, 2) + slhw + poly(slcl, 2) + 
-              poly(100 - (slcl + slsi), 2) + poly(GDD, 2) + KDD, 
+gam9 <- gam(YLDS ~ poly(MAP, 2) + SLHW + poly(SLCL, 2) + 
+              poly(100 - (SLCL + SLSI), 2) + poly(GDD, 2) + KDD, 
             family = gaussian(link = "log"), method = "REML", 
             data = regred2[CROP == "maize"])
-gam10 <- gam(YLDS ~ poly(MAP, 2) + slhw + poly(slcl, 2) + 
-               poly(sloc, 2) + poly(GDD, 2) + KDD, 
+gam10 <- gam(YLDS ~ poly(MAP, 2) + SLHW + poly(SLCL, 2) + 
+               poly(SLOC, 2) + poly(GDD, 2) + KDD, 
              family = gaussian(link = "log"), method = "REML", 
              data = regred2[CROP == "maize"])
-gam11 <- gam(YLDS ~ poly(MAP, 2) + slhw + poly(slcl, 2) + 
-               sloc + poly(GDD, 2) + KDD, 
+gam11 <- gam(YLDS ~ poly(MAP, 2) + SLHW + poly(SLCL, 2) + 
+               SLOC + poly(GDD, 2) + KDD, 
              family = gaussian(link = "log"), method = "REML", 
              data = regred2[CROP == "maize"])
-gam12 <- gam(YLDS ~ poly(MAP, 2) + slhw + poly(slcl, 2) + 
-               sloc + poly(GDD, 2) + KDD + s(x, y), 
+gam12 <- gam(YLDS ~ poly(MAP, 2) + SLHW + poly(SLCL, 2) + 
+               SLOC + poly(GDD, 2) + KDD + s(x, y), 
+             family = gaussian(link = "log"), method = "REML", 
+             data = regred2[CROP == "maize"])
+gam13 <- gam(YLDS ~ poly(MAP, 2) + poly(SLCL, 2) + 
+               poly(SLOC, 2) + poly(GDD, 2) + KDD, 
+             family = gaussian(link = "log"), method = "REML", 
+             data = regred2[CROP == "maize"])
+gam14 <- gam(YLDS ~ poly(MAP, 2) + poly(SLCL, 2) + 
+               poly(SLOC, 2) + poly(GDD, 2) + KDD + s(x, y), 
+             family = gaussian(link = "log"), method = "REML", 
+             data = regred2[CROP == "maize"])
+gam15 <- gam(YLDS ~ poly(MSP, 2) + poly(SLCL, 2) + poly(SLOC, 2) + 
+               poly(GDD, 2) + KDD + s(x, y), 
+             family = gaussian(link = "log"), method = "REML", 
+             data = regred2[CROP == "maize"])
+gam16 <- gam(YLDS ~ poly(JFMP, 2) + poly(SLCL, 2) + poly(SLOC, 2) + 
+               poly(GDD, 2) + KDD + s(x, y), 
+             family = gaussian(link = "log"), method = "REML", 
+             data = regred2[CROP == "maize"])
+gam17 <- gam(YLDS ~ poly(MSP, 2) + poly(SLCL, 2) + SLOC + 
+               poly(GDD, 2) + KDD + s(x, y), 
+             family = gaussian(link = "log"), method = "REML", 
+             data = regred2[CROP == "maize"])
+gam18 <- gam(YLDS ~ poly(MSP, 2) + poly(SLCL, 2) + poly(SLHW, 2) + SLOC + 
+               poly(GDD, 2) + s(x, y), family = gaussian(link = "log"), 
+             method = "REML", data = regred2[CROP == "maize"])
+gam19 <- gam(YLDS ~ poly(MSP, 2) + poly(SLCL, 2) + SLHW + SLOC + 
+               poly(GDD, 2) + KDD + s(x, y), 
+             family = gaussian(link = "log"), method = "REML", 
+             data = regred2[CROP == "maize"])
+gam20 <- gam(YLDS ~ poly(MAP, 2) + poly(SLCL, 2) + 
+               poly(SLOC, 2) + poly(GDD, 2) + s(x, y), 
+             family = gaussian(link = "log"), method = "REML", 
+             data = regred2[CROP == "maize"])
+gam21 <- gam(YLDS ~ poly(MSP, 2) + poly(SLCL, 2) + poly(SLOC, 2) + 
+               poly(GDD, 2) + s(x, y), 
+             family = gaussian(link = "log"), method = "REML", 
+             data = regred2[CROP == "maize"])
+gam22 <- gam(YLDS ~ poly(MAP, 2) + poly(SLCL, 2) + #(SLCL, 2) + 
+               s(SLOC, k = 3) + poly(GDD, 2) + s(x, y), 
+             family = gaussian(link = "log"), method = "REML", 
+             data = regred2[CROP == "maize"])
+gam23 <- gam(YLDS ~ poly(MAP, 2) + poly(SLHW, 2) + 
+               s(SLOC, k = 3) + poly(GDD, 2) + s(x, y), 
+             family = gaussian(link = "log"), method = "REML", 
+             data = regred2[CROP == "maize"])
+gam24 <- gam(YLDS ~ poly(MAP, 2) + poly(SLHW, 2) + s(SLCL, k = 3) + 
+               s(SLOC, k = 3) + poly(GDD, 2) + s(x, y), 
              family = gaussian(link = "log"), method = "REML", 
              data = regred2[CROP == "maize"])
 
-
+summary(gam1)
+plot.gam(gam1, residuals = FALSE, se = TRUE, all.terms = TRUE, pages = 1)
+summary(gam2)
+plot.gam(gam2, residuals = TRUE, se = TRUE, all.terms = TRUE, pages = 1)
 summary(gam3)
 plot.gam(gam3, residuals = TRUE, se = TRUE, all.terms = TRUE, pages = 1)
 summary(gam4)
@@ -403,36 +438,75 @@ summary(gam9)
 plot.gam(gam9, residuals = TRUE, se = TRUE, all.terms = TRUE, pages = 1)
 summary(gam10)
 plot.gam(gam10, residuals = TRUE, se = TRUE, all.terms = TRUE, pages = 1)
-summary(gam11)  # This one or
+summary(gam11)  
 plot.gam(gam11, residuals = TRUE, se = TRUE, all.terms = TRUE, pages = 1)
-summary(gam12)  # of this one, with smooth x, y terms
+summary(gam12)  
 plot.gam(gam12, residuals = TRUE, se = TRUE, all.terms = TRUE, pages = 1)
+summary(gam13)  # this one, without smooth x, y terms
+plot.gam(gam13, residuals = TRUE, se = TRUE, all.terms = TRUE, pages = 1)
+summary(gam14)  # of this one, with smooth x, y terms
+plot.gam(gam14, residuals = TRUE, se = TRUE, all.terms = TRUE, pages = 1)
+summary(gam15)  # this one, with MSP, is best, with smooth x, y terms
+plot.gam(gam15, residuals = TRUE, se = TRUE, all.terms = TRUE, pages = 1)
+summary(gam16)  # JFMP doesn't add as much
+plot.gam(gam16, residuals = FALSE, se = TRUE, all.terms = TRUE, pages = 1)
+summary(gam17)  # Turn SLOC into linear predictor, which makes more sense
+plot.gam(gam17, residuals = FALSE, se = TRUE, all.terms = TRUE, pages = 1)
+summary(gam18)  # add polynomial on SLHW, drop KDD. More R2
+plot.gam(gam18, residuals = FALSE, se = TRUE, all.terms = TRUE, pages = 1)
+summary(gam19)  # SLHW linear, keep KDD as NS linear 
+plot.gam(gam19, residuals = FALSE, se = TRUE, all.terms = TRUE, pages = 1)
+summary(gam20)  # SLHW linear, keep KDD as NS linear 
+plot.gam(gam20, residuals = FALSE, se = TRUE, all.terms = TRUE, pages = 1)
+summary(gam21)  # SLHW linear, keep KDD as NS linear 
+plot.gam(gam21, residuals = FALSE, se = TRUE, all.terms = TRUE, pages = 1)
+summary(gam22)  ### SLOC smooth, SLCL poly
+plot.gam(gam22, residuals = FALSE, se = TRUE, all.terms = TRUE, pages = 1)
+summary(gam23)  ### SLOC smooth and SLHW poly
+plot.gam(gam23, residuals = FALSE, se = TRUE, all.terms = TRUE, pages = 1)
+summary(gam24)
+plot.gam(gam24, residuals = FALSE, se = TRUE, all.terms = TRUE, pages = 1)
 
+plot(predst[["SLCL"]])
 
 par(mfrow = c(2, 2))
-plot(regred2[CROP == "maize", YLDS], predict(gam11, type = "response"))
-plot(regred2[CROP == "maize", YLDS], predict(gam12, type = "response"))
-plot(regred2[CROP == "maize", YLDS], predict(gam4, type = "response"))
+regred2[CROP == "maize", plot(YLDS, predict(gam15, type = "response"))]
+lines(c(2000, 8000), c(2000, 8000), col = "red")
+regred2[CROP == "maize", plot(YLDS, predict(gam17, type = "response"))]
+lines(c(2000, 8000), c(2000, 8000), col = "red")
+regred2[CROP == "maize", plot(YLDS, predict(gam18, type = "response"))]
+lines(c(2000, 8000), c(2000, 8000), col = "red")
+regred2[CROP == "maize", plot(YLDS, predict(gam19, type = "response"))]
+lines(c(2000, 8000), c(2000, 8000), col = "red")
 
 # Reduce down to model for mean, 10th, 90th)
-gam12mu <- gam(YLDS ~ poly(MAP, 2) + slhw + poly(slcl, 2) + 
-               poly(GDD, 2) + KDD + s(x, y), 
-             family = gaussian(link = "log"), method = "REML", 
-             data = regred2[YST == "mu"])
-summary(gam12mu)
-plot.gam(gam12mu, residuals = TRUE, se = TRUE, all.terms = TRUE, pages = 1)
-gam1210 <- gam(YLDS ~ poly(MAP, 2) + slhw + poly(slcl, 2) + 
-               poly(GDD, 2) + KDD + s(x, y), 
-             family = gaussian(link = "log"), method = "REML", 
-             data = regred2[YST == "10"])
-summary(gam1210)
-plot.gam(gam1210, residuals = TRUE, se = TRUE, all.terms = TRUE, pages = 1)
-gam1290 <- gam(YLDS ~ poly(MAP, 2) + slhw + poly(slcl, 2) + 
-               poly(GDD, 2) + KDD + s(x, y), 
-             family = gaussian(link = "log"), method = "REML", 
-             data = regred2[YST == "90"])
-summary(gam1290)
-plot.gam(gam1290, residuals = TRUE, se = TRUE, all.terms = TRUE, pages = 1)
+gam18mu <- gam(YLDS ~ poly(MSP, 2) + poly(SLCL, 2) + poly(SLHW, 2) + SLOC + 
+               poly(GDD, 2) + s(x, y), family = gaussian(link = "log"), 
+               method = "REML", data = regred2[YST == "mu"])
+summary(gam18mu)  # Rainfall drops out, but still retains shape
+plot.gam(gam18mu, residuals = FALSE, se = TRUE, all.terms = TRUE, pages = 1)
+gam19mu <- gam(YLDS ~ poly(MSP, 2) + poly(SLCL, 2) + SLHW + SLOC + 
+               poly(GDD, 2) + KDD + s(x, y), family = gaussian(link = "log"), 
+               method = "REML", data = regred2[YST == "mu"])
+summary(gam19mu)  # Rainfall drops out, but still retains shape
+plot.gam(gam19mu, residuals = FALSE, se = TRUE, all.terms = TRUE, pages = 1)
+
+# gam1510 <- gam(YLDS ~ poly(MSP, 2) + poly(SLCL, 2) + poly(SLOC, 2) + 
+#                poly(GDD, 2) + s(x, y),
+#              family = gaussian(link = "log"), method = "REML", 
+#              data = regred2[YST == "10"])
+# summary(gam1510)
+# plot.gam(gam1510, residuals = FALSE, se = TRUE, all.terms = TRUE, pages = 1)
+# gam1590 <- gam(YLDS ~ poly(MSP, 2) + poly(SLCL, 2) + poly(SLOC, 2) + 
+#                poly(GDD, 2) + s(x, y),
+#              family = gaussian(link = "log"), method = "REML", 
+#              data = regred2[YST == "90"])
+# summary(gam1590)
+# plot.gam(gam1590, residuals = TRUE, se = TRUE, all.terms = TRUE, pages = 1)
+plot(regred2[YST == "mu", YLDS], predict(gam18mu, type = "response"))
+plot(regred2[YST == "mu", YLDS], predict(gam19mu, type = "response"))
+# plot(regred2[YST == "10", YLDS], predict(gam1510, type = "response"))
+# plot(regred2[YST == "90", YLDS], predict(gam1590, type = "response"))
 
 ```
 
@@ -442,19 +516,18 @@ plot.gam(gam1290, residuals = TRUE, se = TRUE, all.terms = TRUE, pages = 1)
 regreds <- copy(regnew[CROP == "soybean"])
 regreds[, mid2 := 1:.N]
 
-# regred[, c("Y10S", "Y90S") := as.integer(0)]
-
-regmus <- regreds[, lapply(.SD, mean), by = list(CROP, WTH, Zone, SOL), 
-                .SDcols = names(regnew)[c(3:4, 11:ncol(regnew))]]
+regmus <- regreds[, lapply(.SD, mean), by = list(CROP, x, y, WTH, SOL), 
+                  .SDcols = names(regred)[c(9:ncol(regred))]]
 regmus[, YST := "mu"]
 
 # Select out quantile values
 m10 <- regreds[,
-  qs(YLDR, mid2, 0.1), by = list(CROP, WTH, Zone, SOL)
+  qs(YLDR, mid2, 0.1), by = list(CROP, x, y, WTH, SOL)
 ][, V1]
 m90 <- regreds[,
-  qs(YLDR, mid2, 0.9), by = list(CROP, WTH, Zone, SOL) 
+  qs(YLDR, mid2, 0.9), by = list(CROP, x, y, WTH, SOL)
 ][, V1]
+
 
 # Select out 10th and 90th percentile years
 y10s <- regreds[mid2 %in% m10]
@@ -466,7 +539,10 @@ y1090s <- rbind(y10s, y90s)
 cnames <- colnames(y1090s)[colnames(y1090s) %in% colnames(regmus)]
 setcolorder(regmus, cnames)
 regreds2 <- rbind(regmus, y1090s[, cnames, with = FALSE])
-regreds2[, slcf := 100 - (slcl + slsi)]
+regreds2[, slcf := 100 - (SLCL + SLSI)]
+regreds2[, ONDP := OP + (MSP - (JP + FP))]
+regreds2[, NDP := (MSP - (JP + FP))]
+
 
 par(mfrow = c(2, 2))
 for(i in c("10", "mu", "90")) {
@@ -474,97 +550,101 @@ for(i in c("10", "mu", "90")) {
 }
 regreds2[CROP == "soybean", mean(YLDR), by = YST]
 
-regreds2[, reg_plotter(YLDR, MAP)]  # L 0.065
-regreds2[, reg_plotter(YLDR, MSP)]  # L 0.1105
-regreds2[, reg_plotter(YLDR, JP)]  # L 0.08
-regreds2[, reg_plotter(YLDR, FP)]  # P 0.016
-regreds2[, reg_plotter(YLDR, 100 - slcl + slsi)]  # P 0.12
-regreds2[, reg_plotter(YLDR, slcl)]  # P 0.31
-regreds2[, reg_plotter(YLDR, slsi)]  # P 0.003
-regreds2[, reg_plotter(YLDR, sloc)]  # P 0.31
-regreds2[, reg_plotter(YLDR, slhw)]  # P 0.27
-regreds2[, reg_plotter(YLDR, GDD)]  # P 0.006
-regreds2[, reg_plotter(YLDR, KDD)]  # P 0.006
-regreds2[, reg_plotter(YLDR, STMX)]  # L 0.029
-regreds2[, reg_plotter(YLDR, NKF)]  # L 0.032
-regreds2[, reg_plotter(YLDR, NKJ)]  # P 0.029
-regreds2[, reg_plotter(YLDR, SSRT)]  # L 0.023
-regreds2[, reg_plotter(YLDR, ASRM)]  # L 0.055
+regreds2[, reg_plotter(YLDR, MAP)]  # L 0.19
+regreds2[, reg_plotter(YLDR, MSP)]  # L 0.15
+regreds2[, reg_plotter(YLDR, JFMP)]  # L 0.23
+regreds2[, reg_plotter(YLDR, JP)]  # L 0.04
+regreds2[, reg_plotter(YLDR, FP)]  # P 0.11
+regreds2[, reg_plotter(YLDR, NDP)]  # 
+regreds2[, reg_plotter(YLDR, ONDP)] 
+regreds2[, reg_plotter(YLDR, OP)] 
 
-sgam1 <- gam(YLDR ~ s(MAP, k = 3) + s(JP, k = 3) + s(slhw, k = 3) + 
-               s(slcl, k = 3) + s(sbdm, k = 3) + s(GDD, k = 3) + KDD + 
+regreds2[, reg_plotter(YLDR, 100 - SLCL + SLSI)]  # P 0.16
+regreds2[, reg_plotter(YLDR, SLCL)]  # P 0.15
+regreds2[, reg_plotter(YLDR, SLSI)]  # P 0.01
+regreds2[, reg_plotter(YLDR, SLOC)]  # L 0.16 (decline)
+regreds2[, reg_plotter(YLDR, SLHW)]  # P 0.18
+regreds2[, reg_plotter(YLDR, GDD)]  # NS
+regreds2[, reg_plotter(YLDR, KDD)]  # NS
+regreds2[, reg_plotter(YLDR, STMX)]  # L 0.04
+regreds2[, reg_plotter(YLDR, ATMX)]  # L 0.04
+regreds2[, reg_plotter(YLDR, NKF)]  # L 0.06
+regreds2[, reg_plotter(YLDR, NKJ)]  # P 0.06
+regreds2[, reg_plotter(YLDR, SSRT)]  # P 0.11
+regreds2[, reg_plotter(YLDR, SSRM)]  # P 0.11
+regreds2[, reg_plotter(YLDR, ASRM)]  # L 0.13
+
+sgam1 <- gam(YLDR ~ s(MAP, k = 3) + s(JP, k = 3) + s(SLHW, k = 3) + 
+               s(SLCL, k = 3) + s(SBDM, k = 3) + s(GDD, k = 3) + KDD + 
                s(ASRM, k = 3), family = gaussian(link = "log"), method = "ML", 
             data = regreds2)
-
-sgam2 <- gam(YLDR ~ poly(MAP, 2) + poly(JP, 2) + poly(slhw, 2) + 
-              poly(slcl, 2) + poly(sbdm, 2) + poly(GDD, 2) + KDD + 
+sgam2 <- gam(YLDR ~ poly(MAP, 2) + poly(JP, 2) + poly(SLHW, 2) + 
+              poly(SLCL, 2) + poly(SBDM, 2) + poly(GDD, 2) + KDD + 
               poly(ASRM, 2), family = gaussian(link = "log"), method = "REML", 
             data = regreds2)
-sgam3 <- gam(YLDR ~ poly(MAP, 2) + poly(FP, 2) + poly(slhw, 2) + 
-              poly(slcl, 2) + poly(sbdm, 2) + poly(GDD, 2) + KDD + 
+sgam2a <- gam(YLDR ~ poly(JFMP, 2) + poly(SLHW, 2) + 
+              poly(SLCL, 2) + poly(SBDM, 2) + poly(GDD, 2) + KDD + 
               poly(ASRM, 2), family = gaussian(link = "log"), method = "REML", 
             data = regreds2)
-sgam4 <- gam(YLDR ~ poly(MAP, 2) + poly(OP, 2) + poly(slhw, 2) + 
-              poly(slcl, 2) + poly(sbdm, 2) + poly(GDD, 2) + KDD + 
+summary(sgam2); summary(sgam2a)  # MAP better
+sgam3 <- gam(YLDR ~ poly(MAP, 2) + poly(FP, 2) + poly(SLHW, 2) + 
+              poly(SLCL, 2) + poly(SBDM, 2) + poly(GDD, 2) + KDD + 
               poly(ASRM, 2), family = gaussian(link = "log"), method = "REML", 
             data = regreds2)
-sgam5 <- gam(YLDR ~ poly(MAP, 2) + poly(OP, 2) + poly(slhw, 2) + 
-              poly(slcl, 2) + poly(sloc, 2) + poly(GDD, 2) + KDD + 
+sgam4 <- gam(YLDR ~ poly(MAP, 2) + poly(OP, 2) + poly(SLHW, 2) + 
+              poly(SLCL, 2) + poly(SBDM, 2) + poly(GDD, 2) + KDD + 
               poly(ASRM, 2), family = gaussian(link = "log"), method = "REML", 
             data = regreds2)
-sgam6 <- gam(YLDR ~ poly(MAP, 2) + poly(OP, 2) + poly(slhw, 2) + 
-              poly(slcl, 2) + sloc + poly(GDD, 2) + KDD + 
+sgam5 <- gam(YLDR ~ poly(MAP, 2) + poly(OP, 2) + poly(SLHW, 2) + 
+              poly(SLCL, 2) + poly(SLOC, 2) + poly(GDD, 2) + KDD + 
               poly(ASRM, 2), family = gaussian(link = "log"), method = "REML", 
             data = regreds2)
-sgam7 <- gam(YLDR ~ poly(MAP, 2) + poly(OP, 2) + poly(slhw, 2) + 
-              poly(slcl, 2) + poly(GDD, 2) + KDD + 
+sgam6 <- gam(YLDR ~ poly(MAP, 2) + poly(OP, 2) + poly(SLHW, 2) + 
+              poly(SLCL, 2) + SLOC + poly(GDD, 2) + KDD + 
               poly(ASRM, 2), family = gaussian(link = "log"), method = "REML", 
             data = regreds2)
-sgam8 <- gam(YLDR ~ poly(MAP, 2) + poly(slhw, 2) + poly(slcl, 2) + 
+sgam7 <- gam(YLDR ~ poly(MAP, 2) + poly(OP, 2) + poly(SLHW, 2) + 
+              poly(SLCL, 2) + poly(GDD, 2) + KDD + 
+              poly(ASRM, 2), family = gaussian(link = "log"), method = "REML", 
+            data = regreds2)
+sgam8 <- gam(YLDR ~ poly(MAP, 2) + poly(SLHW, 2) + poly(SLCL, 2) + 
                poly(GDD, 2) + KDD + poly(ASRM, 2), 
              family = gaussian(link = "log"), method = "REML", data = regreds2)
-sgam9 <- gam(YLDR ~ poly(MAP, 2) + poly(slhw, 2) + poly(slcl, 2) + 
-               poly(GDD, 2) + poly(ASRM, 2), 
+sgam9 <- gam(YLDR ~ poly(MAP, 2) + poly(SLHW, 2) + poly(SLCL, 2) + 
+               poly(GDD, 2) + poly(ASRM, 2),
              family = gaussian(link = "log"), method = "REML", data = regreds2)
-sgam10 <- gam(YLDR ~ poly(MSP, 2) + poly(slhw, 2) + poly(slcl, 2) + 
-               poly(GDD, 2) + poly(ASRM, 2), 
-              family = gaussian(link = "log"), method = "REML", data = regreds2)
-sgam11 <- gam(YLDR ~ poly(MSP, 2) + poly(slhw, 2) + poly(sbdm, 2) + 
-               poly(GDD, 2) + poly(ASRM, 2), 
-              family = gaussian(link = "log"), method = "REML", data = regreds2)
-sgam12 <- gam(YLDR ~ poly(MSP, 2) + poly(slhw, 2) + poly(slcl, 2) + 
-               poly(GDD, 2) + poly(SSRM, 2), 
-              family = gaussian(link = "log"), method = "REML", data = regreds2)
-sgam13 <- gam(YLDR ~ poly(MSP, 2) + poly(slhw, 2) + poly(slcl, 2) + sloc +  
-               poly(GDD, 2) + poly(SSRM, 2), 
-              family = gaussian(link = "log"), method = "REML", data = regreds2)
-sgam14 <- gam(YLDR ~ poly(MSP, 2) + OP + poly(slhw, 2) + poly(slcl, 2) + 
-               poly(GDD, 2) + poly(SSRM, 2), 
-              family = gaussian(link = "log"), method = "REML", data = regreds2)
-sgam15 <- gam(YLDR ~ poly(MSP, 2) + OP + poly(slhw, 2) + poly(slcl, 2) + 
-               poly(GDD, 2) + KDD + poly(SSRM, 2), 
-              family = gaussian(link = "log"), method = "REML", data = regreds2)
-sgam16 <- gam(YLDR ~ poly(MSP, 2) + poly(OP, 2) + poly(slhw, 2) + poly(slcl, 2) + 
-               poly(GDD, 2) + poly(SSRM, 2), 
-              family = gaussian(link = "log"), method = "REML", data = regreds2)
-sgam17 <- gam(YLDR ~ poly(MSP, 2) + OP + poly(slhw, 2) + poly(slcl, 2) + 
-               poly(GDD, 2) + poly(SSRM, 2) + s(x, y), 
-              family = gaussian(link = "log"), method = "REML", data = regreds2)
-sgam18 <- gam(YLDR ~ poly(MSP, 2) + OP + poly(slhw, 2) + poly(slcl, 2) + 
-               poly(GDD, 2) + NKJ + poly(SSRM, 2) + s(x, y), 
-              family = gaussian(link = "log"), method = "REML", data = regreds2)
-sgam19 <- gam(YLDR ~ poly(MSP, 2) + OP + poly(slhw, 2) + poly(slcl, 2) + 
-               poly(GDD, 2) + NKF + poly(SSRM, 2) + s(x, y), 
-              family = gaussian(link = "log"), method = "REML", data = regreds2)
+sgam9 <- gam(YLDR ~ poly(MAP, 2) + poly(SLHW, 2) + poly(SLCL, 2) + 
+               poly(, 2) + poly(ASRM, 2),
+             family = gaussian(link = "log"), method = "REML", data = regreds2)
+sgam10 <- gam(YLDR ~ poly(MAP, 2) + poly(SLHW, 2) + poly(SLCL, 2) + 
+               poly(GDD, 2) + poly(ASRM, 2) + s(x, y),
+             family = gaussian(link = "log"), method = "REML", data = regreds2)
+summary(sgam10)
+sgam11 <- gam(YLDR ~ poly(MSP, 2) + poly(SLHW, 2) + poly(SLCL, 2) + 
+               poly(GDD, 2) + poly(ASRM, 2) + s(x, y),
+             family = gaussian(link = "log"), method = "REML", data = regreds2)
+sgam12 <- gam(YLDR ~ poly(JFMP, 2) + poly(SLHW, 2) + poly(SLCL, 2) + 
+               poly(GDD, 2) + poly(ASRM, 2) + s(x, y),
+             family = gaussian(link = "log"), method = "REML", data = regreds2)
+sgam13 <- gam(YLDR ~ poly(JFMP, 2) + poly(SLCL, 2) + poly(SLOC, 2) + 
+                poly(GDD, 2) + poly(ASRM, 2) + s(x, y),
+             family = gaussian(link = "log"), method = "REML", data = regreds2)
+sgam14 <- gam(YLDR ~ poly(MAP, 2) + poly(SLCL, 2) + poly(SLOC, 2) + 
+                poly(GDD, 2) + poly(ASRM, 2) + s(x, y),
+             family = gaussian(link = "log"), method = "REML", data = regreds2)
+summary(sgam14)  
+
 
 summary(sgam1)
-plot.gam(sgam1, residuals = TRUE, se = TRUE, all.terms = TRUE, pages = 1)
+plot.gam(sgam1, residuals = FALSE, se = TRUE, all.terms = TRUE, pages = 1)
 summary(sgam2)
 plot.gam(sgam2, residuals = TRUE, se = TRUE, all.terms = TRUE, pages = 1)
+summary(sgam2a)
+plot.gam(sgam2a, residuals = TRUE, se = TRUE, all.terms = TRUE, pages = 1)
 summary(sgam3)
 plot.gam(sgam3, residuals = TRUE, se = TRUE, all.terms = TRUE, pages = 1)
 summary(sgam4)
-plot.gam(sgam4, residuals = TRUE, se = TRUE, all.terms = TRUE, pages = 1)
+plot.gam(sgam4, residuals = FALSE, se = TRUE, all.terms = TRUE, pages = 1)
 summary(sgam5)
 plot.gam(sgam5, residuals = TRUE, se = TRUE, all.terms = TRUE, pages = 1)
 summary(sgam6)
@@ -573,63 +653,135 @@ summary(sgam7)
 plot.gam(sgam7, residuals = TRUE, se = TRUE, all.terms = TRUE, pages = 1)
 summary(sgam8)
 plot.gam(sgam8, residuals = TRUE, se = TRUE, all.terms = TRUE, pages = 1)
-summary(sgam9)  # MSP stronger than MAP
+summary(sgam9)  
 plot.gam(sgam9, residuals = TRUE, se = TRUE, all.terms = TRUE, pages = 1)
-summary(sgam10)  # MSP stronger than MAP
+summary(sgam10)  
 plot.gam(sgam10, residuals = TRUE, se = TRUE, all.terms = TRUE, pages = 1)
-summary(sgam11)  # SBDM much weaker SLCL
+summary(sgam11)  
 plot.gam(sgam11, residuals = TRUE, se = TRUE, all.terms = TRUE, pages = 1)
-summary(sgam12)  # SSRM a tad better than 
+summary(sgam12)  
 plot.gam(sgam12, residuals = TRUE, se = TRUE, all.terms = TRUE, pages = 1)
-summary(sgam13)  # SLOC goes in the wrong direction
+summary(sgam13)  
 plot.gam(sgam13, residuals = TRUE, se = TRUE, all.terms = TRUE, pages = 1)
-summary(sgam14)  # OP adds a bit
+summary(sgam14)  
 plot.gam(sgam14, residuals = TRUE, se = TRUE, all.terms = TRUE, pages = 1)
-summary(sgam15)  # KDD NS
-plot.gam(sgam15, residuals = TRUE, se = TRUE, all.terms = TRUE, pages = 1)
-summary(sgam16)  # Polynomial term on October precip doesn't add much
-plot.gam(sgam16, residuals = TRUE, se = TRUE, all.terms = TRUE, pages = 1)
-summary(sgam17)  # xy term added to model 15, all remain signif, seems way to go
-plot.gam(sgam17, residuals = TRUE, se = TRUE, all.terms = TRUE, pages = 1)
-summary(sgam18)  # NKJ NS
-plot.gam(sgam18, residuals = TRUE, se = TRUE, all.terms = TRUE, pages = 1)
-summary(sgam19)  # NKF NS
-plot.gam(sgam19, residuals = TRUE, se = TRUE, all.terms = TRUE, pages = 1)
 
+regreds2[, plot(MAP, YLDR)]
+regreds2[, plot(JFMP, YLDR)]
+
+plot(regreds2[, YLDR], predict(sgam12, type = "response"))
+lines(c(0, 5000), c(0, 5000), col = "red")
 
 # Now see about taking same model and fitting separately to 10th/90th/mean years
-sgam17mu <- gam(YLDR ~ poly(MSP, 2) + OP + poly(slhw, 2) + poly(slcl, 2) + 
-                  poly(GDD, 2) + poly(SSRM, 2) + s(x, y), 
+sgam12mu <- gam(YLDR ~ poly(MSP, 2) + poly(SLHW, 2) + poly(SLCL, 2) + 
+               poly(GDD, 2) + poly(ASRM, 2) + s(x, y),
                 family = gaussian(link = "log"), method = "REML", 
                 data = regreds2[YST == "mu"])
-summary(sgam17mu)  # OP drops out, SSRM drops out
-plot.gam(sgam17mu, residuals = TRUE, se = TRUE, all.terms = TRUE, pages = 1)
-sgam17mu <- gam(YLDR ~ poly(MSP, 2) + poly(slhw, 2) + 
-                  poly(slcl, 2) + poly(GDD, 2) + s(x, y), 
-                family = gaussian(link = "log"), method = "REML", 
-                data = regreds2[YST == "mu"])
-summary(sgam17mu)  # OP drops out, SSRM drops out
-plot.gam(sgam17mu, residuals = TRUE, se = TRUE, all.terms = TRUE, pages = 1)
-sgam1710 <- gam(YLDR ~ poly(MSP, 2) + poly(slhw, 2) + poly(slcl, 2)
-                + poly(GDD, 2) + s(x, y), 
-                family = gaussian(link = "log"), method = "REML", 
-                data = regreds2[YST == "10"])
-summary(sgam1710)  # OP drops out, SSRM drops out
-plot.gam(sgam1710, residuals = TRUE, se = TRUE, all.terms = TRUE, pages = 1)
-sgam1790 <- gam(YLDR ~ poly(MSP, 2) + poly(slhw, 2) + poly(slcl, 2)
-                + poly(GDD, 2) + s(x, y), 
-                family = gaussian(link = "log"), method = "REML", 
-                data = regreds2[YST == "90"])
-summary(sgam1790)  # OP drops out, SSRM drops out
-plot.gam(sgam1790, residuals = TRUE, se = TRUE, all.terms = TRUE, pages = 1)
+summary(sgam12mu)  # OP drops out, SSRM drops out
+# plot.gam(sgam12mu, residuals = FALSE, se = TRUE, all.terms = TRUE, pages = 1)
+# sgam1810 <- gam(YLDR ~ poly(MSP, 2) + poly(SLHW, 2) + poly(SLCL, 2) + 
+#                   SLOC + poly(GDD, 2) + s(x, y),
+#                 family = gaussian(link = "log"), method = "REML", 
+#                 data = regreds2[YST == "10"])
+# summary(sgam1810)  # OP drops out, SSRM drops out
+# plot.gam(sgam1810, residuals = TRUE, se = TRUE, all.terms = TRUE, pages = 1)
+# sgam1890 <- gam(YLDR ~ poly(MSP, 2) + poly(SLHW, 2) + poly(SLCL, 2) + 
+#                   SLOC + poly(GDD, 2) + s(x, y),
+#                 family = gaussian(link = "log"), method = "REML", 
+#                 data = regreds2[YST == "90"])
+# summary(sgam1890)  # OP drops out, SSRM drops out
+# plot.gam(sgam1890, residuals = TRUE, se = TRUE, all.terms = TRUE, pages = 1)
+
+par(mfrow = c(2, 2))
+plot(regreds2[, YLDR], predict(sgam12, type = "response"))
+lines(c(0, 5000), c(0, 5000), col = "red")
+plot(regreds2[YST == "mu", YLDR], predict(sgam12mu, type = "response"))
+lines(c(0, 5000), c(0, 5000), col = "red")
+# plot(regreds2[YST == "10", YLDR], predict(sgam1810, type = "response"))
+# plot(regreds2[YST == "90", YLDR], predict(sgam1890, type = "response"))
+
 
 
 ```
 
-### Save GAMs outputs
+## Load in grid predictors
 ```{r, eval = FALSE}
-save(gam12, gam12mu, gam1210, gam1290, sgam17, sgam17mu, sgam1710, sgam1790, 
-     file = fp(p_yield, "gams.rda"))
+soilgrids <- brick(fp(p_sgrids, "soilgrids.tif"))
+climvars <- c("rftot", "ndjftot", "jfmtot", "gdd", "kdd", "srmu_ano")
+climgrids <- sapply(climvars, function(x) {  # x <- climvars[3]
+  print(x)
+  brick(dir(p_clim, full.names = TRUE)[grep(x, dir(p_clim))])
+})
+climgrids_mu <- sapply(climgrids, function(x) calc(x, mean))
+climst <- stack(climgrids_mu)
+names(climst) <- c("MAP", "MSP", "JFMP", "GDD", "KDD", "ASRM")
+
+# disaggregate down to 1 km
+climstbase <- disaggregate(climst[[1]], fact = 30)
+climststep <- disaggregate(climst, fact = 20)
+climst1km <- resample(climst, climstbase)
+
+# need to warp soilgrids back to that also
+ext <- bbox(climst1km)[1:4]  # extent   
+onm <- fp(p_sgrids, "soilgridsgcs.tif")
+gdalwarp(srcfile = soilgrids@file@name, t_srs = projection(climst1km), 
+         dstfile = onm, r = "average", ot = "Float32", te = ext, 
+         srcnodata = -32768, dstnodata = -99, tr = res(climst1km), 
+         of = "GTiff", multi = TRUE, verbose = FALSE, overwrite = TRUE)
+soilgcs <- brick(onm)
+names(soilgcs) <- c("SLOC", "SLCL", "SLHW")
+plot(soilgcs)
+
+# need also a grid of x,y values
+x <- soilgcs[[1]]
+x[] <- xFromCell(x, 1:ncell(x))
+y <- soilgcs[[1]]
+y[] <- yFromCell(y, 1:ncell(y))
+plot(y)
+xy <- stack(x, y)
+names(xy) <- c("x", "y")
+predst <- stack(xy, climst1km, soilgcs)
+
+
+```
+
+## Predicted yields surfaces
+```{r, eval = FALSE}
+mzfull1 <- raster::predict(predst, gam18, type = "response")
+mzfull2 <- raster::predict(predst, gam19, type = "response")
+mzfull3 <- raster::predict(predst, gam22, type = "response")
+mzfull4 <- raster::predict(predst, gam23, type = "response")
+soyfull <- raster::predict(predst, sgam10, type = "response")
+soyfull2 <- raster::predict(predst, sgam13, type = "response")
+soyfull3 <- raster::predict(predst, sgam14, type = "response")
+summary(sgam10)
+predict(gam15)
+# mzfull1[mzfull1 > 8000] <- 8000
+# mzfull2[mzfull2 > 8000] <- 8000
+# soyfull[soyfull > 5000] <- 5000
+par(mfrow = c(2, 2))
+plot(mzfull1, zlim = c(0, 9000))
+plot(mzfull2, zlim = c(0, 9000))
+plot(mzfull3, zlim = c(0, 9000))
+plot(mzfull4, zlim = c(0, 9000))
+
+prov@proj4string <- soyfull@crs
+soymsk <- crop(soyfull, prov)
+soymsk2 <- crop(soyfull2, prov)
+soymsk3 <- crop(soyfull3, prov)
+plot(soymsk > 5000)
+plot(prov, add = TRUE)
+plot(soymsk2)
+plot(prov, add = TRUE)
+plot(soymsk3 > 5000)
+plot(prov, add = TRUE)
+
+# Save bricks and models
+save(gam18, gam19, gam22, gam23, sgam10, sgam13, sgam14, 
+     file = fp(p_yield, "empirical/gams1.rda"))
+yldrs <- brick(stack(list(mzfull1, mzfull2, mzfull3, mzfull4, soyfull,
+                          soyfull2, soyfull3)))
+writeRaster(yldrs, filename = fp(p_yield, "empirical/yield_surfaces1.tif"))
 
 
 ```

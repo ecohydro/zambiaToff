@@ -1,0 +1,313 @@
+---
+title: "DSSAT soybean yields"
+author: "Lyndon Estes"
+date: "February 9, 2016"
+  html_document:
+    highlight: tango
+    theme: spacelab
+    toc: yes 
+    number_sections: yes
+---
+
+# DSSAT soybean runs for Zambia
+
+```{r, eval = FALSE}
+library(agroEcoTradeoff)
+library(gdalUtils)
+library(rCropMod)
+library(doMC)
+library(dismo)
+
+setwd("~/Dropbox/publications/zambiaToff/private/zambiaToff/")
+p_root <- lmisc::set_base_path("zambiaToff")
+p_cropmod <- "~/Dropbox/projects/rCropMod/external/ext_data/"
+p_dssat <- "~/DSSAT45"  # DSSAT main folder
+p_wth <- "~/DSSAT45/Weather/"
+p_soil <- "~/DSSAT45/SOIL/"
+p_clim <- fp(p_root, "external/input_devel/climate")
+p_yield <- fp(p_root, "external/input_devel/yield")
+p_pgf <- "~/Dropbox/data/climate/afdm/pgf_bc/zambia/"
+p_sgrids <- "~/Dropbox/data/soil/"
+
+load(fp(p_yield, "empirical/stations.rda"))
+
+# Read in original soil-climate data from rCropMod
+soilgrid <- raster(fp(p_cropmod, "af_soil_grid.tif"))  # soil grid
+soilshare <- fread(fp(p_cropmod, "af_soil_share.csv"))  # share of profiles
+
+```
+
+## Weather data
+```{r, eval = FALSE}
+sdate <- "1948/01/01"
+edate <- "2010/12/31"
+dts <- seq.Date(as.Date(sdate), as.Date(edate), "days")
+yrs <- as.numeric(substr(dts, 1, 4))
+ano <- unique(yrs)
+mos <- as.numeric(substr(dts, 6, 7))
+dys <- as.numeric(substr(dts, 9, 10))
+
+# set up indices for selecting dates
+ystrt <- which(mos == 1 & dys == 1) 
+ystrt <- ystrt[-length(ystrt)]
+yend <- which(mos == 12 & dys == 31)[-1]
+# set up seasonal index
+sind <- rep(0, length(dts))  # whole year spanning growing season
+for(i in 1:length(ystrt)) sind[ystrt[i]:yend[i]] <- i
+sindu <- unique(sind)[-1]
+sindu2 <- sindu[sindu %in% which(ano %in% 1979:2010)]
+ind <- which(sind %in% sindu2)
+
+prec <- brick(fp(p_pgf, "prec.Zambia.nc"))
+tmax <- brick(fp(p_pgf, "Tmax.Zambia.nc")) 
+tmin <- brick(fp(p_pgf, "Tmin.Zambia.nc"))
+srad <- brick(fp(p_pgf, "Rs.Zambia.nc")) 
+wind <- brick(fp(p_pgf, "wnd10m.Zambia.nc")) 
+
+# extract weather station data
+registerDoMC(cores = 7)
+wdat <- foreach(i = 1:nrow(zmetf)) %dopar% {  # i = 1 
+  print(i)
+  rain <- unname(extract(prec, zmetf[i, ])[1, ])
+  tmx <- unname(extract(tmax, zmetf[i, ])[1, ])
+  tmn <- unname(extract(tmin, zmetf[i, ])[1, ])
+  sr <- unname(extract(srad, zmetf[i, ])[1, ])
+  wnd <- unname(extract(wind, zmetf[i, ])[1, ])
+  cbind(rain, tmx, tmn, sr, wnd)
+}
+
+# reduce down and modify
+wdat2 <- lapply(wdat, function(x) {
+  y <- x[ind, ]
+  y[, 2] <- y[, 2] - 273.15
+  y[, 3] <- y[, 3] - 273.15
+  y[, 4] <- y[, 4] / 1000000 * (3600 * 24)
+  y
+})
+# tstwsta <- cbind.data.frame(dts[ind], wdat2[[1]])
+# head(tstwsta); tail(tstwsta)
+
+# get elevations for the weather stations
+# raster::getData('ISO3')  # raster is a marvelous package
+elev <- raster::getData("alt", country = "ZMB")
+zmet_elev <- extract(elev, zmetf)
+# plot(elev)
+
+# Write WTH files to climate folder
+sdate <- "19790101" 
+edate <- "20101231"
+zmetxy <- as.data.frame(zmetf)
+zmetxy[1:6, ]
+wthnms <- substr(zmetxy$nms, 1, 4)
+ginds <- grep("g", wthnms)
+combis <- expand.grid(data.frame(cbind(LETTERS, LETTERS, LETTERS)))[, 3:1]
+combis <- paste0(combis[, 1], combis[, 2], combis[, 3])
+wthnms[ginds] <- paste0("G", combis[1:length(ginds)])
+for(i in 1:length(wdat2)) {  # i <- 1
+  xy <- c("x" = zmetxy[i, "x"], "y" = zmetxy[i, "y"]) 
+  elev <- zmet_elev[i]
+  name <- wthnms[i]
+  d <- wdat2[[i]]  # head(d)
+  weather(xy, elev = elev, srad = d[, "sr"], tmax = d[, "tmx"], 
+          tmin = d[, "tmn"], prec = d[, "rain"], 
+          sdate = sdate, edate = edate, name = name, 
+          outdir = fp(p_clim, "DSSAT"))
+}
+file.copy(dir(fp(p_clim, "DSSAT"), full.names = TRUE), 
+          fp(p_wth, dir(fp(p_clim, "DSSAT"))), overwrite = TRUE)
+
+```
+
+## Pull the soil profiles
+```{r, eval = FALSE}
+soilid <- extract(soilgrid, zmetf)  # grid id corresponding to point
+wthsoil <- cbind(wthnms, zmetxy, soilid)
+profs <- soilshare[CELL5M %in% soilid]  # profiles at that point
+profdat <- read_fullSOL_prof(solfile = full_path(p_soil, "WI.SOL"), 
+                             profiles = profs$SoilProfile)
+
+# checks
+set.seed(234)
+for(i in sample(1:nrow(profdat), 4)) {
+  print(profdat[prof == profdat$prof[i], c(1:5, 11:16), with = FALSE])
+}
+
+# uniprofs <- unique(profs$SoilProfile)
+# profdat2 <- do.call(rbind, lapply(1:length(uniprofs), function(i) {
+#   print(i)
+#   profdat <- read_SOL_prof(solfile = full_path(p_soil, "WI.SOL"), 
+#                            profiles = uniprofs[i]) 
+# }))
+# profdat$slb3 == profdat2$SLB3
+
+# profdat[pro == "WI_VRBW509"]
+profdat[, prof := as.character(prof)]
+setkey(profdat, "prof")
+wthprofs <- data.table(merge(wthsoil, profs, by.x = "soilid", by.y = "CELL5M"))
+setnames(wthprofs, "SoilProfile", "prof")
+wthsoilm <- merge(wthprofs, profdat, by.x = "prof", by.y = "prof")
+wthsoilmr <- wthsoilm[, 1:37, with = FALSE]
+names(wthsoilm)
+# profdat[, 1:4, with = FALSE]      
+# head(wthprofs)
+# wthsoilm[1:10, 1:7, with = FALSE]
+# wthsoilm[prof == "WI_VRBW509", 1:20, with = FALSE]
+```
+
+## Soybean X-files and runs
+```{r, eval = FALSE}
+
+# read in field parameters
+field <- readxl::read_excel(fp(p_yield, "DSSAT/fields.xls"))  
+field <- cbind(wthsoilmr, field)  # join the soils data
+field[, WTH := paste0(wthnms, "7932")]
+field[, c("ID_FIELD", "XNAME") := list(fid(field$WTH), xname(field$WTH))] 
+
+# Create X table
+xtab <- x_tab(fids = field)  # table created, with all fixed field parameters
+cult <- c("990008", "990009", "990010")
+CLNUM <- 1:length(cult)
+pdates <- strftime(as.Date("1979-12-31"), "%y%j")
+tcomb <- expand.grid(list("PDATE" = pdates, "INGENO" = cult), 
+                     stringsAsFactors = FALSE)
+ttab <- cbind("N" = 1:nrow(tcomb), tcomb, 
+              t_tab(tvars = c("PDATE", "INGENO"), topts = c("MP", "CU"), 
+                    ttab = tcomb))
+
+# Speed this up
+xtabl <- lapply(1:nrow(xtab), function(x) { # x <- 1
+# xtabl <- lapply(1:10, function(x) { # x <- 1
+  print(x)
+  d <- xtab[x, ]
+  d2 <- do.call(rbind, lapply(1:nrow(ttab), function(x) d))
+  upd_col <- colnames(d2)[which(colnames(d2) %in% colnames(ttab))]
+  d2[, c(upd_col) := ttab[, upd_col]]
+  xt <- cbind(data.table(ttab), d2[, !colnames(d2) %in% upd_col, with = FALSE])
+})
+
+xrun <- lapply(xtabl, function(x) {  # x <- xtabl[[1]]
+  print(x$XNAME[1])
+  xf <- copy(x)
+  xf <- as.data.frame(xf)
+  xfnm <- x_file(xf, outdir = fp(p_dssat, "Soybean"), z = "01", xtype = ".SNX")
+  bname <- batch_file(xl = list(xf), xfiles = xfnm, 
+                    outdir = full_path(p_dssat, "Soybean"), btype = "SOY")
+  exec_csm(projdir = fp(p_yield, "DSSAT"), csmdir = p_dssat, 
+         rundir = full_path(p_dssat, "Soybean"), bname = bname)
+  sdat <- read_CSM_outfile(rundir = full_path(p_dssat, "Soybean"), 
+                           type = "summary", 
+                           vars = c("RUNNO", "TRNO", "FNAM", "SOIL_ID...", 
+                                    "PDAT", "MDAT", "HWAH", "PRCM"))
+})
+# save(xrun, file = fp(p_yield, "DSSAT/soyyields.rda"))
+
+soy_ylds <- rbindlist(lapply(1:length(xrun), function(i) { # i <- 1
+  xbinder <- xtabl[[i]][1, list(XNAME, wthnms, x, y, prof)]
+  setnames(xbinder, c("wthnms", "prof"), c("WTH", "PROF"))
+  cbind(xbinder, xrun[[i]])
+}))  
+# soy_ylds[, lapply(.(HWAH, PRCM), mean), by = XNAME][, plot(V2, V1)]
+# soy_ylds[, lapply(.(HWAH, PRCM), mean), by = XNAME][, mean(V1)]
+# 3074 mean with current settings
+
+write.table(soy_ylds, file = fp(p_yield, "DSSAT/soy_ylds.csv"), 
+            row.names = FALSE, sep = ",")
+# soy_ylds[, unique(XNAME)]
+
+# check on soil configuration
+tst <- unique(soy_ylds[, .(x, y, WTH, PROF)])
+tst[WTH == "LUSA"]
+unixy <- unique(wthprofs[, .(x, y)])
+for(i in 1:nrow(unixy)) {  # i = 17
+  p <- wthsoilmr[x == unixy$x[i] & y == unixy$y[i], .(wthnms, prof)]
+  # p <- wthprofs[x == unixy$x[i] & y == unixy$y[i], .(wthnms, prof)]
+  tstp <- tst[x == unixy$x[i] & y == unixy$y[i], .(WTH, PROF)]
+  if(!all(tstp == p)) print(paste(i, "has a problem"))
+#   if(!all(tstp[order(WTH, PROF)] == p[order(wthnms, prof)])) {
+#     print(paste(i, "has a problem"))
+#   }
+}
+
+```
+
+## Maize yields
+```{r, eval = FALSE}
+# read in field parameters
+field <- readxl::read_excel(fp(p_yield, "DSSAT/mzfields.xls"))  
+field <- cbind(wthsoilmr, field)  # join the soils data
+field[, WTH := paste0(wthnms, "7932")]
+field[, c("ID_FIELD", "XNAME") := list(fid(field$WTH), xname(field$WTH))] 
+
+# 
+# gdd <- brick("external/input_devel/climate/gdd.tif")
+# gddmu <- calc(gdd, mean)
+# plot(gddmu)
+
+# Create X table
+xtab <- x_tab(fids = field)  # table created, with all fixed field parameters
+cult <- c("OP9991", "OP9996", "HY9991", "HY9996")
+CLNUM <- 1:length(cult)
+pdates <- strftime(as.Date("1979-12-01"), "%y%j")
+tcomb <- expand.grid(list("PDATE" = pdates, "INGENO" = cult), 
+                     stringsAsFactors = FALSE)
+ttab <- cbind("N" = 1:nrow(tcomb), tcomb, 
+              t_tab(tvars = c("PDATE", "INGENO"), topts = c("MP", "CU"), 
+                    ttab = tcomb))
+
+# Speed this up
+xtabl <- lapply(1:nrow(xtab), function(x) { # x <- 1
+# xtabl <- lapply(1:10, function(x) { # x <- 1
+  print(x)
+  d <- xtab[x, ]
+  d2 <- do.call(rbind, lapply(1:nrow(ttab), function(x) d))
+  upd_col <- colnames(d2)[which(colnames(d2) %in% colnames(ttab))]
+  d2[, c(upd_col) := ttab[, upd_col]]
+  xt <- cbind(data.table(ttab), d2[, !colnames(d2) %in% upd_col, with = FALSE])
+})
+
+cdt <- c("Maize", ".MZX")
+mxrun <- lapply(xtabl, function(x) {  # x <- xtabl[[1]]
+  print(x$XNAME[1])
+  xf <- copy(x)
+  xf <- as.data.frame(xf)
+  xfnm <- x_file(xf, outdir = fp(p_dssat, cdt[1]), z = "01", xtype = cdt[2])
+  bname <- batch_file(xl = list(xf), xfiles = xfnm, 
+                    outdir = full_path(p_dssat, cdt[1]), btype = cdt[1])
+  exec_csm(projdir = fp(p_yield, "DSSAT"), csmdir = p_dssat, 
+         rundir = full_path(p_dssat, cdt[1]), bname = bname)
+  sdat <- read_CSM_outfile(rundir = full_path(p_dssat, cdt[1]), 
+                           type = "summary", 
+                           vars = c("RUNNO", "TRNO", "FNAM", "SOIL_ID...", 
+                                    "PDAT", "MDAT", "HWAH", "PRCM"))
+})
+# save(xrun, file = fp(p_yield, "DSSAT/soyyields.rda"))
+
+mz_ylds <- rbindlist(lapply(1:length(mxrun), function(i) { # i <- 1
+  xbinder <- xtabl[[i]][1, list(XNAME, wthnms, x, y, prof)]
+  setnames(xbinder, c("wthnms", "prof"), c("WTH", "PROF"))
+  cbind(xbinder, mxrun[[i]])
+}))  
+# mz_ylds[, lapply(.(HWAH, PRCM), mean), by = XNAME][, plot(V2, V1)]
+# mz_ylds[, lapply(.(HWAH, PRCM), mean), by = XNAME][, mean(V1)]
+# 9024 mean with 1/11 start date (SYMBI no difference of course for maize)
+# 8904 with 15/11 start date
+# 8518 over whole country
+
+write.table(mz_ylds, file = fp(p_yield, "DSSAT/maize_ylds.csv"), 
+            row.names = FALSE, sep = ",")
+# mz_ylds[, unique(XNAME)]
+
+# check on soil configuration
+tst <- unique(mz_ylds[, .(x, y, WTH, PROF)])
+tst[WTH == "LUSA"]
+unixy <- unique(wthprofs[, .(x, y)])
+for(i in 1:nrow(unixy)) {  # i = 17
+  p <- wthsoilmr[x == unixy$x[i] & y == unixy$y[i], .(wthnms, prof)]
+  tstp <- tst[x == unixy$x[i] & y == unixy$y[i], .(WTH, PROF)]
+  if(!all(tstp == p)) print(paste(i, "has a problem"))
+}
+
+
+```
+
+

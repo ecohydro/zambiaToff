@@ -1,0 +1,70 @@
+---
+title: "ZMD GSOD stations"
+author: "Lyndon Estes"
+date: "February 9, 2016"
+output: html_document
+---
+
+# ZMD and GSOD stations 
+
+```{r, eval = FALSE}
+library(data.table)
+setwd("~/Dropbox/publications/zambiaToff/private/zambiaToff/")
+p_root <- lmisc::set_base_path()
+p_clim <- fp(p_root, "external/input_devel/climate")
+p_climo <- "~/Dropbox/data/climate/rainfall/zambia/precip/"
+p_yield <- fp(p_root, "external/input_devel/yield")
+p_pgf <- "~/Dropbox/data/climate/afdm/pgf_bc/zambia/"
+p_sgrids <- "~/Dropbox/data/soil/"
+
+# provinces
+p_prov <- paste0("/Users/lestes/Dropbox/data/zari/infrastructure/zambia/", 
+                 "rda_dump/Final Shape files RDA/")
+prov <- rgdal::readOGR(fp(p_prov, "prov.shp"), layer = "prov")
+
+
+# Yield data selection points
+# GSOD points
+gsod <- fread(fp(p_clim, "gsod.txt"), stringsAsFactors = FALSE)
+setnames(gsod, names(gsod), c("nms", "x", "y", "n"))
+gsod <- gsod[, 1:3, with = FALSE]
+gsod[, nms := paste0("g", nms)]
+
+# ZMD rainfall stations
+nms <- c('CHIPAT01', 'CHIPEP01', 'CHOMA001', 'ISOKA001', 'KABOMP01', 'KABWE001',
+         'KAFIRO01', 'KAFUE001', 'KALABO01', 'KAOMA001', 'KASAMA01', 'KASEMP01',          'KAWAMB01', 'LIVING01', 'LUNDAZ01', 'LUSAKA01', 'LUSAKA02', 'LUSITU01',          'MAGOYE01', 'MANSA001', 'MBALA001', 'MFUWE001', 'MISAMF01', 'MKUSHI01',          'MONGU002', 'MPIKA001') 
+x <- c(32.58, 28.38, 27.07, 32.63, 24.20, 28.47, 28.12, 27.92, 22.70, 24.80,
+       31.13, 25.85, 29.08, 25.82, 33.20, 28.32, 28.45, 29.37, 27.60, 28.85, 
+       31.33, 31.93, 31.25, 29.33, 23.15, 31.43)  
+y <- c(-13.55, -17.33, -16.83, -10.12, -13.60, -14.45, -12.60, -15.77, -14.95,
+       -14.80, -10.22, -13.53, -9.80, -17.82, -12.28, -15.42, -15.32, -16.30,
+       -16.00, -11.10, -8.85, -13.27, -10.10, -14.00, -15.25, -11.90)
+zmd <- cbind.data.frame(nms = as.character(nms), x, y, 
+                        stringsAsFactors = FALSE)
+write.csv(zmd, file = fp(p_climo, "zmd-stations.csv"))
+
+# bring together GSOD and ZMD stations
+zmd_gsod <- rbind(zmd, gsod)
+coordinates(zmd_gsod) <- c("x", "y")
+
+# Select those intersecting Zambia
+gint <- rgeos::gIntersects(prov, zmd_gsod, byid = TRUE)
+sel <- unname(which(apply(gint, 1, function(x) sum(which(x))) > 0))
+zmet <- zmd_gsod[sel, ]
+# str(zmet)
+
+# buffer the ZMD stations by ~20 km to see if any GSOD stations fall within that
+zbuffer <- rgeos::gBuffer(zmet[1:26, ], byid = TRUE, width = 0.3)
+zbuffer <- spChFIDs(zbuffer, as.character(1:nrow(zbuffer)))
+gint <- rgeos::gIntersects(zbuffer, zmet[27:nrow(zmet), ], byid = TRUE)
+sel <- unname(which(apply(gint, 1, function(x) sum(which(x))) > 0))
+desel <- c(27:nrow(zmet))[sel]
+# plot(zmet[-desel, ], pch = 16, cex = 0.5)
+# points(zmet[desel, ], pch = 16, cex = 0.5, col = "red")
+# plot(prov, add = TRUE)
+zmetf <- zmet[-desel, ]
+
+# save to yields folder because these are primarily used in empirical modeling
+save(zmet, zmetf, file = fp(p_yield, "empirical/stations.rda"))
+```
+

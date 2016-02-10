@@ -82,16 +82,17 @@ img {
 <div id="TOC">
 <ul>
 <li><a href="#predict-dssat-yields-onto-finer-soil-map"><span class="toc-section-number">1</span> Predict DSSAT yields onto finer soil map</a></li>
-<li><a href="#extract-subset-of-dssat-yields-soils-climate-data"><span class="toc-section-number">2</span> Extract subset of DSSAT yields, soils, climate data</a><ul>
-<li><a href="#yield"><span class="toc-section-number">2.1</span> Yield</a></li>
-<li><a href="#soil"><span class="toc-section-number">2.2</span> Soil</a></li>
-<li><a href="#climate"><span class="toc-section-number">2.3</span> Climate</a><ul>
-<li><a href="#indices"><span class="toc-section-number">2.3.1</span> Indices</a></li>
-<li><a href="#rainfall"><span class="toc-section-number">2.3.2</span> Rainfall</a></li>
-<li><a href="#temperature"><span class="toc-section-number">2.3.3</span> Temperature</a></li>
-<li><a href="#solar-radiation"><span class="toc-section-number">2.3.4</span> Solar radiation</a></li>
+<li><a href="#full-dssat-yield-grids"><span class="toc-section-number">2</span> Full DSSAT yield grids</a></li>
+<li><a href="#extract-subset-of-dssat-yields-soils-climate-data"><span class="toc-section-number">3</span> Extract subset of DSSAT yields, soils, climate data</a><ul>
+<li><a href="#yield"><span class="toc-section-number">3.1</span> Yield</a></li>
+<li><a href="#soil"><span class="toc-section-number">3.2</span> Soil</a></li>
+<li><a href="#climate"><span class="toc-section-number">3.3</span> Climate</a><ul>
+<li><a href="#indices"><span class="toc-section-number">3.3.1</span> Indices</a></li>
+<li><a href="#rainfall"><span class="toc-section-number">3.3.2</span> Rainfall</a></li>
+<li><a href="#temperature"><span class="toc-section-number">3.3.3</span> Temperature</a></li>
+<li><a href="#solar-radiation"><span class="toc-section-number">3.3.4</span> Solar radiation</a></li>
 </ul></li>
-<li><a href="#assemble-datasets"><span class="toc-section-number">2.4</span> Assemble datasets</a></li>
+<li><a href="#assemble-datasets"><span class="toc-section-number">3.4</span> Assemble datasets</a></li>
 </ul></li>
 </ul>
 </div>
@@ -110,11 +111,18 @@ p_soil &lt;-<span class="st"> &quot;~/DSSAT45/SOIL/&quot;</span>
 p_basedat &lt;-<span class="st"> </span><span class="kw">paste0</span>(<span class="st">&quot;/Users/lestes/Dropbox/projects/agroEcoTradeoff/external/&quot;</span>,
                     <span class="st">&quot;base_data/&quot;</span>)
 p_clim &lt;-<span class="st"> </span><span class="kw">fp</span>(p_root, <span class="st">&quot;external/input_devel/climate&quot;</span>)
+p_climo &lt;-<span class="st"> &quot;~/Dropbox/data/climate/rainfall/zambia/precip/&quot;</span>
 p_yield &lt;-<span class="st"> </span><span class="kw">fp</span>(p_root, <span class="st">&quot;external/input_devel/yield&quot;</span>)
 p_pgf &lt;-<span class="st"> &quot;~/Dropbox/data/climate/afdm/pgf_bc/zambia/&quot;</span>
+p_sgrids &lt;-<span class="st"> &quot;~/Dropbox/data/soil/&quot;</span>
 
 <span class="co"># Read in Zambia grid</span>
 mgrid &lt;-<span class="st"> </span><span class="kw">raster</span>(<span class="kw">full_path</span>(p_basedat, <span class="st">&quot;ZA-grid.tif&quot;</span>))
+
+<span class="co"># Zambia provinces</span>
+p_prov &lt;-<span class="st"> </span><span class="kw">paste0</span>(<span class="st">&quot;/Users/lestes/Dropbox/data/zari/infrastructure/zambia/&quot;</span>, 
+                 <span class="st">&quot;rda_dump/Final Shape files RDA/&quot;</span>)
+prov &lt;-<span class="st"> </span><span class="kw">readOGR</span>(<span class="kw">fp</span>(p_prov, <span class="st">&quot;prov.shp&quot;</span>), <span class="dt">layer =</span> <span class="st">&quot;prov&quot;</span>)
 
 <span class="co"># Read in original soil-climate data from rCropMod</span>
 soilgrid &lt;-<span class="st"> </span><span class="kw">raster</span>(<span class="kw">fp</span>(p_cropmod, <span class="st">&quot;af_soil_grid.tif&quot;</span>))  <span class="co"># soil grid</span>
@@ -127,6 +135,7 @@ ID[, V1 :<span class="er">=</span><span class="st"> </span><span class="ot">NULL
 ID[, SharePct :<span class="er">=</span><span class="st"> </span><span class="kw">as.numeric</span>(SharePct)]
 zone &lt;-<span class="st"> </span><span class="kw">sort</span>(<span class="kw">unique</span>(ID$Zone))
 for(i in <span class="dv">1</span>:<span class="kw">length</span>(zone)) ID[Zone ==<span class="st"> </span>zone[i], zoneid :<span class="er">=</span><span class="st"> </span>i]
+<span class="kw">setkeyv</span>(ID, <span class="kw">c</span>(<span class="st">&quot;WTH&quot;</span>, <span class="st">&quot;Zone&quot;</span>))
 <span class="co"># ID[, FID := 1:.N]</span>
 IDr &lt;-<span class="st"> </span><span class="kw">subset</span>(<span class="kw">unique</span>(ID[, .(x, y, ID, WTH, Zone, zoneid)]))
 <span class="kw">setkeyv</span>(IDr, <span class="kw">c</span>(<span class="st">&quot;WTH&quot;</span>, <span class="st">&quot;Zone&quot;</span>))
@@ -135,35 +144,85 @@ gcs &lt;-<span class="st"> &quot;+proj=longlat +datum=WGS84&quot;</span>
 idgr &lt;-<span class="st"> </span><span class="kw">dt_to_raster</span>(IDr[, .(x, y, ID, zoneid)], <span class="kw">CRS</span>(gcs))
 <span class="co"># plot(idgr)</span>
 
+<span class="co"># Yield data selection points</span>
 <span class="co"># GSOD points</span>
-gsod &lt;-<span class="st"> </span><span class="kw">fread</span>(<span class="kw">fp</span>(p_clim, <span class="st">&quot;gsod.txt&quot;</span>))
-<span class="kw">setnames</span>(gsod, <span class="kw">names</span>(gsod), <span class="kw">c</span>(<span class="st">&quot;id&quot;</span>, <span class="st">&quot;x&quot;</span>, <span class="st">&quot;y&quot;</span>, <span class="st">&quot;n&quot;</span>))
-<span class="kw">coordinates</span>(gsod) &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;x&quot;</span>, <span class="st">&quot;y&quot;</span>)
-zamgsod &lt;-<span class="st"> </span><span class="kw">crop</span>(gsod, IDr)
+gsod &lt;-<span class="st"> </span><span class="kw">fread</span>(<span class="kw">fp</span>(p_clim, <span class="st">&quot;gsod.txt&quot;</span>), <span class="dt">stringsAsFactors =</span> <span class="ot">FALSE</span>)
+<span class="kw">setnames</span>(gsod, <span class="kw">names</span>(gsod), <span class="kw">c</span>(<span class="st">&quot;nms&quot;</span>, <span class="st">&quot;x&quot;</span>, <span class="st">&quot;y&quot;</span>, <span class="st">&quot;n&quot;</span>))
+gsod &lt;-<span class="st"> </span>gsod[, <span class="dv">1</span>:<span class="dv">3</span>, with =<span class="st"> </span><span class="ot">FALSE</span>]
+gsod[, nms :<span class="er">=</span><span class="st"> </span><span class="kw">paste0</span>(<span class="st">&quot;g&quot;</span>, nms)]
 <span class="co"># plot(idgr)</span>
 <span class="co"># points(zamgsod)  # not representative enough</span>
 
+<span class="co"># ZMD rainfall stations</span>
+nms &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">'CHIPAT01'</span>, <span class="st">'CHIPEP01'</span>, <span class="st">'CHOMA001'</span>, <span class="st">'ISOKA001'</span>, <span class="st">'KABOMP01'</span>, <span class="st">'KABWE001'</span>,
+         <span class="st">'KAFIRO01'</span>, <span class="st">'KAFUE001'</span>, <span class="st">'KALABO01'</span>, <span class="st">'KAOMA001'</span>, <span class="st">'KASAMA01'</span>, <span class="st">'KASEMP01'</span>,          <span class="st">'KAWAMB01'</span>, <span class="st">'LIVING01'</span>, <span class="st">'LUNDAZ01'</span>, <span class="st">'LUSAKA01'</span>, <span class="st">'LUSAKA02'</span>, <span class="st">'LUSITU01'</span>,          <span class="st">'MAGOYE01'</span>, <span class="st">'MANSA001'</span>, <span class="st">'MBALA001'</span>, <span class="st">'MFUWE001'</span>, <span class="st">'MISAMF01'</span>, <span class="st">'MKUSHI01'</span>,          <span class="st">'MONGU002'</span>, <span class="st">'MPIKA001'</span>) 
+x &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="fl">32.58</span>, <span class="fl">28.38</span>, <span class="fl">27.07</span>, <span class="fl">32.63</span>, <span class="fl">24.20</span>, <span class="fl">28.47</span>, <span class="fl">28.12</span>, <span class="fl">27.92</span>, <span class="fl">22.70</span>, <span class="fl">24.80</span>,
+       <span class="fl">31.13</span>, <span class="fl">25.85</span>, <span class="fl">29.08</span>, <span class="fl">25.82</span>, <span class="fl">33.20</span>, <span class="fl">28.32</span>, <span class="fl">28.45</span>, <span class="fl">29.37</span>, <span class="fl">27.60</span>, <span class="fl">28.85</span>, 
+       <span class="fl">31.33</span>, <span class="fl">31.93</span>, <span class="fl">31.25</span>, <span class="fl">29.33</span>, <span class="fl">23.15</span>, <span class="fl">31.43</span>)  
+y &lt;-<span class="st"> </span><span class="kw">c</span>(-<span class="fl">13.55</span>, -<span class="fl">17.33</span>, -<span class="fl">16.83</span>, -<span class="fl">10.12</span>, -<span class="fl">13.60</span>, -<span class="fl">14.45</span>, -<span class="fl">12.60</span>, -<span class="fl">15.77</span>, -<span class="fl">14.95</span>,
+       -<span class="fl">14.80</span>, -<span class="fl">10.22</span>, -<span class="fl">13.53</span>, -<span class="fl">9.80</span>, -<span class="fl">17.82</span>, -<span class="fl">12.28</span>, -<span class="fl">15.42</span>, -<span class="fl">15.32</span>, -<span class="fl">16.30</span>,
+       -<span class="fl">16.00</span>, -<span class="fl">11.10</span>, -<span class="fl">8.85</span>, -<span class="fl">13.27</span>, -<span class="fl">10.10</span>, -<span class="fl">14.00</span>, -<span class="fl">15.25</span>, -<span class="fl">11.90</span>)
+zmd &lt;-<span class="st"> </span><span class="kw">cbind.data.frame</span>(<span class="dt">nms =</span> <span class="kw">as.character</span>(nms), x, y, 
+                        <span class="dt">stringsAsFactors =</span> <span class="ot">FALSE</span>)
+<span class="kw">write.csv</span>(zmd, <span class="dt">file =</span> <span class="kw">fp</span>(p_climo, <span class="st">&quot;zmd-stations.csv&quot;</span>))
+
+<span class="co"># bring together GSOD and ZMD stations</span>
+zmd_gsod &lt;-<span class="st"> </span><span class="kw">rbind</span>(zmd, gsod)
+<span class="kw">coordinates</span>(zmd_gsod) &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;x&quot;</span>, <span class="st">&quot;y&quot;</span>)
+
+<span class="co"># Select those intersecting Zambia</span>
+gint &lt;-<span class="st"> </span>rgeos::<span class="kw">gIntersects</span>(prov, zmd_gsod, <span class="dt">byid =</span> <span class="ot">TRUE</span>)
+sel &lt;-<span class="st"> </span><span class="kw">unname</span>(<span class="kw">which</span>(<span class="kw">apply</span>(gint, <span class="dv">1</span>, function(x) <span class="kw">sum</span>(<span class="kw">which</span>(x))) &gt;<span class="st"> </span><span class="dv">0</span>))
+zmet &lt;-<span class="st"> </span>zmd_gsod[sel, ]
+<span class="co"># str(zmet)</span>
+
+<span class="co"># buffer the ZMD stations by ~20 km to see if any GSOD stations fall within that</span>
+zbuffer &lt;-<span class="st"> </span>rgeos::<span class="kw">gBuffer</span>(zmet[<span class="dv">1</span>:<span class="dv">26</span>, ], <span class="dt">byid =</span> <span class="ot">TRUE</span>, <span class="dt">width =</span> <span class="fl">0.3</span>)
+zbuffer &lt;-<span class="st"> </span><span class="kw">spChFIDs</span>(zbuffer, <span class="kw">as.character</span>(<span class="dv">1</span>:<span class="kw">nrow</span>(zbuffer)))
+gint &lt;-<span class="st"> </span>rgeos::<span class="kw">gIntersects</span>(zbuffer, zmet[<span class="dv">27</span>:<span class="kw">nrow</span>(zmet), ], <span class="dt">byid =</span> <span class="ot">TRUE</span>)
+sel &lt;-<span class="st"> </span><span class="kw">unname</span>(<span class="kw">which</span>(<span class="kw">apply</span>(gint, <span class="dv">1</span>, function(x) <span class="kw">sum</span>(<span class="kw">which</span>(x))) &gt;<span class="st"> </span><span class="dv">0</span>))
+desel &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="dv">27</span>:<span class="kw">nrow</span>(zmet))[sel]
+<span class="co"># plot(zmet[-desel, ], pch = 16, cex = 0.5)</span>
+<span class="co"># points(zmet[desel, ], pch = 16, cex = 0.5, col = &quot;red&quot;)</span>
+<span class="co"># plot(prov, add = TRUE)</span>
+zmetf &lt;-<span class="st"> </span>zmet[-desel, ]
+
+zmetsamps &lt;-<span class="st"> </span><span class="kw">extract</span>(idgr, zmetf, <span class="dt">cellnumbers =</span> <span class="ot">TRUE</span>)
+zmetsamps &lt;-<span class="st"> </span><span class="kw">cbind</span>(<span class="kw">xyFromCell</span>(idgr, zmetsamps[, <span class="st">&quot;cells&quot;</span>]), zmetsamps)
+
+zmet_dt &lt;-<span class="st"> </span><span class="kw">data.table</span>(<span class="kw">data.frame</span>(zmetsamps))[, .(x, y)]
+<span class="kw">setkeyv</span>(zmet_dt, <span class="kw">c</span>(<span class="st">&quot;x&quot;</span>, <span class="st">&quot;y&quot;</span>))
+<span class="kw">setkeyv</span>(IDr, <span class="kw">c</span>(<span class="st">&quot;x&quot;</span>, <span class="st">&quot;y&quot;</span>))
+IDr_ss &lt;-<span class="st"> </span>IDr[zmet_dt]  <span class="co"># pick up IDs, soils, wth variables</span>
+<span class="kw">setkeyv</span>(IDr_ss, <span class="kw">c</span>(<span class="st">&quot;WTH&quot;</span>, <span class="st">&quot;Zone&quot;</span>))
+<span class="co"># IDr_ss[, plot(x, y)]</span>
+<span class="co"># points(zmet_dt, pch = 16, cex = 0.5)</span>
+<span class="co"># tst &lt;- extract(idgr, zmet_dt)</span>
+<span class="co"># all(tst[order(tst[, 1]), 2] == zmetsamps[order(zmetsamps[, 4]), 5])</span>
+
+<span class="co"># alternative for yield data selection points:</span>
 <span class="co"># Creatre stratified, representative random sample of 50 pts from ID/zone grid</span>
-ztab &lt;-<span class="st"> </span><span class="kw">freq</span>(idgr$zoneid)[-<span class="dv">5</span>, ]
-ztabs &lt;-<span class="st"> </span><span class="kw">round</span>((ztab[, <span class="dv">2</span>] /<span class="st"> </span><span class="kw">sum</span>(ztab[, <span class="dv">2</span>])) *<span class="st"> </span><span class="dv">50</span>)
-<span class="kw">set.seed</span>(<span class="dv">34</span>)
-gsamps &lt;-<span class="st"> </span><span class="kw">do.call</span>(rbind, <span class="kw">lapply</span>(<span class="dv">1</span>:<span class="dv">4</span>, function(i) {
-  gsamp &lt;-<span class="st"> </span><span class="kw">sampleRandom</span>(idgr$zoneid ==<span class="st"> </span>i, <span class="dt">size =</span> ztabs[i], <span class="dt">cells =</span> <span class="ot">TRUE</span>)
-  sampxy &lt;-<span class="st"> </span><span class="kw">xyFromCell</span>(idgr, gsamp[, <span class="st">&quot;cell&quot;</span>])
-}))
-<span class="kw">plot</span>(idgr$ID)  <span class="co"># unique(values(idgr$ID))</span>
+<span class="co"># ztab &lt;- freq(idgr$zoneid)[-5, ]</span>
+<span class="co"># ztabs &lt;- round((ztab[, 2] / sum(ztab[, 2])) * 50)</span>
+<span class="co"># set.seed(34)</span>
+<span class="co"># gsamps &lt;- do.call(rbind, lapply(1:4, function(i) {</span>
+<span class="co">#   gsamp &lt;- sampleRandom(idgr$zoneid == i, size = ztabs[i], cells = TRUE)</span>
+<span class="co">#   sampxy &lt;- xyFromCell(idgr, gsamp[, &quot;cell&quot;])</span>
+<span class="co"># }))</span>
+<span class="co"># plot(idgr$ID)  # unique(values(idgr$ID))</span>
 <span class="co"># length(which(!is.na(values(idgr$ID))))</span>
 <span class="co"># length(which(!is.na(unique(values(idgr$ID)))))</span>
 <span class="co"># points(gsamps, pch = 16, cex = 0.5)</span>
-
-<span class="co"># merge those points with the main ID grid</span>
-gsamps_dt &lt;-<span class="st"> </span><span class="kw">data.table</span>(gsamps)
-<span class="kw">setkeyv</span>(gsamps_dt, <span class="kw">c</span>(<span class="st">&quot;x&quot;</span>, <span class="st">&quot;y&quot;</span>))
-<span class="kw">setkeyv</span>(ID, <span class="kw">c</span>(<span class="st">&quot;x&quot;</span>, <span class="st">&quot;y&quot;</span>))
-IDr_ss &lt;-<span class="st"> </span>ID[gsamps_dt]  <span class="co"># pick up IDs, soils, wth variables</span>
-<span class="kw">setkeyv</span>(IDr_ss, <span class="kw">c</span>(<span class="st">&quot;WTH&quot;</span>, <span class="st">&quot;SOL&quot;</span>, <span class="st">&quot;Zone&quot;</span>))
+<span class="co"># </span>
+<span class="co"># # merge those points with the main ID grid</span>
+<span class="co"># gsamps_dt &lt;- data.table(gsamps)</span>
+<span class="co"># setkeyv(gsamps_dt, c(&quot;x&quot;, &quot;y&quot;))</span>
+<span class="co"># setkeyv(IDr, c(&quot;x&quot;, &quot;y&quot;))</span>
+<span class="co"># IDr_ss &lt;- IDr[gsamps_dt]  # pick up IDs, soils, wth variables</span>
+<span class="co"># setkeyv(IDr_ss, c(&quot;WTH&quot;, &quot;SOL&quot;, &quot;Zone&quot;))</span>
 <span class="co"># IDr_ss[, plot(x, y)]</span>
 <span class="co"># points(gsamps, pch = 16, cex = 0.5)</span>
+
 
 <span class="co"># sgrid &lt;- fread(fp(p_cropmod, &quot;Soil_clim_match_ID.csv&quot;), </span>
 <span class="co">#                stringsAsFactors = FALSE)</span>
@@ -174,19 +233,75 @@ IDr_ss &lt;-<span class="st"> </span>ID[gsamps_dt]  <span class="co"># pick up I
 <span class="co"># setkeyv(sgrid, c(&quot;x&quot;, &quot;y&quot;))</span>
 <span class="co"># sgrid[SOL == &quot;WI_ARBW438&quot;]</span></code></pre>
 </div>
+<div id="full-dssat-yield-grids" class="section level1">
+<h1><span class="header-section-number">2</span> Full DSSAT yield grids</h1>
+<pre class="sourceCode r"><code class="sourceCode r">crops &lt;-<span class="st"> </span><span class="kw">dir</span>(p_crop, <span class="dt">pattern =</span> <span class="st">&quot;maize|soybean&quot;</span>, <span class="dt">full.names =</span> <span class="ot">FALSE</span>)
+fylds &lt;-<span class="st"> </span><span class="kw">lapply</span>(crops, function(X) {  <span class="co"># X &lt;- &quot;maize&quot;</span>
+  fnms &lt;-<span class="st"> </span><span class="kw">dir</span>(<span class="kw">full_path</span>(p_crop, X), <span class="dt">pattern =</span> X)
+  fl &lt;-<span class="st"> </span><span class="kw">unlist</span>(<span class="kw">lapply</span>(<span class="kw">c</span>(<span class="st">&quot;S&quot;</span>, <span class="st">&quot;R&quot;</span>), function(x) {
+    fnms[<span class="kw">grep</span>(<span class="kw">paste0</span>(<span class="kw">paste0</span>(x, <span class="st">&quot;0&quot;</span>), <span class="st">&quot;|&quot;</span>, <span class="kw">paste0</span>(x, <span class="st">&quot;9&quot;</span>)), fnms)]
+  }))  <span class="co"># reorder to read subsistence first</span>
+  <span class="co"># idt &lt;- copy(IDr)</span>
+  <span class="co"># key(idt)</span>
+  idt &lt;-<span class="st"> </span><span class="kw">copy</span>(ID)
+  idt &lt;-<span class="st"> </span><span class="kw">subset</span>(<span class="kw">unique</span>(idt[, .(x, y, WTH, Zone, SharePct)]))
+  <span class="kw">setkeyv</span>(idt, <span class="kw">c</span>(<span class="st">&quot;WTH&quot;</span>, <span class="st">&quot;Zone&quot;</span>))
+  for(y in <span class="dv">1</span>:<span class="kw">length</span>(fl)) { <span class="co"># y &lt;- 1</span>
+    <span class="co"># setcolorder(idt, c(4, 7:8, 5:6, 1:3))</span>
+    <span class="kw">print</span>(<span class="kw">paste</span>(<span class="st">&quot;Processing&quot;</span>, fl[y]))
+    cr &lt;-<span class="st"> </span><span class="kw">fread</span>(<span class="dt">input =</span> <span class="kw">full_path</span>(p_crop, <span class="kw">paste0</span>(X, <span class="st">&quot;/&quot;</span>, fl[y])))
+    cr[, <span class="st">&quot;YR&quot;</span> :<span class="er">=</span><span class="st"> </span>RUNNO -<span class="st"> </span><span class="kw">min</span>(RUNNO) +<span class="st"> </span><span class="dv">1</span>, by =<span class="st"> </span>.(TNAM, Zones)]  <span class="co"># unique year  </span>
+    <span class="kw">setnames</span>(cr, <span class="kw">c</span>(<span class="st">&quot;SOIL_ID...&quot;</span>, <span class="st">&quot;WSTA....&quot;</span>, <span class="st">&quot;Zones&quot;</span>), <span class="kw">c</span>(<span class="st">&quot;SOL&quot;</span>, <span class="st">&quot;WTH&quot;</span>, <span class="st">&quot;Zone&quot;</span>))
+    cr[, WTH :<span class="er">=</span><span class="st"> </span><span class="kw">substr</span>(WTH, <span class="dv">1</span>, <span class="dv">4</span>)]
+    cr[, <span class="kw">c</span>(<span class="st">&quot;V1&quot;</span>, <span class="st">&quot;RUNNO&quot;</span>, <span class="st">&quot;TRNO&quot;</span>, <span class="st">&quot;TNAM&quot;</span>) :<span class="er">=</span><span class="st"> </span><span class="ot">NULL</span>]
+    <span class="kw">setkeyv</span>(cr, <span class="kw">c</span>(<span class="st">&quot;WTH&quot;</span>, <span class="st">&quot;Zone&quot;</span>))
+    
+    crm &lt;-<span class="st"> </span><span class="kw">merge</span>(cr, idt, <span class="dt">by =</span> <span class="kw">c</span>(<span class="st">&quot;WTH&quot;</span>, <span class="st">&quot;Zone&quot;</span>))
+
+    <span class="co"># nms &lt;- names(crm)[c(6:7, 8, 1:2, 4, 9, 5, 3)]</span>
+    
+    <span class="co"># Soil averaged yields</span>
+    solmu &lt;-<span class="st"> </span>crm[, <span class="kw">round</span>(<span class="kw">weighted.mean</span>(HWAH, <span class="dt">w =</span> SharePct)), 
+                 by =<span class="st"> </span>.(WTH, Zone, YR)]
+    snm &lt;-<span class="st"> </span><span class="kw">gsub</span>(<span class="st">&quot;*.*_|</span><span class="ch">\\</span><span class="st">.csv&quot;</span>, <span class="st">&quot;&quot;</span>, fl[y])
+    
+    <span class="co"># Yield means</span>
+    v &lt;-<span class="st"> </span>solmu[, <span class="kw">round</span>(<span class="kw">mean</span>(V1)), by =<span class="st"> </span>.(WTH, Zone)]
+    <span class="kw">setnames</span>(v, <span class="st">&quot;V1&quot;</span>, <span class="kw">paste0</span>(<span class="st">&quot;Y&quot;</span>, snm))
+    idt &lt;-<span class="st"> </span>idt[v]
+    <span class="kw">setkeyv</span>(idt, <span class="kw">c</span>(<span class="st">&quot;WTH&quot;</span>, <span class="st">&quot;Zone&quot;</span>))
+    idt
+  }
+  idt
+})
+<span class="kw">names</span>(fylds) &lt;-<span class="st"> </span>crops
+
+rdt &lt;-<span class="st"> </span>fylds$maize[, <span class="kw">c</span>(<span class="dv">1</span>:<span class="dv">2</span>, <span class="kw">grep</span>(<span class="st">&quot;YS&quot;</span>, <span class="kw">names</span>(fylds$maize))), with =<span class="st"> </span><span class="ot">FALSE</span>]
+mzs &lt;-<span class="st"> </span><span class="kw">dt_to_raster</span>(rdt, <span class="kw">raster</span>()@crs)
+rdt &lt;-<span class="st"> </span>fylds$maize[, <span class="kw">c</span>(<span class="dv">1</span>:<span class="dv">2</span>, <span class="kw">grep</span>(<span class="st">&quot;YR&quot;</span>, <span class="kw">names</span>(fylds$maize))), with =<span class="st"> </span><span class="ot">FALSE</span>]
+mzr &lt;-<span class="st"> </span><span class="kw">dt_to_raster</span>(rdt, <span class="kw">raster</span>()@crs)
+rdt &lt;-<span class="st"> </span>fylds$soybean[, <span class="kw">c</span>(<span class="dv">1</span>:<span class="dv">2</span>, <span class="kw">grep</span>(<span class="st">&quot;YS&quot;</span>, <span class="kw">names</span>(fylds$soybean))), with =<span class="st"> </span><span class="ot">FALSE</span>]
+soys &lt;-<span class="st"> </span><span class="kw">dt_to_raster</span>(rdt, <span class="kw">raster</span>()@crs)
+rdt &lt;-<span class="st"> </span>fylds$soybean[, <span class="kw">c</span>(<span class="dv">1</span>:<span class="dv">2</span>, <span class="kw">grep</span>(<span class="st">&quot;YR&quot;</span>, <span class="kw">names</span>(fylds$soybean))), with =<span class="st"> </span><span class="ot">FALSE</span>]
+soyr &lt;-<span class="st"> </span><span class="kw">dt_to_raster</span>(rdt, <span class="kw">raster</span>()@crs)
+
+<span class="co"># par(mar = rep(0, 4))</span>
+<span class="co"># plot(calc(mzs, mean))</span>
+<span class="co"># plot(zmetf, pch = 16, cex = 0.5, add = TRUE)</span></code></pre>
+</div>
 <div id="extract-subset-of-dssat-yields-soils-climate-data" class="section level1">
-<h1><span class="header-section-number">2</span> Extract subset of DSSAT yields, soils, climate data</h1>
+<h1><span class="header-section-number">3</span> Extract subset of DSSAT yields, soils, climate data</h1>
 <div id="yield" class="section level2">
-<h2><span class="header-section-number">2.1</span> Yield</h2>
+<h2><span class="header-section-number">3.1</span> Yield</h2>
 <pre class="sourceCode r"><code class="sourceCode r"><span class="co"># merge function for lists of data.tables</span>
 mymerge &lt;-<span class="st"> </span>function(x, y) <span class="kw">merge</span>(x, y, <span class="dt">all =</span> <span class="ot">TRUE</span>)
 
 <span class="co"># Yield data for those points</span>
-crops &lt;-<span class="st"> </span><span class="kw">dir</span>(p_crop, <span class="dt">pattern =</span> <span class="st">&quot;maize|soybean&quot;</span>, <span class="dt">full.names =</span> <span class="ot">FALSE</span>)
+mannms &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;S&quot;</span>, <span class="st">&quot;R&quot;</span>)
 ylds &lt;-<span class="st"> </span><span class="kw">lapply</span>(crops, function(X) {
   <span class="co"># X &lt;- crops[1]</span>
   fnms &lt;-<span class="st"> </span><span class="kw">dir</span>(<span class="kw">full_path</span>(p_crop, X), <span class="dt">pattern =</span> X)
-  fl &lt;-<span class="st"> </span><span class="kw">unlist</span>(<span class="kw">lapply</span>(<span class="kw">c</span>(<span class="st">&quot;S&quot;</span>, <span class="st">&quot;R&quot;</span>, <span class="st">&quot;I&quot;</span>), function(x) {
+  fl &lt;-<span class="st"> </span><span class="kw">unlist</span>(<span class="kw">lapply</span>(mannms, function(x) {
     fnms[<span class="kw">grep</span>(<span class="kw">paste0</span>(<span class="kw">paste0</span>(x, <span class="st">&quot;0&quot;</span>), <span class="st">&quot;|&quot;</span>, <span class="kw">paste0</span>(x, <span class="st">&quot;9&quot;</span>)), fnms)]
   }))  <span class="co"># reorder to read subsistence first</span>
   <span class="co"># fl &lt;- fl[1:3]</span>
@@ -203,7 +318,7 @@ ylds &lt;-<span class="st"> </span><span class="kw">lapply</span>(crops, functio
     <span class="co"># merge IDs with subset location</span>
     <span class="co"># crm &lt;- cr[idt]</span>
     crm &lt;-<span class="st"> </span><span class="kw">merge</span>(cr, idt)
-    crm[, SharePct :<span class="er">=</span><span class="st"> </span><span class="ot">NULL</span>]
+    <span class="co"># crm[, SharePct := NULL]</span>
     nms &lt;-<span class="st"> </span><span class="kw">names</span>(crm)[<span class="kw">c</span>(<span class="dv">7</span>:<span class="dv">8</span>, <span class="dv">6</span>, <span class="dv">1</span>:<span class="dv">2</span>, <span class="dv">9</span>, <span class="dv">3</span>, <span class="dv">5</span>, <span class="dv">4</span>)]
     <span class="kw">setcolorder</span>(crm, nms)
     mid &lt;-<span class="st"> </span><span class="dv">1</span>:<span class="kw">nrow</span>(crm)
@@ -217,7 +332,6 @@ ylds &lt;-<span class="st"> </span><span class="kw">lapply</span>(crops, functio
   })
   yldmerge &lt;-<span class="st"> </span><span class="kw">Reduce</span>(mymerge, crml)
   ynms &lt;-<span class="st"> </span><span class="kw">names</span>(yldmerge)
-  mannms &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;S&quot;</span>, <span class="st">&quot;R&quot;</span>, <span class="st">&quot;I&quot;</span>)
   <span class="co"># yldred &lt;- data.table(round(do.call(cbind, lapply(mannms, function(x) {</span>
     <span class="co"># yldmerge[, rowMeans(.SD), .SDcols = grep(paste0(x, &quot;[0-9]&quot;), ynms)]</span>
   <span class="co"># }))))</span>
@@ -227,12 +341,10 @@ ylds &lt;-<span class="st"> </span><span class="kw">lapply</span>(crops, functio
     yldmerge[, <span class="kw">c</span>(onms[[<span class="dv">1</span>]]) :<span class="er">=</span><span class="st"> </span><span class="kw">round</span>(<span class="kw">rowMeans</span>(.SD)), .SDcols =<span class="st"> </span>onms[[<span class="dv">2</span>]]]
     yldmerge[, <span class="kw">c</span>(onms[[<span class="dv">2</span>]]) :<span class="er">=</span><span class="st"> </span><span class="ot">NULL</span>]
   }
-<span class="co">#   setnames(yldred, names(yldred), paste0(&quot;YLD&quot;, mannms))</span>
-<span class="co">#   yldred[, mid := yldmerge[, .(mid)]]</span>
-<span class="co">#   </span>
+  
   <span class="co"># Internal check on yield means</span>
-  if(<span class="kw">length</span>(crml) ==<span class="st"> </span><span class="dv">12</span>) crind &lt;-<span class="st"> </span><span class="kw">list</span>(<span class="st">&quot;S&quot;</span> =<span class="st"> </span><span class="dv">1</span>:<span class="dv">4</span>, <span class="st">&quot;R&quot;</span> =<span class="st"> </span><span class="dv">5</span>:<span class="dv">8</span>, <span class="st">&quot;I&quot;</span> =<span class="st"> </span><span class="dv">9</span>:<span class="dv">12</span>) 
-  if(<span class="kw">length</span>(crml) ==<span class="st"> </span><span class="dv">9</span>) crind &lt;-<span class="st"> </span><span class="kw">list</span>(<span class="st">&quot;S&quot;</span> =<span class="st"> </span><span class="dv">1</span>:<span class="dv">3</span>, <span class="st">&quot;R&quot;</span> =<span class="st"> </span><span class="dv">4</span>:<span class="dv">6</span>, <span class="st">&quot;I&quot;</span> =<span class="st"> </span><span class="dv">7</span>:<span class="dv">9</span>) 
+  if(<span class="kw">length</span>(crml) ==<span class="st"> </span><span class="dv">8</span>) crind &lt;-<span class="st"> </span><span class="kw">list</span>(<span class="st">&quot;S&quot;</span> =<span class="st"> </span><span class="dv">1</span>:<span class="dv">4</span>, <span class="st">&quot;R&quot;</span> =<span class="st"> </span><span class="dv">5</span>:<span class="dv">8</span>, <span class="st">&quot;I&quot;</span> =<span class="st"> </span><span class="dv">9</span>:<span class="dv">12</span>) 
+  if(<span class="kw">length</span>(crml) ==<span class="st"> </span><span class="dv">6</span>) crind &lt;-<span class="st"> </span><span class="kw">list</span>(<span class="st">&quot;S&quot;</span> =<span class="st"> </span><span class="dv">1</span>:<span class="dv">3</span>, <span class="st">&quot;R&quot;</span> =<span class="st"> </span><span class="dv">4</span>:<span class="dv">6</span>, <span class="st">&quot;I&quot;</span> =<span class="st"> </span><span class="dv">7</span>:<span class="dv">9</span>) 
   for(ii in <span class="kw">sample</span>(<span class="dv">1</span>:<span class="kw">nrow</span>(yldmerge), <span class="dt">size =</span> <span class="dv">20</span>)) {
     for(jj in <span class="dv">1</span>:<span class="kw">length</span>(mannms)) {  <span class="co"># jj = 2</span>
       a &lt;-<span class="st"> </span>yldmerge[ii, ]
@@ -253,7 +365,8 @@ ylds &lt;-<span class="st"> </span><span class="kw">lapply</span>(crops, functio
 <span class="kw">names</span>(ylds) &lt;-<span class="st"> </span>crops</code></pre>
 </div>
 <div id="soil" class="section level2">
-<h2><span class="header-section-number">2.2</span> Soil</h2>
+<h2><span class="header-section-number">3.2</span> Soil</h2>
+<p>Note: Using an updated version of <code>read_dssat_prof.R</code> from the rCropMod library. It needs to be rebuilt into that library. Here it is being sourced before runnign the next section.</p>
 <pre class="sourceCode r"><code class="sourceCode r">pts &lt;-<span class="st"> </span>IDr_ss[, .(x, y)]
 <span class="co"># pts &lt;- cbind.data.frame(&quot;x&quot; = 27.4738917, &quot;y&quot; = -16.2783358)  # in Zambia</span>
 <span class="kw">coordinates</span>(pts) &lt;-<span class="st"> </span><span class="er">~</span>x+y
@@ -323,9 +436,9 @@ solvals &lt;-<span class="st"> </span><span class="kw">do.call</span>(cbind, <sp
 sol1m &lt;-<span class="st"> </span><span class="kw">cbind</span>(<span class="st">&quot;pro&quot;</span> =<span class="st"> </span>profdat[, pro], <span class="kw">data.table</span>(solvals))</code></pre>
 </div>
 <div id="climate" class="section level2">
-<h2><span class="header-section-number">2.3</span> Climate</h2>
+<h2><span class="header-section-number">3.3</span> Climate</h2>
 <div id="indices" class="section level3">
-<h3><span class="header-section-number">2.3.1</span> Indices</h3>
+<h3><span class="header-section-number">3.3.1</span> Indices</h3>
 <pre class="sourceCode r"><code class="sourceCode r">sdate &lt;-<span class="st"> &quot;1948/01/01&quot;</span>
 edate &lt;-<span class="st"> &quot;2010/12/31&quot;</span>
 dts &lt;-<span class="st"> </span><span class="kw">seq.Date</span>(<span class="kw">as.Date</span>(sdate), <span class="kw">as.Date</span>(edate), <span class="st">&quot;days&quot;</span>)
@@ -357,12 +470,8 @@ for(i in sindu) octind[<span class="kw">which</span>(sind ==<span class="st"> </
 sindu2 &lt;-<span class="st"> </span>sindu[sindu %in%<span class="st"> </span><span class="kw">which</span>(ano %in%<span class="st"> </span><span class="dv">1979</span>:<span class="dv">2010</span>)]</code></pre>
 </div>
 <div id="rainfall" class="section level3">
-<h3><span class="header-section-number">2.3.2</span> Rainfall</h3>
-<pre class="sourceCode r"><code class="sourceCode r"><span class="co"># p_prov &lt;- paste0(&quot;/Users/lestes/Dropbox/data/zari/infrastructure/zambia/&quot;, </span>
-<span class="co">#                  &quot;rda_dump/Final Shape files RDA/&quot;)</span>
-<span class="co"># prov &lt;- readOGR(fp(p_prov, &quot;prov.shp&quot;), layer = &quot;prov&quot;)</span>
-
-prec &lt;-<span class="st"> </span><span class="kw">brick</span>(<span class="kw">fp</span>(p_pgf, <span class="st">&quot;prec.Zambia.nc&quot;</span>))
+<h3><span class="header-section-number">3.3.2</span> Rainfall</h3>
+<pre class="sourceCode r"><code class="sourceCode r">prec &lt;-<span class="st"> </span><span class="kw">brick</span>(<span class="kw">fp</span>(p_pgf, <span class="st">&quot;prec.Zambia.nc&quot;</span>))
 
 <span class="co"># functions for raindays</span>
 nrday &lt;-<span class="st"> </span>function(x) <span class="kw">length</span>(<span class="kw">which</span>(x &gt;<span class="st"> </span><span class="dv">0</span>))  <span class="co"># raindays</span>
@@ -416,35 +525,35 @@ rftot &lt;-<span class="st"> </span><span class="kw">stack</span>(<span class="k
   ind &lt;-<span class="st"> </span><span class="kw">which</span>(sind ==<span class="st"> </span>sindu2[i])
   <span class="kw">calc</span>(prec[[ind]], sum)
 })
-<span class="kw">writeRaster</span>(rftot, <span class="dt">filename =</span> <span class="kw">fp</span>(p_clim, <span class="st">&quot;rftot.tif&quot;</span>))
+<span class="kw">writeRaster</span>(rftot, <span class="dt">filename =</span> <span class="kw">fp</span>(p_clim, <span class="st">&quot;rftot.tif&quot;</span>), <span class="dt">overwrite =</span> <span class="ot">TRUE</span>)
 
 <span class="co"># total season rainfall</span>
 ndjftot &lt;-<span class="st"> </span><span class="kw">stack</span>(<span class="kw">foreach</span>(<span class="dt">i =</span> <span class="dv">1</span>:<span class="kw">length</span>(sindu2)) %dopar%<span class="st"> </span>{ <span class="co">#  i &lt;- 1</span>
   ind &lt;-<span class="st"> </span><span class="kw">which</span>(ndjfind ==<span class="st"> </span>sindu2[i])
   <span class="kw">calc</span>(prec[[ind]], sum)
 })
-<span class="kw">writeRaster</span>(rftot, <span class="dt">filename =</span> <span class="kw">fp</span>(p_clim, <span class="st">&quot;ndjftot.tif&quot;</span>))
+<span class="kw">writeRaster</span>(ndjftot, <span class="dt">filename =</span> <span class="kw">fp</span>(p_clim, <span class="st">&quot;ndjftot.tif&quot;</span>), <span class="dt">overwrite =</span> <span class="ot">TRUE</span>)
 
 <span class="co"># january rainfall</span>
 jantot &lt;-<span class="st"> </span><span class="kw">stack</span>(<span class="kw">foreach</span>(<span class="dt">i =</span> <span class="dv">1</span>:<span class="kw">length</span>(sindu2)) %dopar%<span class="st"> </span>{ <span class="co">#  i &lt;- 1</span>
   ind &lt;-<span class="st"> </span><span class="kw">which</span>(janind ==<span class="st"> </span>sindu2[i])
   <span class="kw">calc</span>(prec[[ind]], sum)
 })
-<span class="kw">writeRaster</span>(jantot, <span class="dt">filename =</span> <span class="kw">fp</span>(p_clim, <span class="st">&quot;jantot.tif&quot;</span>))
+<span class="kw">writeRaster</span>(jantot, <span class="dt">filename =</span> <span class="kw">fp</span>(p_clim, <span class="st">&quot;jantot.tif&quot;</span>), <span class="dt">overwrite =</span> <span class="ot">TRUE</span>)
 
 <span class="co"># february total</span>
 febtot &lt;-<span class="st"> </span><span class="kw">stack</span>(<span class="kw">foreach</span>(<span class="dt">i =</span> <span class="dv">1</span>:<span class="kw">length</span>(sindu2)) %dopar%<span class="st"> </span>{ <span class="co">#  i &lt;- 1</span>
   ind &lt;-<span class="st"> </span><span class="kw">which</span>(febind ==<span class="st"> </span>sindu2[i])
   <span class="kw">calc</span>(prec[[ind]], sum)
 })
-<span class="kw">writeRaster</span>(febtot, <span class="dt">filename =</span> <span class="kw">fp</span>(p_clim, <span class="st">&quot;febtot.tif&quot;</span>))
+<span class="kw">writeRaster</span>(febtot, <span class="dt">filename =</span> <span class="kw">fp</span>(p_clim, <span class="st">&quot;febtot.tif&quot;</span>), <span class="dt">overwrite =</span> <span class="ot">TRUE</span>)
 
 <span class="co"># february total</span>
 octtot &lt;-<span class="st"> </span><span class="kw">stack</span>(<span class="kw">foreach</span>(<span class="dt">i =</span> <span class="dv">1</span>:<span class="kw">length</span>(sindu2)) %dopar%<span class="st"> </span>{ <span class="co">#  i &lt;- 1</span>
   ind &lt;-<span class="st"> </span><span class="kw">which</span>(octind ==<span class="st"> </span>sindu2[i])
   <span class="kw">calc</span>(prec[[ind]], sum)
 })
-<span class="kw">writeRaster</span>(octtot, <span class="dt">filename =</span> <span class="kw">fp</span>(p_clim, <span class="st">&quot;octtot.tif&quot;</span>))
+<span class="kw">writeRaster</span>(octtot, <span class="dt">filename =</span> <span class="kw">fp</span>(p_clim, <span class="st">&quot;octtot.tif&quot;</span>), <span class="dt">overwrite =</span> <span class="ot">TRUE</span>)
 
 <span class="co"># par(mfrow = c(6, 6), mar = c(0, 0, 0, 0))</span>
 <span class="co"># for(i in 1:nlayers(octtot)) {</span>
@@ -478,7 +587,7 @@ octtot &lt;-<span class="st"> </span><span class="kw">stack</span>(<span class="
 <span class="co"># plot(rdays[[23]])</span></code></pre>
 </div>
 <div id="temperature" class="section level3">
-<h3><span class="header-section-number">2.3.3</span> Temperature</h3>
+<h3><span class="header-section-number">3.3.3</span> Temperature</h3>
 <pre class="sourceCode r"><code class="sourceCode r">tmax &lt;-<span class="st"> </span><span class="kw">brick</span>(<span class="kw">fp</span>(p_pgf, <span class="st">&quot;Tmax.Zambia.nc&quot;</span>)) 
 tmin &lt;-<span class="st"> </span><span class="kw">brick</span>(<span class="kw">fp</span>(p_pgf, <span class="st">&quot;Tmin.Zambia.nc&quot;</span>))
 
@@ -540,7 +649,7 @@ tmax_ano &lt;-<span class="st"> </span><span class="kw">stack</span>(<span class
 <span class="kw">writeRaster</span>(tmax_ano, <span class="dt">filename =</span> <span class="kw">fp</span>(p_clim, <span class="st">&quot;tmax_ano.tif&quot;</span>))</code></pre>
 </div>
 <div id="solar-radiation" class="section level3">
-<h3><span class="header-section-number">2.3.4</span> Solar radiation</h3>
+<h3><span class="header-section-number">3.3.4</span> Solar radiation</h3>
 <pre class="sourceCode r"><code class="sourceCode r">srad &lt;-<span class="st"> </span><span class="kw">brick</span>(<span class="kw">fp</span>(p_pgf, <span class="st">&quot;Rs.Zambia.nc&quot;</span>)) 
 
 <span class="co"># convert to MJ m^2 </span>
@@ -552,13 +661,13 @@ srtot_gs &lt;-<span class="st"> </span><span class="kw">stack</span>(<span class
   mj &lt;-<span class="st"> </span><span class="kw">mjday</span>(srad[[ind]])
   <span class="kw">calc</span>(mj, sum)
 })
-<span class="kw">writeRaster</span>(srtot_gs, <span class="dt">filename =</span> <span class="kw">fp</span>(p_clim, <span class="st">&quot;srtot_gs.tif&quot;</span>))
+<span class="kw">writeRaster</span>(srtot_gs, <span class="dt">filename =</span> <span class="kw">fp</span>(p_clim, <span class="st">&quot;srtot_gs.tif&quot;</span>), <span class="dt">overwrite =</span> <span class="ot">TRUE</span>)
 srmu_gs &lt;-<span class="st"> </span><span class="kw">stack</span>(<span class="kw">foreach</span>(<span class="dt">i =</span> <span class="dv">1</span>:<span class="kw">length</span>(sindu2)) %dopar%<span class="st"> </span>{ <span class="co">#  i &lt;- 1</span>
   ind &lt;-<span class="st"> </span><span class="kw">which</span>(ndjfind ==<span class="st"> </span>sindu2[i])
   mj &lt;-<span class="st"> </span><span class="kw">mjday</span>(srad[[ind]])
   <span class="kw">calc</span>(mj, mean)
 })
-<span class="kw">writeRaster</span>(srmu_gs, <span class="dt">filename =</span> <span class="kw">fp</span>(p_clim, <span class="st">&quot;srmu_gs.tif&quot;</span>))
+<span class="kw">writeRaster</span>(srmu_gs, <span class="dt">filename =</span> <span class="kw">fp</span>(p_clim, <span class="st">&quot;srmu_gs.tif&quot;</span>), <span class="dt">overwrite =</span> <span class="ot">TRUE</span>)
 
 <span class="co"># total and mean gs for whole year</span>
 srtot_ano &lt;-<span class="st"> </span><span class="kw">stack</span>(<span class="kw">foreach</span>(<span class="dt">i =</span> <span class="dv">1</span>:<span class="kw">length</span>(sindu2)) %dopar%<span class="st"> </span>{ <span class="co">#  i &lt;- 1</span>
@@ -566,17 +675,17 @@ srtot_ano &lt;-<span class="st"> </span><span class="kw">stack</span>(<span clas
   mj &lt;-<span class="st"> </span><span class="kw">mjday</span>(srad[[ind]])
   <span class="kw">calc</span>(mj, sum)
 })
-<span class="kw">writeRaster</span>(srtot_ano, <span class="dt">filename =</span> <span class="kw">fp</span>(p_clim, <span class="st">&quot;srtot_ano.tif&quot;</span>))
+<span class="kw">writeRaster</span>(srtot_ano, <span class="dt">filename =</span> <span class="kw">fp</span>(p_clim, <span class="st">&quot;srtot_ano.tif&quot;</span>), <span class="dt">overwrite =</span> <span class="ot">TRUE</span>)
 srmu_ano &lt;-<span class="st"> </span><span class="kw">stack</span>(<span class="kw">foreach</span>(<span class="dt">i =</span> <span class="dv">1</span>:<span class="kw">length</span>(sindu2)) %dopar%<span class="st"> </span>{ <span class="co">#  i &lt;- 1</span>
   ind &lt;-<span class="st"> </span><span class="kw">which</span>(sind ==<span class="st"> </span>sindu2[i])
   mj &lt;-<span class="st"> </span><span class="kw">mjday</span>(srad[[ind]])
   <span class="kw">calc</span>(mj, mean)
 })
-<span class="kw">writeRaster</span>(srmu_ano, <span class="dt">filename =</span> <span class="kw">fp</span>(p_clim, <span class="st">&quot;srmu_ano.tif&quot;</span>))</code></pre>
+<span class="kw">writeRaster</span>(srmu_ano, <span class="dt">filename =</span> <span class="kw">fp</span>(p_clim, <span class="st">&quot;srmu_ano.tif&quot;</span>), <span class="dt">overwrite =</span> <span class="ot">TRUE</span>)</code></pre>
 </div>
 </div>
 <div id="assemble-datasets" class="section level2">
-<h2><span class="header-section-number">2.4</span> Assemble datasets</h2>
+<h2><span class="header-section-number">3.4</span> Assemble datasets</h2>
 <ol style="list-style-type: decimal">
 <li>Predictors:
 <ul>
@@ -587,34 +696,25 @@ srmu_ano &lt;-<span class="st"> </span><span class="kw">stack</span>(<span class
 <li>Predictands: mean yields across cultivars within each management type</li>
 </ol>
 <pre class="sourceCode r"><code class="sourceCode r"><span class="co"># Organize rainfall</span>
-rfnms &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;MAP&quot;</span>, <span class="st">&quot;MSP&quot;</span>, <span class="st">&quot;JP&quot;</span>, <span class="st">&quot;FP&quot;</span>, <span class="st">&quot;OP&quot;</span>)
-rfl &lt;-<span class="st"> </span><span class="kw">list</span>(rftot, ndjftot, jantot, febtot, octtot)
-rfl &lt;-<span class="st"> </span><span class="kw">lapply</span>(<span class="dv">1</span>:<span class="kw">length</span>(rfl), function(x) {
-  r &lt;-<span class="st"> </span>rfl[[x]]
-  <span class="kw">names</span>(r) &lt;-<span class="st"> </span><span class="kw">paste0</span>(rfnms[x], <span class="dv">1</span>:<span class="kw">nlayers</span>(r))
-  r
-})
-<span class="kw">names</span>(rfl) &lt;-<span class="st"> </span>rfnms 
+climnms &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;rftot&quot;</span>, <span class="st">&quot;ndjftot&quot;</span>, <span class="st">&quot;jantot&quot;</span>, <span class="st">&quot;febtot&quot;</span>, <span class="st">&quot;octtot&quot;</span>, <span class="st">&quot;kdd&quot;</span>, <span class="st">&quot;gdd&quot;</span>, 
+             <span class="st">&quot;nkilljan&quot;</span>, <span class="st">&quot;nkillfeb&quot;</span>, <span class="st">&quot;tmax_ano&quot;</span>, <span class="st">&quot;tmax_gs&quot;</span>, <span class="st">&quot;srtot_ano&quot;</span>,
+             <span class="st">&quot;srmu_ano&quot;</span>, <span class="st">&quot;srtot_gs&quot;</span>, <span class="st">&quot;srmu_gs&quot;</span>)
+bnms &lt;-<span class="st"> </span><span class="kw">sapply</span>(climnms, function(x) <span class="kw">dir</span>(p_clim, <span class="dt">pattern =</span> x, <span class="dt">full.names =</span> <span class="ot">TRUE</span>))
 
-<span class="co"># Organize temp</span>
-tnms &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;KDD&quot;</span>, <span class="st">&quot;GDD&quot;</span>, <span class="st">&quot;NKJ&quot;</span>, <span class="st">&quot;NKF&quot;</span>, <span class="st">&quot;ATMX&quot;</span>, <span class="st">&quot;STMX&quot;</span>)
-tfl &lt;-<span class="st"> </span><span class="kw">list</span>(kdd, gdd, nkilljan, nkillfeb, tmax_ano, tmax_gs)
-tfl &lt;-<span class="st"> </span><span class="kw">lapply</span>(<span class="dv">1</span>:<span class="kw">length</span>(tfl), function(x) {
-  r &lt;-<span class="st"> </span>tfl[[x]]
-  <span class="kw">names</span>(r) &lt;-<span class="st"> </span><span class="kw">paste0</span>(tnms[x], <span class="dv">1</span>:<span class="kw">nlayers</span>(r))
-  r
+blist &lt;-<span class="st"> </span><span class="kw">lapply</span>(bnms, function(x) {
+  b &lt;-<span class="st"> </span><span class="kw">brick</span>(x)
+  <span class="kw">names</span>(b) &lt;-<span class="st"> </span><span class="kw">paste0</span>(<span class="st">&quot;Y&quot;</span>, <span class="dv">1</span>:<span class="kw">nlayers</span>(b))
+  b
 })
-<span class="kw">names</span>(tfl) &lt;-<span class="st"> </span>tnms 
 
-<span class="co"># Organize srad</span>
-snms &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;SSRT&quot;</span>, <span class="st">&quot;SSRM&quot;</span>, <span class="st">&quot;ASRT&quot;</span>, <span class="st">&quot;ASRM&quot;</span>)
-sfl &lt;-<span class="st"> </span><span class="kw">list</span>(srtot_gs, srmu_gs, srtot_ano, srmu_ano)
-sfl &lt;-<span class="st"> </span><span class="kw">lapply</span>(<span class="dv">1</span>:<span class="kw">length</span>(sfl), function(x) {
-  r &lt;-<span class="st"> </span>sfl[[x]]
-  <span class="kw">names</span>(r) &lt;-<span class="st"> </span><span class="kw">paste0</span>(snms[x], <span class="dv">1</span>:<span class="kw">nlayers</span>(r))
+onms &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;MAP&quot;</span>, <span class="st">&quot;MSP&quot;</span>, <span class="st">&quot;JP&quot;</span>, <span class="st">&quot;FP&quot;</span>, <span class="st">&quot;OP&quot;</span>, <span class="st">&quot;KDD&quot;</span>, <span class="st">&quot;GDD&quot;</span>, <span class="st">&quot;NKJ&quot;</span>, <span class="st">&quot;NKF&quot;</span>, <span class="st">&quot;ATMX&quot;</span>,
+          <span class="st">&quot;STMX&quot;</span>, <span class="st">&quot;SSRT&quot;</span>, <span class="st">&quot;SSRM&quot;</span>, <span class="st">&quot;ASRT&quot;</span>, <span class="st">&quot;ASRM&quot;</span>)
+climl &lt;-<span class="st"> </span><span class="kw">lapply</span>(<span class="dv">1</span>:<span class="kw">length</span>(blist), function(x) {
+  r &lt;-<span class="st"> </span>blist[[x]]
+  <span class="kw">names</span>(r) &lt;-<span class="st"> </span><span class="kw">paste0</span>(onms[x], <span class="dv">1</span>:<span class="kw">nlayers</span>(r))
   r
 })
-<span class="kw">names</span>(sfl) &lt;-<span class="st"> </span>snms 
+<span class="kw">names</span>(climl) &lt;-<span class="st"> </span>onms
 
 <span class="co"># melt predictors</span>
 xy &lt;-<span class="st"> </span><span class="kw">unique</span>(ylds$maize[, .(x, y)])
@@ -622,53 +722,68 @@ xy &lt;-<span class="st"> </span><span class="kw">unique</span>(ylds$maize[, .(x
 cols &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;x&quot;</span>, <span class="st">&quot;y&quot;</span>)
 xy[, (cols) :<span class="er">=</span><span class="st"> </span><span class="kw">lapply</span>(.SD, function(x) <span class="kw">round</span>(x, <span class="dv">5</span>)), .SDcols =<span class="st"> </span>cols]
 
-<span class="co"># rainfall</span>
-rvals &lt;-<span class="st"> </span><span class="kw">lapply</span>(<span class="dv">1</span>:<span class="kw">length</span>(rfl), function(i) <span class="kw">extract</span>(<span class="dt">x =</span> rfl[[i]], xy))
-rvxy &lt;-<span class="st"> </span><span class="kw">lapply</span>(rvals, function(x) {  <span class="co"># x &lt;- rvals[[1]]</span>
+<span class="co"># climate predictors</span>
+climvals &lt;-<span class="st"> </span><span class="kw">lapply</span>(<span class="dv">1</span>:<span class="kw">length</span>(climl), function(i) <span class="kw">extract</span>(<span class="dt">x =</span> climl[[i]], xy))
+climxy &lt;-<span class="st"> </span><span class="kw">lapply</span>(climvals, function(x) {  <span class="co"># x &lt;- rvals[[1]]</span>
   rmelt &lt;-<span class="st"> </span><span class="kw">melt</span>(<span class="kw">cbind</span>(xy, x), <span class="dt">id =</span> <span class="dv">1</span>:<span class="dv">2</span>)
   <span class="kw">setnames</span>(rmelt, <span class="st">&quot;value&quot;</span>, <span class="kw">unique</span>(<span class="kw">gsub</span>(<span class="st">&quot;[0-9]&quot;</span>, <span class="st">&quot;&quot;</span>, rmelt$variable)))
   rmelt[, variable :<span class="er">=</span><span class="st"> </span><span class="kw">gsub</span>(<span class="st">&quot;[[:alpha:]]&quot;</span>, <span class="st">&quot;&quot;</span>, variable)]
   <span class="kw">setnames</span>(rmelt, <span class="st">&quot;variable&quot;</span>, <span class="st">&quot;YR&quot;</span>)
-  <span class="co"># rmelt[, (cols) := lapply(.SD, as.character), .SDcols = cols]</span>
   rmelt[, ind :<span class="er">=</span><span class="st"> </span><span class="dv">1</span>:.N]
   <span class="kw">setkeyv</span>(rmelt, <span class="kw">c</span>(<span class="st">&quot;ind&quot;</span>, <span class="st">&quot;x&quot;</span>, <span class="st">&quot;y&quot;</span>, <span class="st">&quot;YR&quot;</span>))
   rmelt
 })
-rfpreds &lt;-<span class="st"> </span><span class="kw">Reduce</span>(mymerge, rvxy)
-
-<span class="co"># temperature</span>
-tvals &lt;-<span class="st"> </span><span class="kw">lapply</span>(<span class="dv">1</span>:<span class="kw">length</span>(tfl), function(i) <span class="kw">extract</span>(<span class="dt">x =</span> tfl[[i]], xy))
-tvxy &lt;-<span class="st"> </span><span class="kw">lapply</span>(tvals, function(x) {  <span class="co"># x &lt;- tvals[[3]]</span>
-  rmelt &lt;-<span class="st"> </span><span class="kw">melt</span>(<span class="kw">cbind</span>(xy, x), <span class="dt">id =</span> <span class="dv">1</span>:<span class="dv">2</span>)
-  <span class="kw">setnames</span>(rmelt, <span class="st">&quot;value&quot;</span>, <span class="kw">unique</span>(<span class="kw">gsub</span>(<span class="st">&quot;[0-9]&quot;</span>, <span class="st">&quot;&quot;</span>, rmelt$variable)))
-  rmelt[, variable :<span class="er">=</span><span class="st"> </span><span class="kw">gsub</span>(<span class="st">&quot;[[:alpha:]]&quot;</span>, <span class="st">&quot;&quot;</span>, variable)]
-  <span class="kw">setnames</span>(rmelt, <span class="st">&quot;variable&quot;</span>, <span class="st">&quot;YR&quot;</span>)
-  <span class="co"># rmelt[, (cols) := lapply(.SD, as.character), .SDcols = cols]</span>
-  rmelt[, ind :<span class="er">=</span><span class="st"> </span><span class="dv">1</span>:.N]
-  <span class="kw">setkeyv</span>(rmelt, <span class="kw">c</span>(<span class="st">&quot;ind&quot;</span>, <span class="st">&quot;x&quot;</span>, <span class="st">&quot;y&quot;</span>, <span class="st">&quot;YR&quot;</span>))
-  rmelt
-})
-tfpreds &lt;-<span class="st"> </span><span class="kw">Reduce</span>(mymerge, tvxy)
-
-
-<span class="co"># srad</span>
-svals &lt;-<span class="st"> </span><span class="kw">lapply</span>(<span class="dv">1</span>:<span class="kw">length</span>(sfl), function(i) <span class="kw">extract</span>(<span class="dt">x =</span> sfl[[i]], xy))
-svxy &lt;-<span class="st"> </span><span class="kw">lapply</span>(svals, function(x) {  <span class="co"># x &lt;- rvals[[1]]</span>
-  rmelt &lt;-<span class="st"> </span><span class="kw">melt</span>(<span class="kw">cbind</span>(xy, x), <span class="dt">id =</span> <span class="dv">1</span>:<span class="dv">2</span>)
-  <span class="kw">setnames</span>(rmelt, <span class="st">&quot;value&quot;</span>, <span class="kw">unique</span>(<span class="kw">gsub</span>(<span class="st">&quot;[0-9]&quot;</span>, <span class="st">&quot;&quot;</span>, rmelt$variable)))
-  rmelt[, variable :<span class="er">=</span><span class="st"> </span><span class="kw">gsub</span>(<span class="st">&quot;[[:alpha:]]&quot;</span>, <span class="st">&quot;&quot;</span>, variable)]
-  <span class="kw">setnames</span>(rmelt, <span class="st">&quot;variable&quot;</span>, <span class="st">&quot;YR&quot;</span>)
-  <span class="co"># rmelt[, (cols) := lapply(.SD, as.character), .SDcols = cols]</span>
-  rmelt[, ind :<span class="er">=</span><span class="st"> </span><span class="dv">1</span>:.N]
-  <span class="kw">setkeyv</span>(rmelt, <span class="kw">c</span>(<span class="st">&quot;ind&quot;</span>, <span class="st">&quot;x&quot;</span>, <span class="st">&quot;y&quot;</span>, <span class="st">&quot;YR&quot;</span>))
-  rmelt
-})
-sfpreds &lt;-<span class="st"> </span><span class="kw">Reduce</span>(mymerge, svxy)
-
-<span class="co"># Join all climate predictors</span>
-climpreds &lt;-<span class="st"> </span><span class="kw">Reduce</span>(mymerge, <span class="kw">list</span>(rfpreds, tfpreds, sfpreds))
+climpreds &lt;-<span class="st"> </span><span class="kw">Reduce</span>(mymerge, climxy)
 climpreds[, YR :<span class="er">=</span><span class="st"> </span><span class="kw">as.integer</span>(YR)]
 <span class="kw">setkeyv</span>(climpreds, <span class="kw">c</span>(<span class="st">&quot;x&quot;</span>, <span class="st">&quot;y&quot;</span>, <span class="st">&quot;YR&quot;</span>))
+
+<span class="co"># # rainfall</span>
+<span class="co"># rvals &lt;- lapply(1:length(rfl), function(i) extract(x = rfl[[i]], xy))</span>
+<span class="co"># rvxy &lt;- lapply(rvals, function(x) {  # x &lt;- rvals[[1]]</span>
+<span class="co">#   rmelt &lt;- melt(cbind(xy, x), id = 1:2)</span>
+<span class="co">#   setnames(rmelt, &quot;value&quot;, unique(gsub(&quot;[0-9]&quot;, &quot;&quot;, rmelt$variable)))</span>
+<span class="co">#   rmelt[, variable := gsub(&quot;[[:alpha:]]&quot;, &quot;&quot;, variable)]</span>
+<span class="co">#   setnames(rmelt, &quot;variable&quot;, &quot;YR&quot;)</span>
+<span class="co">#   # rmelt[, (cols) := lapply(.SD, as.character), .SDcols = cols]</span>
+<span class="co">#   rmelt[, ind := 1:.N]</span>
+<span class="co">#   setkeyv(rmelt, c(&quot;ind&quot;, &quot;x&quot;, &quot;y&quot;, &quot;YR&quot;))</span>
+<span class="co">#   rmelt</span>
+<span class="co"># })</span>
+<span class="co"># rfpreds &lt;- Reduce(mymerge, rvxy)</span>
+<span class="co"># </span>
+<span class="co"># # temperature</span>
+<span class="co"># tvals &lt;- lapply(1:length(tfl), function(i) extract(x = tfl[[i]], xy))</span>
+<span class="co"># tvxy &lt;- lapply(tvals, function(x) {  # x &lt;- tvals[[3]]</span>
+<span class="co">#   rmelt &lt;- melt(cbind(xy, x), id = 1:2)</span>
+<span class="co">#   setnames(rmelt, &quot;value&quot;, unique(gsub(&quot;[0-9]&quot;, &quot;&quot;, rmelt$variable)))</span>
+<span class="co">#   rmelt[, variable := gsub(&quot;[[:alpha:]]&quot;, &quot;&quot;, variable)]</span>
+<span class="co">#   setnames(rmelt, &quot;variable&quot;, &quot;YR&quot;)</span>
+<span class="co">#   # rmelt[, (cols) := lapply(.SD, as.character), .SDcols = cols]</span>
+<span class="co">#   rmelt[, ind := 1:.N]</span>
+<span class="co">#   setkeyv(rmelt, c(&quot;ind&quot;, &quot;x&quot;, &quot;y&quot;, &quot;YR&quot;))</span>
+<span class="co">#   rmelt</span>
+<span class="co"># })</span>
+<span class="co"># tfpreds &lt;- Reduce(mymerge, tvxy)</span>
+<span class="co"># </span>
+<span class="co"># </span>
+<span class="co"># # srad</span>
+<span class="co"># svals &lt;- lapply(1:length(sfl), function(i) extract(x = sfl[[i]], xy))</span>
+<span class="co"># svxy &lt;- lapply(svals, function(x) {  # x &lt;- rvals[[1]]</span>
+<span class="co">#   rmelt &lt;- melt(cbind(xy, x), id = 1:2)</span>
+<span class="co">#   setnames(rmelt, &quot;value&quot;, unique(gsub(&quot;[0-9]&quot;, &quot;&quot;, rmelt$variable)))</span>
+<span class="co">#   rmelt[, variable := gsub(&quot;[[:alpha:]]&quot;, &quot;&quot;, variable)]</span>
+<span class="co">#   setnames(rmelt, &quot;variable&quot;, &quot;YR&quot;)</span>
+<span class="co">#   # rmelt[, (cols) := lapply(.SD, as.character), .SDcols = cols]</span>
+<span class="co">#   rmelt[, ind := 1:.N]</span>
+<span class="co">#   setkeyv(rmelt, c(&quot;ind&quot;, &quot;x&quot;, &quot;y&quot;, &quot;YR&quot;))</span>
+<span class="co">#   rmelt</span>
+<span class="co"># })</span>
+<span class="co"># sfpreds &lt;- Reduce(mymerge, svxy)</span>
+
+<span class="co"># Join all climate predictors</span>
+<span class="co"># climpreds &lt;- Reduce(mymerge, list(rfpreds, tfpreds, sfpreds))</span>
+<span class="co"># climpreds[, YR := as.integer(YR)]</span>
+<span class="co"># setkeyv(climpreds, c(&quot;x&quot;, &quot;y&quot;, &quot;YR&quot;))</span>
 
 <span class="kw">setnames</span>(sol1m, <span class="st">&quot;pro&quot;</span>, <span class="st">&quot;SOL&quot;</span>)
 <span class="kw">setkey</span>(sol1m, <span class="st">&quot;SOL&quot;</span>)
@@ -685,13 +800,15 @@ regdat &lt;-<span class="st"> </span><span class="kw">lapply</span>(ylds, functi
 })
 
 <span class="co"># Checking merges</span>
-for(ii in <span class="kw">sample</span>(<span class="dv">1</span>:<span class="dv">6975</span>, <span class="dt">size =</span> <span class="dv">20</span>)) {
+<span class="kw">set.seed</span>(<span class="dv">234</span>)
+samp &lt;-<span class="st"> </span><span class="kw">sample</span>(<span class="dv">1</span>:<span class="kw">nrow</span>(regdat$maize), <span class="dt">size =</span> <span class="dv">20</span>)
+for(ii in samp) {  <span class="co"># ii &lt;- samp[5]</span>
   a &lt;-<span class="st"> </span>regdat$maize[ii, ]; b &lt;-<span class="st"> </span>regdat$soybean[ii, ]
   d &lt;-<span class="st"> </span>ID[WTH ==<span class="st"> </span>a$WTH &amp;<span class="st"> </span>zoneid ==<span class="st"> </span>a$zoneid &amp;<span class="st"> </span>SOL ==<span class="st"> </span>a$SOL]
   e &lt;-<span class="st"> </span>ylds$maize[WTH ==<span class="st"> </span>b$WTH &amp;<span class="st"> </span>zoneid ==<span class="st"> </span>b$zoneid &amp;<span class="st"> </span>SOL ==<span class="st"> </span>b$SOL[<span class="dv">1</span>] &amp;<span class="st"> </span>
-<span class="st">                  </span>YR ==<span class="st"> </span>b$YR]
+<span class="st">                  </span>YR ==<span class="st"> </span>b$YR][<span class="dv">1</span>, ]
   f &lt;-<span class="st"> </span>ylds$soybean[WTH ==<span class="st"> </span>b$WTH &amp;<span class="st"> </span>zoneid ==<span class="st"> </span>b$zoneid &amp;<span class="st"> </span>SOL ==<span class="st"> </span>b$SOL[<span class="dv">1</span>] &amp;<span class="st"> </span>
-<span class="st">                    </span>YR ==<span class="st"> </span>b$YR]
+<span class="st">                    </span>YR ==<span class="st"> </span>b$YR][<span class="dv">1</span>, ]
   <span class="co"># SOIL climate match</span>
   for(i in <span class="kw">list</span>(b, d, e, f)) {
     <span class="co"># i &lt;- d</span>
@@ -706,7 +823,7 @@ for(ii in <span class="kw">sample</span>(<span class="dv">1</span>:<span class="
       }
     }
   }
-  for(i in <span class="kw">c</span>(<span class="st">&quot;YLDS&quot;</span>, <span class="st">&quot;YLDR&quot;</span>, <span class="st">&quot;YLDI&quot;</span>)) { <span class="co"># i &lt;- &quot;YLDS&quot;</span>
+  for(i in <span class="kw">c</span>(<span class="st">&quot;YLDS&quot;</span>, <span class="st">&quot;YLDR&quot;</span>)) { <span class="co"># i &lt;- &quot;YLDS&quot;</span>
     if(a[[i]] !=<span class="st"> </span>e[[i]]) <span class="kw">print</span>(<span class="kw">paste</span>(<span class="st">&quot;maize mismatch at&quot;</span>, i, <span class="st">&quot;row&quot;</span>, ii))
     if(b[[i]] !=<span class="st"> </span>f[[i]]) <span class="kw">print</span>(<span class="kw">paste</span>(<span class="st">&quot;maize mismatch at&quot;</span>, i, <span class="st">&quot;row&quot;</span>, ii))
   }
