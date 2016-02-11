@@ -85,9 +85,10 @@ img {
 <li><a href="#exploratory-plots"><span class="toc-section-number">2.1</span> Exploratory plots</a></li>
 <li><a href="#reduce-variables-and-fit-models"><span class="toc-section-number">2.2</span> Reduce variables and fit models</a><ul>
 <li><a href="#maize"><span class="toc-section-number">2.2.1</span> Maize</a></li>
-<li><a href="#soybean"><span class="toc-section-number">2.2.2</span> Soybean</a></li>
+<li><a href="#soy"><span class="toc-section-number">2.2.2</span> soy</a></li>
 </ul></li>
-<li><a href="#save-gams-outputs"><span class="toc-section-number">2.3</span> Save GAMs outputs</a></li>
+<li><a href="#load-in-grid-predictors"><span class="toc-section-number">2.3</span> Load in grid predictors</a></li>
+<li><a href="#predicted-yields-surfaces"><span class="toc-section-number">2.4</span> Predicted yields surfaces</a></li>
 </ul></li>
 </ul>
 </div>
@@ -103,6 +104,12 @@ img {
 p_root &lt;-<span class="st"> </span>lmisc::<span class="kw">set_base_path</span>()
 p_clim &lt;-<span class="st"> </span><span class="kw">fp</span>(p_root, <span class="st">&quot;external/input_devel/climate&quot;</span>)
 p_yield &lt;-<span class="st"> </span><span class="kw">fp</span>(p_root, <span class="st">&quot;external/input_devel/yield&quot;</span>)
+p_sgrids &lt;-<span class="st"> </span><span class="kw">fp</span>(p_root, <span class="st">&quot;external/input_devel/soil&quot;</span>) 
+p_basedat &lt;-<span class="st"> </span><span class="kw">paste0</span>(<span class="st">&quot;/Users/lestes/Dropbox/projects/agroEcoTradeoff/external/&quot;</span>,
+                    <span class="st">&quot;base_data/&quot;</span>)
+
+<span class="co"># Read in Zambia grid</span>
+mgrid &lt;-<span class="st"> </span><span class="kw">raster</span>(<span class="kw">full_path</span>(p_basedat, <span class="st">&quot;ZA-grid.tif&quot;</span>))
 
 <span class="co"># Zambia provinces</span>
 p_prov &lt;-<span class="st"> </span><span class="kw">paste0</span>(<span class="st">&quot;/Users/lestes/Dropbox/data/zari/infrastructure/zambia/&quot;</span>, 
@@ -117,20 +124,30 @@ prov &lt;-<span class="st"> </span><span class="kw">readOGR</span>(<span class="
 <div id="exploratory-plots" class="section level2">
 <h2><span class="header-section-number">2.1</span> Exploratory plots</h2>
 <pre class="sourceCode r"><code class="sourceCode r"><span class="kw">plot</span>(prov)
-regdt[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">points</span>(x, y, <span class="dt">pch =</span> <span class="dv">16</span>, <span class="dt">cex =</span> <span class="fl">0.5</span>)]
-regdt[CROP ==<span class="st"> &quot;maize&quot;</span> &amp;<span class="st"> </span>YLDS &gt;<span class="st"> </span><span class="dv">8000</span>, 
-      <span class="kw">points</span>(x, y, <span class="dt">pch =</span> <span class="dv">16</span>, <span class="dt">cex =</span> <span class="fl">0.5</span>, <span class="dt">col =</span> <span class="st">&quot;red&quot;</span>)]
-regdt[CROP ==<span class="st"> &quot;maize&quot;</span> &amp;<span class="st"> </span>YLDS &gt;<span class="st"> </span><span class="dv">8000</span>, 
-      <span class="kw">points</span>(x, y, <span class="dt">pch =</span> <span class="dv">16</span>, <span class="dt">cex =</span> <span class="fl">0.5</span>, <span class="dt">col =</span> <span class="st">&quot;red&quot;</span>)]
-regdt[CROP ==<span class="st"> &quot;soybean&quot;</span> &amp;<span class="st"> </span>YLDS &gt;<span class="st"> </span><span class="dv">1700</span>, 
-      <span class="kw">points</span>(x, y, <span class="dt">pch =</span> <span class="dv">16</span>, <span class="dt">cex =</span> <span class="fl">0.5</span>, <span class="dt">col =</span> <span class="st">&quot;blue&quot;</span>)]
+regdt[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">plot</span>(DJFMP, YLDR)]
+regdt[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">plot</span>(DJFMP, YLDS)]
+regdt[CROP ==<span class="st"> &quot;soy&quot;</span>, <span class="kw">plot</span>(DJFMP, YLDR)]
+regdt[CROP ==<span class="st"> &quot;soy&quot;</span>, <span class="kw">plot</span>(DJFMP, YLDS)]
+regdt[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">mean</span>(YLDR)]
+regdt[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">mean</span>(YLDS)]
+regdt[CROP ==<span class="st"> &quot;soy&quot;</span>, <span class="kw">mean</span>(YLDR)]
+regdt[CROP ==<span class="st"> &quot;soy&quot;</span>, <span class="kw">mean</span>(YLDS)]
 
-<span class="co"># Prune out yields &gt; 8000 maize &gt; 1700 soybean in subsistence case</span>
-mzfilt &lt;-<span class="st"> </span>regdt[CROP ==<span class="st"> &quot;soybean&quot;</span> &amp;<span class="st"> </span>YLDS &gt;<span class="st"> </span><span class="dv">1700</span>, <span class="kw">unique</span>(.SD), 
-                .SDcols =<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;x&quot;</span>, <span class="st">&quot;y&quot;</span>, <span class="st">&quot;SOL&quot;</span>, <span class="st">&quot;WTH&quot;</span>, <span class="st">&quot;Zone&quot;</span>)]
-soyfilt &lt;-<span class="st"> </span>regdt[CROP ==<span class="st"> &quot;maize&quot;</span> &amp;<span class="st"> </span>YLDS &gt;<span class="st"> </span><span class="dv">8000</span>, <span class="kw">unique</span>(.SD), 
-                 .SDcols =<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;x&quot;</span>, <span class="st">&quot;y&quot;</span>, <span class="st">&quot;SOL&quot;</span>, <span class="st">&quot;WTH&quot;</span>, <span class="st">&quot;Zone&quot;</span>)]
-regnew &lt;-<span class="st"> </span>regdt[!x %in%<span class="st"> </span>soyfilt$x |<span class="st"> </span>!y %in%<span class="st"> </span>soyfilt$y]
+regnew &lt;-<span class="st"> </span><span class="kw">copy</span>(regdt)
+<span class="co"># regdt[CROP == &quot;maize&quot;, points(x, y, pch = 16, cex = 0.5)]</span>
+<span class="co"># regdt[CROP == &quot;maize&quot; &amp; YLDS &gt; 15000, </span>
+<span class="co">#       points(x, y, pch = 16, cex = 0.5, col = &quot;red&quot;)]</span>
+<span class="co"># regdt[CROP == &quot;soy&quot;, plot(MAP, YLDR)]</span>
+<span class="co"># regdt[CROP == &quot;soy&quot; &amp; YLDS &gt; 1700, </span>
+<span class="co">#       points(x, y, pch = 16, cex = 0.5, col = &quot;blue&quot;)]</span>
+
+<span class="co"># Prune out yields &gt; 8000 maize &gt; 1700 soy in subsistence case</span>
+<span class="co"># soyfilt &lt;- regdt[CROP == &quot;soy&quot; &amp; YLDS &gt; 1700, unique(.SD), </span>
+<span class="co">#                 .SDcols = c(&quot;x&quot;, &quot;y&quot;, &quot;SOL&quot;, &quot;WTH&quot;, &quot;Zone&quot;)]</span>
+<span class="co"># mzfilt &lt;- regdt[CROP == &quot;maize&quot; &amp; YLDS &gt; 9000, unique(.SD), </span>
+<span class="co">#                 .SDcols = c(&quot;x&quot;, &quot;y&quot;, &quot;SOL&quot;, &quot;WTH&quot;)]</span>
+<span class="co"># # regnew &lt;- regdt[!x %in% soyfilt$x | !y %in% soyfilt$y]</span>
+<span class="co"># regnew &lt;- regdt[!x %in% mzfilt$x | !y %in% mzfilt$y]</span>
 <span class="co"># regnew[CROP == &quot;maize&quot;, points(x, y, pch = 16, cex = 0.5, col = &quot;green&quot;)]</span>
 
 <span class="co"># regnew[CROP == &quot;maize&quot;, hist(YLDS)]</span>
@@ -138,62 +155,6 @@ regnew &lt;-<span class="st"> </span>regdt[!x %in%<span class="st"> </span>soyfi
 
 <span class="co"># summary(lm(YLDS ~ poly(MAP, 2), data = regnew[CROP == &quot;maize&quot;, ]))</span>
 <span class="co"># summary(lm(YLDR ~ poly(MSP, 2), data = regnew[CROP == &quot;maize&quot;, ]))</span>
-regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">plot</span>(MAP, YLDS, <span class="dt">pch =</span> <span class="dv">16</span>, <span class="dt">cex =</span> <span class="fl">0.5</span>)]
-regnew[CROP ==<span class="st"> &quot;soybean&quot;</span>, <span class="kw">plot</span>(MAP, YLDS, <span class="dt">pch =</span> <span class="dv">16</span>, <span class="dt">cex =</span> <span class="fl">0.5</span>)]
-regnew[CROP ==<span class="st"> &quot;soybean&quot;</span>, <span class="kw">plot</span>(MAP, YLDR, <span class="dt">pch =</span> <span class="dv">16</span>, <span class="dt">cex =</span> <span class="fl">0.5</span>)]
-regnew[CROP ==<span class="st"> &quot;soybean&quot;</span>, <span class="kw">plot</span>(MSP, YLDS, <span class="dt">pch =</span> <span class="dv">16</span>, <span class="dt">cex =</span> <span class="fl">0.5</span>)]
-regnew[CROP ==<span class="st"> &quot;soybean&quot;</span>, <span class="kw">plot</span>(MSP, YLDR, <span class="dt">pch =</span> <span class="dv">16</span>, <span class="dt">cex =</span> <span class="fl">0.5</span>)]
-regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">plot</span>(FP, YLDS, <span class="dt">pch =</span> <span class="dv">16</span>, <span class="dt">cex =</span> <span class="fl">0.5</span>)]
-regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">plot</span>(MSP, YLDS, <span class="dt">pch =</span> <span class="dv">16</span>, <span class="dt">cex =</span> <span class="fl">0.5</span>)]
-regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">plot</span>(MSP, YLDR, <span class="dt">pch =</span> <span class="dv">16</span>, <span class="dt">cex =</span> <span class="fl">0.5</span>)]
-regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">plot</span>(sloc, YLDS, <span class="dt">pch =</span> <span class="dv">16</span>, <span class="dt">cex =</span> <span class="fl">0.5</span>)]
-regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">plot</span>(sloc, YLDR, <span class="dt">pch =</span> <span class="dv">16</span>, <span class="dt">cex =</span> <span class="fl">0.5</span>)]
-regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">plot</span>(slcl, YLDS, <span class="dt">pch =</span> <span class="dv">16</span>, <span class="dt">cex =</span> <span class="fl">0.5</span>)]
-regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">plot</span>(slcl, YLDR, <span class="dt">pch =</span> <span class="dv">16</span>, <span class="dt">cex =</span> <span class="fl">0.5</span>)]
-regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">plot</span>(slsi, YLDS, <span class="dt">pch =</span> <span class="dv">16</span>, <span class="dt">cex =</span> <span class="fl">0.5</span>)]
-regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">plot</span>(slsi, YLDR, <span class="dt">pch =</span> <span class="dv">16</span>, <span class="dt">cex =</span> <span class="fl">0.5</span>)]
-regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">plot</span>(sbdm, YLDS, <span class="dt">pch =</span> <span class="dv">16</span>, <span class="dt">cex =</span> <span class="fl">0.5</span>)]
-regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">plot</span>(sbdm, YLDR, <span class="dt">pch =</span> <span class="dv">16</span>, <span class="dt">cex =</span> <span class="fl">0.5</span>)]
-regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">plot</span>(slhw, YLDS, <span class="dt">pch =</span> <span class="dv">16</span>, <span class="dt">cex =</span> <span class="fl">0.5</span>)]  <span class="co"># pH looks pred</span>
-regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">plot</span>(slhw, YLDR, <span class="dt">pch =</span> <span class="dv">16</span>, <span class="dt">cex =</span> <span class="fl">0.5</span>)]  <span class="co"># pH looks pred</span>
-regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">plot</span>(GDD, YLDS, <span class="dt">pch =</span> <span class="dv">16</span>, <span class="dt">cex =</span> <span class="fl">0.5</span>)]
-regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">plot</span>(KDD, YLDS, <span class="dt">pch =</span> <span class="dv">16</span>, <span class="dt">cex =</span> <span class="fl">0.5</span>)]
-<span class="co"># regnew[CROP == &quot;maize&quot;, plot(log(KDD), YLDS, pch = 16, cex = 0.5)]</span>
-regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">plot</span>(NKJ, YLDS, <span class="dt">pch =</span> <span class="dv">16</span>, <span class="dt">cex =</span> <span class="fl">0.5</span>)]
-regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">plot</span>(NKF, YLDS, <span class="dt">pch =</span> <span class="dv">16</span>, <span class="dt">cex =</span> <span class="fl">0.5</span>)]
-regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">plot</span>(ATMX, YLDS, <span class="dt">pch =</span> <span class="dv">16</span>, <span class="dt">cex =</span> <span class="fl">0.5</span>)]
-regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">plot</span>(STMX, YLDS, <span class="dt">pch =</span> <span class="dv">16</span>, <span class="dt">cex =</span> <span class="fl">0.5</span>)]
-regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">plot</span>(STMX, YLDR, <span class="dt">pch =</span> <span class="dv">16</span>, <span class="dt">cex =</span> <span class="fl">0.5</span>)]
-regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">plot</span>(SSRT, YLDS, <span class="dt">pch =</span> <span class="dv">16</span>, <span class="dt">cex =</span> <span class="fl">0.5</span>)]
-regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">plot</span>(SSRM, YLDS, <span class="dt">pch =</span> <span class="dv">16</span>, <span class="dt">cex =</span> <span class="fl">0.5</span>)]
-regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">plot</span>(ASRT, YLDS, <span class="dt">pch =</span> <span class="dv">16</span>, <span class="dt">cex =</span> <span class="fl">0.5</span>)]
-regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">plot</span>(ASRM, YLDS, <span class="dt">pch =</span> <span class="dv">16</span>, <span class="dt">cex =</span> <span class="fl">0.5</span>)]
-
-
-regnew[, <span class="kw">round</span>(<span class="kw">cor</span>(.SD), <span class="dv">2</span>), .SDcols =<span class="st"> </span><span class="kw">names</span>(regnew)[-<span class="kw">c</span>(<span class="dv">1</span>:<span class="dv">13</span>)]]
-
-<span class="kw">summary</span>(<span class="kw">lm</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(sbdm, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(slhw, <span class="dv">2</span>), 
-           <span class="dt">data =</span> regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, ]))
-<span class="kw">summary</span>(<span class="kw">lm</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(slhw, <span class="dv">2</span>), <span class="dt">data =</span> regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, ]))
-<span class="kw">summary</span>(<span class="kw">lm</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(sbdm, <span class="dv">2</span>), <span class="dt">data =</span> regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, ]))
-<span class="kw">summary</span>(<span class="kw">lm</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(KDD, <span class="dv">2</span>), <span class="dt">data =</span> regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, ]))
-<span class="kw">summary</span>(<span class="kw">lm</span>(YLDR ~<span class="st"> </span><span class="kw">poly</span>(STMX, <span class="dv">2</span>), <span class="dt">data =</span> regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, ]))
-<span class="kw">summary</span>(<span class="kw">lm</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(STMX, <span class="dv">2</span>), <span class="dt">data =</span> regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, ]))
-<span class="kw">summary</span>(<span class="kw">lm</span>(YLDS ~<span class="st"> </span>KDD, <span class="dt">data =</span> regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, ]))
-<span class="kw">summary</span>(<span class="kw">lm</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>), <span class="dt">data =</span> regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, ]))
-
-<span class="co"># p &lt;- &quot;sbdm&quot;; d &lt;- &quot;YLDS&quot;</span>
-<span class="co"># regnew[CROP == &quot;maize&quot;, {</span>
-<span class="co">#   lm1 &lt;- lm(get(d) ~ get(p))</span>
-<span class="co">#   lm2 &lt;- lm(get(d) ~ poly(get(p), 2))</span>
-<span class="co">#   plot(get(p), get(d), pch = 16, cex = 0.1)</span>
-<span class="co">#   abline(lm1)</span>
-<span class="co">#   dum &lt;- data.frame(floor(min(get(p))):ceiling(max(get(p))))</span>
-<span class="co">#   colnames(dum) &lt;- p</span>
-<span class="co">#   lines(dum[, 1], predict(lm2, newdata = dum), col = &quot;red&quot;)</span>
-<span class="co">#   summary(lm1)</span>
-<span class="co">#   # summary(lm2)</span>
-<span class="co"># }]</span>
 
 reg_plotter &lt;-<span class="st"> </span>function(dep, pred) {
   lm1 &lt;-<span class="st"> </span><span class="kw">lm</span>(dep ~<span class="st"> </span>pred)
@@ -209,102 +170,36 @@ reg_plotter &lt;-<span class="st"> </span>function(dep, pred) {
   <span class="kw">mtext</span>(<span class="kw">round</span>(<span class="kw">summary</span>(lm1)$adj.r.squared, <span class="dv">4</span>), <span class="dt">side =</span> <span class="dv">3</span>, <span class="dt">adj =</span> <span class="dv">0</span>)
   <span class="kw">mtext</span>(<span class="kw">round</span>(<span class="kw">summary</span>(lm2)$adj.r.squared, <span class="dv">4</span>), <span class="dt">side =</span> <span class="dv">3</span>, <span class="dt">adj =</span> <span class="fl">0.5</span>)
 }
-<span class="co"># regnew[CROP == &quot;maize&quot;, reg_plotter(YLDR, GDD)]  # </span>
-regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, MAP)]  <span class="co"># P 0.045</span>
-regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, MSP)]  <span class="co"># P 0.039</span>
-regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, JP)]  <span class="co"># P 0.012</span>
-<span class="co"># regnew[CROP == &quot;maize&quot;, reg_plotter(YLDS, JP - mean(JP))]  # P 0.012</span>
-regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, FP)]  <span class="co"># P 0.005</span>
-regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, OP)]  <span class="co"># P 0.003</span>
 
-regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, slhw)]  <span class="co"># P 0.17</span>
-regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, sloc)]  <span class="co"># P 0.266</span>
-<span class="co"># regnew[CROP == &quot;maize&quot;, reg_plotter(YLDR, sloc)]  # P </span>
-regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, slcl)]  <span class="co"># P 0.185</span>
-regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, sbdm)]  <span class="co"># 0.181</span>
-<span class="co"># mtax pairings</span>
-regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, STMX)]  <span class="co"># P 0.07</span>
-regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, ATMX)]  <span class="co"># P 0.056 </span>
-<span class="co"># NK</span>
-regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, NKJ)]  <span class="co"># L 0.054</span>
-regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, NKF)]  <span class="co"># P 0.027 </span>
-<span class="co"># GDD/KDD</span>
-regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, GDD)]  <span class="co"># P 0.04</span>
-regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, KDD)]  <span class="co"># L 0.027</span>
+<span class="co"># Rainfall</span>
+regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, MAP)] ##
+regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, MSP)] <span class="co">#</span>
+regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, DJFMP)] ###
+regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, JFMP)] <span class="co">#</span>
+regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, FP)]  
+regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, OP)]  
+
+<span class="co"># soil</span>
+regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, SLHW)]  ###
+regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, SLOC)]  <span class="co"># </span>
+regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, SLCL)]  ## 
+regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, SBDM)]  ##
+
+<span class="co"># TEMP</span>
+regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, TMU)]  ## 
+regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, STMX)]  <span class="co"># </span>
+regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, ATMX)]  <span class="co">#</span>
+regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, GDD)]  <span class="co"># </span>
+regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, KDD)]  
+regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, NKJ)]  ##
+regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, NKF)]  ##
+
 <span class="co"># srad</span>
-regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, SSRT)]  <span class="co"># P 0.012 </span>
-regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, SSRM)]  <span class="co"># Same, picked up wrong one</span>
-regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, ASRT)]  <span class="co"># P 0.0288 </span>
-regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, ASRM)]  <span class="co"># P 0.0299</span>
-
-<span class="co"># best predictors look to be</span>
-<span class="co"># MAP, SLOC (but polynomial relationship odd), SLHW, slcl, sbdm, all good</span>
-<span class="co"># STMX (linear KDD as a possible alternate), GDD, ASRM </span>
-
-<span class="co">#</span>
-regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, {
-  lm1 &lt;-<span class="st"> </span><span class="kw">lm</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(MAP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(slhw, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(slcl, <span class="dv">2</span>) +
-<span class="st">              </span><span class="kw">poly</span>(sbdm, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span>KDD +<span class="st"> </span><span class="kw">poly</span>(ASRM, <span class="dv">2</span>))
-  <span class="kw">summary</span>(lm1)
-  <span class="co"># plot(YLDS, predict(lm1))</span>
-}]  <span class="co"># 0.4279</span>
-
-regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, {
-  lm1 &lt;-<span class="st"> </span><span class="kw">lm</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(MAP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(slhw, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(slcl, <span class="dv">2</span>) +
-<span class="st">              </span><span class="kw">poly</span>(sbdm, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(STMX, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(ASRM, <span class="dv">2</span>))
-  <span class="kw">summary</span>(lm1)
-  <span class="co"># plot(YLDS, predict(lm1))</span>
-}]  <span class="co"># 0.4199</span>
-
-regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, {
-  lm1 &lt;-<span class="st"> </span><span class="kw">lm</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(MAP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(slhw, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(sloc, <span class="dv">2</span>) +
-<span class="st">              </span><span class="kw">poly</span>(sbdm, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(STMX, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(ASRM, <span class="dv">2</span>))
-  <span class="kw">summary</span>(lm1)
-  <span class="co"># plot(YLDS, predict(lm1))</span>
-}]  <span class="co"># 0.4044 # SLOC doesn't give as much value, NS on linear</span>
-
-regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, {
-  lm1 &lt;-<span class="st"> </span><span class="kw">lm</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(MAP, <span class="dv">2</span>) +<span class="st"> </span>OP +<span class="st"> </span><span class="kw">poly</span>(slhw, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(slcl, <span class="dv">2</span>) +
-<span class="st">              </span><span class="kw">poly</span>(sbdm, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span>KDD +<span class="st"> </span><span class="kw">poly</span>(ASRM, <span class="dv">2</span>))
-  <span class="kw">summary</span>(lm1)
-  <span class="co"># plot(YLDS, predict(lm1))</span>
-}]  <span class="co"># 0.4293  # Doesn't add much</span>
-
-regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, {
-  lm1 &lt;-<span class="st"> </span><span class="kw">lm</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(MAP, <span class="dv">2</span>) +<span class="st"> </span>OP +<span class="st"> </span><span class="kw">poly</span>(slhw, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(slcl, <span class="dv">2</span>) +
-<span class="st">              </span><span class="kw">poly</span>(sbdm, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span>KDD +<span class="st"> </span><span class="kw">poly</span>(ASRM, <span class="dv">2</span>))
-  <span class="kw">summary</span>(lm1)
-  <span class="co"># plot(YLDS, predict(lm1))</span>
-}]  <span class="co"># 0.4293  # Oct precip add a tiny bit, significant</span>
-
-regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, {
-  lm1 &lt;-<span class="st"> </span><span class="kw">lm</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(MAP, <span class="dv">2</span>) +<span class="st"> </span>JP +<span class="st"> </span><span class="kw">poly</span>(slhw, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(slcl, <span class="dv">2</span>) +
-<span class="st">              </span><span class="kw">poly</span>(sbdm, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span>KDD +<span class="st"> </span><span class="kw">poly</span>(ASRM, <span class="dv">2</span>))
-  <span class="kw">summary</span>(lm1)
-  <span class="co"># plot(YLDS, predict(lm1))</span>
-}]  <span class="co"># 0.4312  # Jan precip adds more R2, but makes MAP linear NS</span>
-
-regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, {
-  lm1 &lt;-<span class="st"> </span><span class="kw">lm</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(MAP, <span class="dv">2</span>) +<span class="st"> </span>FP +<span class="st"> </span><span class="kw">poly</span>(slhw, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(slcl, <span class="dv">2</span>) +
-<span class="st">              </span><span class="kw">poly</span>(sbdm, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span>KDD +<span class="st"> </span><span class="kw">poly</span>(ASRM, <span class="dv">2</span>))
-  <span class="kw">summary</span>(lm1)
-  <span class="co"># plot(YLDS, predict(lm1))</span>
-}]  <span class="co"># 0.4374  # Feb precip even more R2, but makes MAP linear NS</span>
-
-regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, {
-  lm1 &lt;-<span class="st"> </span><span class="kw">lm</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(MAP, <span class="dv">2</span>) +<span class="st"> </span>OP +<span class="st"> </span><span class="kw">poly</span>(slhw, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(slcl, <span class="dv">2</span>) +
-<span class="st">              </span><span class="kw">poly</span>(sbdm, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span>KDD +<span class="st"> </span><span class="kw">poly</span>(ASRM, <span class="dv">2</span>) +<span class="st"> </span>x +<span class="st"> </span>y)
-  <span class="kw">summary</span>(lm1)
-  <span class="kw">plot</span>(YLDS, <span class="kw">predict</span>(lm1))
-}]  <span class="co"># 0.4301  # Oct precip add a tiny bit, significant</span>
-
-<span class="co"># regnew[CROP == &quot;maize&quot;, {</span>
-<span class="co">#   gam1 &lt;- bam(YLDS ~ poly(MAP, 2) + OP + poly(slhw, 2) + poly(slcl, 2) +</span>
-<span class="co">#               poly(sbdm, 2) + poly(GDD, 2) + KDD + poly(ASRM, 2) + s(x, y), </span>
-<span class="co">#              family = gaussian(link = &quot;log&quot;), method = &quot;ML&quot;)</span>
-<span class="co">#   summary(gam1)</span>
-<span class="co">#   # plot(YLDS, predict(lm1))</span>
-<span class="co"># }]  # 0.4301  # Oct precip add a tiny bit, significant</span></code></pre>
+regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, ASRT)]  
+regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, ASRM)]  
+regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, SSRMI)]  ##
+regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, SSRMII)]  <span class="co"># </span>
+regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, SSRMIII)] <span class="co">#</span></code></pre>
 </div>
 <div id="reduce-variables-and-fit-models" class="section level2">
 <h2><span class="header-section-number">2.2</span> Reduce variables and fit models</h2>
@@ -315,10 +210,10 @@ regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, {
 regred[, mid2 :<span class="er">=</span><span class="st"> </span><span class="dv">1</span>:.N]
 
 <span class="co"># regred[, c(&quot;Y10S&quot;, &quot;Y90S&quot;) := as.integer(0)]</span>
-
-regmu &lt;-<span class="st"> </span>regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">lapply</span>(.SD, mean), 
-                by =<span class="st"> </span><span class="kw">list</span>(CROP, WTH, Zone, SOL), 
-                .SDcols =<span class="st"> </span><span class="kw">names</span>(regnew)[<span class="kw">c</span>(<span class="dv">3</span>:<span class="dv">4</span>, <span class="dv">11</span>:<span class="kw">ncol</span>(regnew))]]
+<span class="co"># regred[CROP == &quot;maize&quot; &amp; SOL == &quot;HC_GEN0010&quot; &amp; WTH == &quot;KALA&quot;, mean(GDD)]</span>
+regmu &lt;-<span class="st"> </span>regred[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">lapply</span>(.SD, mean), 
+                by =<span class="st"> </span><span class="kw">list</span>(CROP, x, y, WTH, SOL), 
+                .SDcols =<span class="st"> </span><span class="kw">names</span>(regred)[<span class="kw">c</span>(<span class="dv">8</span>:<span class="kw">ncol</span>(regred))]]
 regmu[, YST :<span class="er">=</span><span class="st"> &quot;mu&quot;</span>]
 <span class="co"># regnew[CROP == &quot;maize&quot; &amp; Zone == &quot;Zone2a&quot; &amp; WTH == &quot;AABS&quot; &amp; </span>
 <span class="co">#          SOL == &quot;WI_CMZR003&quot;, mean(YLDS)]</span>
@@ -334,19 +229,17 @@ DF &lt;-<span class="st"> </span>DF[<span class="kw">order</span>(DF[, <span cla
 DF[<span class="kw">round</span>(<span class="kw">nrow</span>(DF) *<span class="st"> </span><span class="fl">0.9</span>), <span class="dv">3</span>]
 <span class="kw">sort</span>(DF[, <span class="dv">2</span>])
 
-a &lt;-<span class="st"> </span>regnew[CROP ==<span class="st"> &quot;maize&quot;</span> &amp;<span class="st"> </span>Zone ==<span class="st"> &quot;Zone3&quot;</span> &amp;<span class="st"> </span>WTH ==<span class="st"> &quot;AEQA&quot;</span> &amp;<span class="st"> </span>
-<span class="st">            </span>SOL ==<span class="st"> &quot;WI_RGTZ054&quot;</span>, YLDS]
-b &lt;-<span class="st"> </span>regnew[CROP ==<span class="st"> &quot;maize&quot;</span> &amp;<span class="st"> </span>Zone ==<span class="st"> &quot;Zone3&quot;</span> &amp;<span class="st"> </span>WTH ==<span class="st"> &quot;AEQA&quot;</span> &amp;<span class="st"> </span>
-<span class="st">            </span>SOL ==<span class="st"> &quot;WI_RGTZ054&quot;</span>, mid]
-<span class="kw">qs</span>(a, b, <span class="fl">0.9</span>)
-<span class="kw">sort</span>(a)
+<span class="co"># a &lt;- regnew[CROP == &quot;maize&quot; &amp; WTH == &quot;AEQA&quot; &amp; SOL == &quot;WI_RGTZ054&quot;, YLDS]</span>
+<span class="co"># b &lt;- regnew[CROP == &quot;maize&quot; &amp; WTH == &quot;AEQA&quot; &amp; SOL == &quot;WI_RGTZ054&quot;, mid]</span>
+<span class="co"># qs(a, b, 0.9)</span>
+<span class="co"># sort(a)</span>
 
 <span class="co"># Select out quantile values</span>
 m10 &lt;-<span class="st"> </span>regred[,
-  <span class="kw">qs</span>(YLDS, mid2, <span class="fl">0.1</span>), by =<span class="st"> </span><span class="kw">list</span>(CROP, WTH, Zone, SOL)
+  <span class="kw">qs</span>(YLDS, mid2, <span class="fl">0.1</span>), by =<span class="st"> </span><span class="kw">list</span>(CROP, x, y, WTH, SOL)
 ][, V1]
 m90 &lt;-<span class="st"> </span>regred[,
-  <span class="kw">qs</span>(YLDS, mid2, <span class="fl">0.9</span>), by =<span class="st"> </span><span class="kw">list</span>(CROP, WTH, Zone, SOL) 
+  <span class="kw">qs</span>(YLDS, mid2, <span class="fl">0.9</span>), by =<span class="st"> </span><span class="kw">list</span>(CROP, x, y, WTH, SOL)
 ][, V1]
 
 <span class="co"># </span>
@@ -367,168 +260,205 @@ for(i in <span class="kw">c</span>(<span class="st">&quot;10&quot;</span>, <span
 }
 regred2[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">mean</span>(YLDS), by =<span class="st"> </span>YST]
 
+<span class="co"># Fit gams</span>
+regred2[, <span class="kw">round</span>(<span class="kw">cor</span>(.SD), <span class="dv">2</span>), 
+        .SDcols =<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;MAP&quot;</span>, <span class="st">&quot;MSP&quot;</span>, <span class="st">&quot;DJFMP&quot;</span>, <span class="st">&quot;JFMP&quot;</span>, <span class="st">&quot;JP&quot;</span>, <span class="st">&quot;FP&quot;</span>, <span class="st">&quot;OP&quot;</span>)]  <span class="co"># 0.7</span>
+<span class="co">#        MAP  MSP DJFMP  JFMP    JP    FP    OP</span>
+<span class="co"># MAP   1.00 0.91  0.91  0.88  0.59  0.57  0.23</span>
+<span class="co"># MSP   0.91 1.00  0.90  0.83  0.71  0.63  0.06</span>
+<span class="co"># DJFMP 0.91 0.90  1.00  0.96  0.73  0.66 -0.02</span>
+<span class="co"># JFMP  0.88 0.83  0.96  1.00  0.73  0.73 -0.03</span>
+<span class="co"># JP    0.59 0.71  0.73  0.73  1.00  0.31 -0.07</span>
+<span class="co"># FP    0.57 0.63  0.66  0.73  0.31  1.00 -0.09</span>
+<span class="co"># OP    0.23 0.06 -0.02 -0.03 -0.07 -0.09  1.00</span>
+regred2[, <span class="kw">round</span>(<span class="kw">cor</span>(.SD), <span class="dv">2</span>),  
+        .SDcols =<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;TMU&quot;</span>, <span class="st">&quot;GDD&quot;</span>, <span class="st">&quot;KDD&quot;</span>, <span class="st">&quot;NKF&quot;</span>, <span class="st">&quot;NKJ&quot;</span>, <span class="st">&quot;STMX&quot;</span>, <span class="st">&quot;ATMX&quot;</span>)]
+<span class="co">#       TMU  GDD  KDD  NKF  NKJ STMX ATMX</span>
+<span class="co"># TMU  1.00 0.87 0.45 0.80 0.87 0.95 0.90</span>
+<span class="co"># GDD  0.87 1.00 0.27 0.65 0.71 0.80 0.89</span>
+<span class="co"># KDD  0.45 0.27 1.00 0.31 0.48 0.42 0.34</span>
+<span class="co"># NKF  0.80 0.65 0.31 1.00 0.87 0.81 0.78</span>
+<span class="co"># NKJ  0.87 0.71 0.48 0.87 1.00 0.86 0.80</span>
+<span class="co"># STMX 0.95 0.80 0.42 0.81 0.86 1.00 0.90</span>
+<span class="co"># ATMX 0.90 0.89 0.34 0.78 0.80 0.90 1.00</span>
+regred2[, <span class="kw">round</span>(<span class="kw">cor</span>(.SD), <span class="dv">2</span>),  
+        .SDcols =<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;TMU&quot;</span>, <span class="st">&quot;SSRMI&quot;</span>, <span class="st">&quot;SSRMIII&quot;</span>, <span class="st">&quot;MAP&quot;</span>, <span class="st">&quot;DJFMP&quot;</span>, <span class="st">&quot;JFMP&quot;</span>, <span class="st">&quot;GDD&quot;</span>)]
+<span class="co">#           TMU SSRMI SSRMIII   MAP DJFMP  JFMP   GDD</span>
+<span class="co"># TMU      1.00  0.70    0.69 -0.65 -0.62 -0.60  0.87</span>
+<span class="co"># SSRMI    0.70  1.00    0.91 -0.69 -0.60 -0.58  0.40</span>
+<span class="co"># SSRMIII  0.69  0.91    1.00 -0.64 -0.59 -0.61  0.45</span>
+<span class="co"># MAP     -0.65 -0.69   -0.64  1.00  0.91  0.88 -0.45</span>
+<span class="co"># DJFMP   -0.62 -0.60   -0.59  0.91  1.00  0.96 -0.47</span>
+<span class="co"># JFMP    -0.60 -0.58   -0.61  0.88  0.96  1.00 -0.43</span>
+<span class="co"># GDD      0.87  0.40    0.45 -0.45 -0.47 -0.43  1.00</span>
 
-regred2[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, MAP)]  <span class="co"># P 0.071</span>
-regred2[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, MSP)]  <span class="co"># P 0.039</span>
-regred2[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, JP)]  <span class="co"># P 0.020</span>
-regred2[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, FP)]  <span class="co"># P 0.017</span>
-regred2[CROP ==<span class="st"> &quot;maize&quot;</span>,  <span class="kw">summary</span>(<span class="kw">lm</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(FP, <span class="dv">2</span>)))]
-regred2[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, <span class="dv">100</span> -<span class="st"> </span>slcl +<span class="st"> </span>slsi)]  <span class="co"># P 0.102</span>
-regred2[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, slcl)]  <span class="co"># P 0.1879</span>
-regred2[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, slsi)]  <span class="co"># P 0.03</span>
+regred2[, <span class="kw">round</span>(<span class="kw">cor</span>(.SD), <span class="dv">2</span>), 
+        .SDcols =<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;SLOC&quot;</span>, <span class="st">&quot;SBDM&quot;</span>, <span class="st">&quot;SLCL&quot;</span>, <span class="st">&quot;SLHW&quot;</span>, <span class="st">&quot;SLSI&quot;</span>)]  
+<span class="co">#       SLOC  SBDM  SLCL  SLHW  SLSI</span>
+<span class="co"># SLOC  1.00 -0.67  0.53 -0.30  0.03</span>
+<span class="co"># SBDM -0.67  1.00 -0.77  0.34 -0.26</span>
+<span class="co"># SLCL  0.53 -0.77  1.00 -0.64 -0.09</span>
+<span class="co"># SLHW -0.30  0.34 -0.64  1.00  0.36</span>
+<span class="co"># SLSI  0.03 -0.26 -0.09  0.36  1.00</span>
 
-regred2[CROP ==<span class="st"> &quot;maize&quot;</span>, {
-  lm1 &lt;-<span class="st"> </span><span class="kw">lm</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(MAP, <span class="dv">2</span>) +<span class="st"> </span>OP +<span class="st"> </span><span class="kw">poly</span>(slhw, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(slcl, <span class="dv">2</span>) +
-<span class="st">              </span><span class="kw">poly</span>(sbdm, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span>KDD +<span class="st"> </span><span class="kw">poly</span>(ASRM, <span class="dv">2</span>) +<span class="st"> </span>x +<span class="st"> </span>y)
-  <span class="kw">summary</span>(lm1)
-  <span class="co"># plot(YLDS, predict(lm1))</span>
-}]  <span class="co"># 0.4301  # Oct precip add a tiny bit, significant</span>
+gam1 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDS ~<span class="st"> </span><span class="kw">s</span>(MAP, <span class="dt">k =</span> <span class="dv">3</span>)  +<span class="st"> </span><span class="kw">s</span>(TMU, <span class="dt">k =</span> <span class="dv">3</span>) +<span class="st"> </span><span class="kw">s</span>(SLHW, <span class="dt">k =</span> <span class="dv">3</span>) +<span class="st"> </span>
+<span class="st">              </span><span class="kw">s</span>(SLCL, <span class="dt">k =</span> <span class="dv">3</span>) +<span class="st"> </span><span class="kw">s</span>(SLOC, <span class="dt">k =</span> <span class="dv">3</span>) +<span class="st"> </span>
+<span class="st">              </span><span class="kw">s</span>(SSRMI, <span class="dt">k =</span> <span class="dv">3</span>), <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;ML&quot;</span>, 
+            <span class="dt">data =</span> regred2[CROP ==<span class="st"> &quot;maize&quot;</span>])
 
-regred2[CROP ==<span class="st"> &quot;maize&quot;</span> &amp;<span class="st"> </span>YST ==<span class="st"> &quot;mu&quot;</span>, {
-  lm1 &lt;-<span class="st"> </span><span class="kw">lm</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(MAP, <span class="dv">2</span>) +<span class="st"> </span>OP +<span class="st"> </span><span class="kw">poly</span>(slhw, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(slcl, <span class="dv">2</span>) +
-<span class="st">              </span><span class="kw">poly</span>(sbdm, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span>KDD +<span class="st"> </span><span class="kw">poly</span>(ASRM, <span class="dv">2</span>) +<span class="st"> </span>x +<span class="st"> </span>y)
-  <span class="kw">summary</span>(lm1)
-  <span class="co"># plot(YLDS, predict(lm1))</span>
-}]  <span class="co"># 0.4301  # Oct precip add a tiny bit, significant</span>
+gam2 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDS ~<span class="st"> </span><span class="kw">s</span>(MAP, <span class="dt">k =</span> <span class="dv">3</span>) +<span class="st"> </span><span class="kw">s</span>(TMU, <span class="dt">k =</span> <span class="dv">3</span>) +<span class="st"> </span><span class="kw">s</span>(SLHW, <span class="dt">k =</span> <span class="dv">3</span>) +<span class="st"> </span>
+<span class="st">              </span><span class="kw">s</span>(SLCL, <span class="dt">k =</span> <span class="dv">3</span>) +<span class="st"> </span><span class="kw">s</span>(SLOC, <span class="dt">k =</span> <span class="dv">3</span>), 
+            <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;ML&quot;</span>, 
+            <span class="dt">data =</span> regred2[CROP ==<span class="st"> &quot;maize&quot;</span>])
 
-regred2[CROP ==<span class="st"> &quot;maize&quot;</span>, {
-  lm1 &lt;-<span class="st"> </span><span class="kw">lm</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(MAP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(JP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(slhw, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(slcl, <span class="dv">2</span>) +
-<span class="st">              </span><span class="kw">poly</span>(sbdm, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span>KDD +<span class="st"> </span><span class="kw">poly</span>(ASRM, <span class="dv">2</span>))
-  <span class="kw">summary</span>(lm1)
-  <span class="co"># plot(YLDS, predict(lm1))</span>
-}]  <span class="co"># 0.4301  # Oct precip add a tiny bit, significant</span>
-
-regred2[CROP ==<span class="st"> &quot;maize&quot;</span>, {
-  lm1 &lt;-<span class="st"> </span><span class="kw">lm</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(MAP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(JP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(slhw, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(sloc, <span class="dv">2</span>) +
-<span class="st">              </span><span class="kw">poly</span>(sbdm, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span>KDD +<span class="st"> </span><span class="kw">poly</span>(ASRM, <span class="dv">2</span>))
-  <span class="kw">summary</span>(lm1)
-  <span class="co"># plot(YLDS, predict(lm1))</span>
-}]  <span class="co"># 0.4301  # Oct precip add a tiny bit, significant</span>
-
-
-regred2[CROP ==<span class="st"> &quot;maize&quot;</span>, {
-  gam1 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDS ~<span class="st"> </span><span class="kw">s</span>(MAP) +<span class="st"> </span><span class="kw">s</span>(JP) +<span class="st"> </span><span class="kw">s</span>(slhw) +<span class="st"> </span><span class="kw">s</span>(slcl) +<span class="st"> </span>(sbdm) +<span class="st"> </span><span class="kw">s</span>(GDD) +
-<span class="st">                </span>KDD +<span class="st"> </span><span class="kw">s</span>(ASRM), 
-            <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;ML&quot;</span>)
-}]
-
-gam1 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDS ~<span class="st"> </span><span class="kw">s</span>(MAP, <span class="dt">k =</span> <span class="dv">3</span>) +<span class="st"> </span><span class="kw">s</span>(JP, <span class="dt">k =</span> <span class="dv">3</span>) +<span class="st"> </span><span class="kw">s</span>(slhw, <span class="dt">k =</span> <span class="dv">3</span>) +<span class="st"> </span>
-<span class="st">              </span><span class="kw">s</span>(slcl, <span class="dt">k =</span> <span class="dv">3</span>) +<span class="st"> </span><span class="kw">s</span>(sbdm, <span class="dt">k =</span> <span class="dv">3</span>) +<span class="st"> </span><span class="kw">s</span>(GDD, <span class="dt">k =</span> <span class="dv">3</span>) +<span class="st"> </span>KDD +<span class="st"> </span>
-<span class="st">              </span><span class="kw">s</span>(ASRM, <span class="dt">k =</span> <span class="dv">3</span>), <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;ML&quot;</span>, 
+gam3 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(MAP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">s</span>(TMU, <span class="dt">k =</span> <span class="dv">3</span>) +<span class="st"> </span><span class="kw">s</span>(SLHW, <span class="dt">k =</span> <span class="dv">3</span>) +<span class="st"> </span>
+<span class="st">              </span><span class="kw">s</span>(SLCL, <span class="dt">k =</span> <span class="dv">3</span>) +<span class="st"> </span><span class="kw">s</span>(SLOC, <span class="dt">k =</span> <span class="dv">3</span>), 
+            <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;ML&quot;</span>, 
             <span class="dt">data =</span> regred2[CROP ==<span class="st"> &quot;maize&quot;</span>])
-gam2 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(MAP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(JP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(slhw, <span class="dv">2</span>) +<span class="st"> </span>
-<span class="st">              </span><span class="kw">poly</span>(slcl, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(sbdm, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span>KDD +<span class="st"> </span>
-<span class="st">              </span><span class="kw">poly</span>(ASRM, <span class="dv">2</span>), <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;REML&quot;</span>, 
+gam4 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(MAP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(TMU, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">s</span>(SLHW, <span class="dt">k =</span> <span class="dv">3</span>) +<span class="st"> </span>
+<span class="st">              </span><span class="kw">s</span>(SLCL, <span class="dt">k =</span> <span class="dv">3</span>) +<span class="st"> </span><span class="kw">s</span>(SLOC, <span class="dt">k =</span> <span class="dv">3</span>), 
+            <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;ML&quot;</span>, 
             <span class="dt">data =</span> regred2[CROP ==<span class="st"> &quot;maize&quot;</span>])
-gam3 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(MAP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(JP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(slhw, <span class="dv">2</span>) +<span class="st"> </span>
-<span class="st">              </span><span class="kw">poly</span>(slcl, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(sbdm, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span>KDD +<span class="st"> </span>
-<span class="st">              </span><span class="kw">poly</span>(ASRM, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">s</span>(x, y), 
-            <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;REML&quot;</span>, 
+gam5 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(MAP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(TMU, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">s</span>(SLHW, <span class="dt">k =</span> <span class="dv">3</span>) +<span class="st"> </span>
+<span class="st">              </span><span class="kw">s</span>(SLCL, <span class="dt">k =</span> <span class="dv">3</span>), 
+            <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;ML&quot;</span>, 
             <span class="dt">data =</span> regred2[CROP ==<span class="st"> &quot;maize&quot;</span>])
-gam4 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(MAP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(JP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(slhw, <span class="dv">2</span>) +<span class="st"> </span>
-<span class="st">              </span><span class="kw">poly</span>(slcl, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(sbdm, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span>KDD +<span class="st"> </span>
-<span class="st">              </span><span class="kw">s</span>(x, y), <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;REML&quot;</span>, 
+gam6 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(DJFMP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(TMU, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">s</span>(SLHW, <span class="dt">k =</span> <span class="dv">3</span>) +<span class="st"> </span>
+<span class="st">              </span><span class="kw">s</span>(SLCL, <span class="dt">k =</span> <span class="dv">3</span>), 
+            <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;ML&quot;</span>, 
             <span class="dt">data =</span> regred2[CROP ==<span class="st"> &quot;maize&quot;</span>])
-gam5 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(MAP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(JP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(slhw, <span class="dv">2</span>) +<span class="st"> </span>
-<span class="st">              </span><span class="kw">poly</span>(slcl, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(sbdm, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span>KDD, 
-            <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;REML&quot;</span>, 
+gam7 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(DJFMP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(TMU, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(SLHW, <span class="dv">2</span>) +<span class="st"> </span>
+<span class="st">              </span><span class="kw">s</span>(SLCL, <span class="dt">k =</span> <span class="dv">3</span>), 
+            <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;ML&quot;</span>, 
             <span class="dt">data =</span> regred2[CROP ==<span class="st"> &quot;maize&quot;</span>])
-gam6 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(MAP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(JP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(slhw, <span class="dv">2</span>) +<span class="st"> </span>
-<span class="st">              </span><span class="kw">poly</span>(slcl, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span>KDD, 
-            <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;REML&quot;</span>, 
+gam8 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(DJFMP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(TMU, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(SLHW, <span class="dv">2</span>) +<span class="st"> </span>
+<span class="st">              </span><span class="kw">poly</span>(SLCL, <span class="dv">2</span>), 
+            <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;ML&quot;</span>, 
             <span class="dt">data =</span> regred2[CROP ==<span class="st"> &quot;maize&quot;</span>])
-gam7 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(MAP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(slhw, <span class="dv">2</span>) +<span class="st"> </span>
-<span class="st">              </span><span class="kw">poly</span>(slcl, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span>KDD, 
-            <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;REML&quot;</span>, 
+gam9 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(MSP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(TMU, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(SLHW, <span class="dv">2</span>) +<span class="st"> </span>
+<span class="st">              </span><span class="kw">poly</span>(SLCL, <span class="dv">2</span>), 
+            <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;ML&quot;</span>, 
             <span class="dt">data =</span> regred2[CROP ==<span class="st"> &quot;maize&quot;</span>])
-gam8 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(MAP, <span class="dv">2</span>) +<span class="st"> </span>slhw +<span class="st">  </span><span class="kw">poly</span>(slcl, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span>KDD, 
-            <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;REML&quot;</span>, 
+gam10 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(JFMP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(TMU, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(SLHW, <span class="dv">2</span>) +<span class="st"> </span>
+<span class="st">              </span><span class="kw">poly</span>(SLCL, <span class="dv">2</span>), <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;ML&quot;</span>, 
             <span class="dt">data =</span> regred2[CROP ==<span class="st"> &quot;maize&quot;</span>])
-gam9 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(MAP, <span class="dv">2</span>) +<span class="st"> </span>slhw +<span class="st"> </span><span class="kw">poly</span>(slcl, <span class="dv">2</span>) +<span class="st"> </span>
-<span class="st">              </span><span class="kw">poly</span>(<span class="dv">100</span> -<span class="st"> </span>(slcl +<span class="st"> </span>slsi), <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span>KDD, 
-            <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;REML&quot;</span>, 
+gam11 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(JFMP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(TMU, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(SLHW, <span class="dv">2</span>) +<span class="st"> </span>
+<span class="st">              </span><span class="kw">poly</span>(SLCL, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">s</span>(x, y), 
+             <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;ML&quot;</span>, 
             <span class="dt">data =</span> regred2[CROP ==<span class="st"> &quot;maize&quot;</span>])
-gam10 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(MAP, <span class="dv">2</span>) +<span class="st"> </span>slhw +<span class="st"> </span><span class="kw">poly</span>(slcl, <span class="dv">2</span>) +<span class="st"> </span>
-<span class="st">               </span><span class="kw">poly</span>(sloc, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span>KDD, 
-             <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;REML&quot;</span>, 
+gam12 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(JFMP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(TMU, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(SLHW, <span class="dv">2</span>) +<span class="st"> </span>
+<span class="st">              </span><span class="kw">poly</span>(SLCL, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(SLOC, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">s</span>(x, y), 
+             <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;ML&quot;</span>, 
+            <span class="dt">data =</span> regred2[CROP ==<span class="st"> &quot;maize&quot;</span>])
+gam13 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(JFMP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(TMU, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(SSRMI, <span class="dv">2</span>) +<span class="st"> </span>
+<span class="st">               </span><span class="kw">poly</span>(SLHW, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(SLCL, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">s</span>(x, y), 
+             <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;ML&quot;</span>, 
+            <span class="dt">data =</span> regred2[CROP ==<span class="st"> &quot;maize&quot;</span>])
+gam14 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(JFMP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(TMU, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(SSRMI, <span class="dv">2</span>) +<span class="st"> </span>
+<span class="st">               </span><span class="kw">poly</span>(SLHW, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(SLCL, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">s</span>(x, y), 
+             <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;ML&quot;</span>, 
+            <span class="dt">data =</span> regnew[CROP ==<span class="st"> &quot;maize&quot;</span>])
+gam15 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(JFMP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(TMU, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(SSRMI, <span class="dv">2</span>) +<span class="st"> </span>
+<span class="st">               </span><span class="kw">poly</span>(SLHW, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(SLCL, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">s</span>(x, y), 
+             <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;ML&quot;</span>, 
+            <span class="dt">data =</span> regred2[YST ==<span class="st"> &quot;mu&quot;</span>])
+gam16 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDS ~<span class="st"> </span><span class="kw">s</span>(JFMP, <span class="dt">k =</span> <span class="dv">3</span>)  +<span class="st"> </span><span class="kw">s</span>(TMU, <span class="dt">k =</span> <span class="dv">3</span>) +<span class="st"> </span><span class="kw">s</span>(SLHW, <span class="dt">k =</span> <span class="dv">3</span>) +<span class="st"> </span>
+<span class="st">               </span><span class="kw">s</span>(SLCL, <span class="dt">k =</span> <span class="dv">3</span>) +<span class="st"> </span><span class="kw">s</span>(SSRMI, <span class="dt">k =</span> <span class="dv">3</span>), 
+             <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;ML&quot;</span>, 
              <span class="dt">data =</span> regred2[CROP ==<span class="st"> &quot;maize&quot;</span>])
-gam11 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(MAP, <span class="dv">2</span>) +<span class="st"> </span>slhw +<span class="st"> </span><span class="kw">poly</span>(slcl, <span class="dv">2</span>) +<span class="st"> </span>
-<span class="st">               </span>sloc +<span class="st"> </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span>KDD, 
+gam17 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(JFMP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(SSRMI, <span class="dv">2</span>) +<span class="st"> </span>
+<span class="st">               </span><span class="kw">poly</span>(SLHW, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(SLCL, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">s</span>(x, y), 
+             <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;ML&quot;</span>, 
+            <span class="dt">data =</span> regred2[CROP ==<span class="st"> &quot;maize&quot;</span>])
+gam18 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(JFMP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(SSRMI, <span class="dv">2</span>) +<span class="st"> </span>
+<span class="st">               </span><span class="kw">poly</span>(SLHW, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(SLCL, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">s</span>(x, y), 
+             <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;ML&quot;</span>, 
+            <span class="dt">data =</span> regnew[CROP ==<span class="st"> &quot;maize&quot;</span>])
+gam19 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(DJFMP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(TMU, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(SSRMI, <span class="dv">2</span>) +<span class="st"> </span>
+<span class="st">               </span><span class="kw">poly</span>(SLHW, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(SLCL, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">s</span>(x, y), 
              <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;REML&quot;</span>, 
-             <span class="dt">data =</span> regred2[CROP ==<span class="st"> &quot;maize&quot;</span>])
-gam12 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(MAP, <span class="dv">2</span>) +<span class="st"> </span>slhw +<span class="st"> </span><span class="kw">poly</span>(slcl, <span class="dv">2</span>) +<span class="st"> </span>
-<span class="st">               </span>sloc +<span class="st"> </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span>KDD +<span class="st"> </span><span class="kw">s</span>(x, y), 
+            <span class="dt">data =</span> regred2[CROP ==<span class="st"> &quot;maize&quot;</span>])
+gam21 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(DJFMP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(SSRMI, <span class="dv">2</span>) +<span class="st"> </span>
+<span class="st">               </span><span class="kw">poly</span>(SLHW, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(SLCL, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">s</span>(x, y), 
              <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;REML&quot;</span>, 
-             <span class="dt">data =</span> regred2[CROP ==<span class="st"> &quot;maize&quot;</span>])
+            <span class="dt">data =</span> regnew[CROP ==<span class="st"> &quot;maize&quot;</span>])
 
-
+<span class="kw">summary</span>(gam1)
+<span class="kw">plot.gam</span>(gam1, <span class="dt">residuals =</span> <span class="ot">FALSE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
+<span class="kw">summary</span>(gam2)
+<span class="kw">plot.gam</span>(gam2, <span class="dt">residuals =</span> <span class="ot">FALSE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
 <span class="kw">summary</span>(gam3)
-<span class="kw">plot.gam</span>(gam3, <span class="dt">residuals =</span> <span class="ot">TRUE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
+<span class="kw">plot.gam</span>(gam3, <span class="dt">residuals =</span> <span class="ot">FALSE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
 <span class="kw">summary</span>(gam4)
-<span class="kw">plot.gam</span>(gam4, <span class="dt">residuals =</span> <span class="ot">TRUE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
-<span class="kw">summary</span>(gam5)
-<span class="kw">plot.gam</span>(gam5, <span class="dt">residuals =</span> <span class="ot">TRUE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
-<span class="kw">summary</span>(gam6)
-<span class="kw">plot.gam</span>(gam6, <span class="dt">residuals =</span> <span class="ot">TRUE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
+<span class="kw">plot.gam</span>(gam4, <span class="dt">residuals =</span> <span class="ot">FALSE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
+<span class="kw">summary</span>(gam5)  <span class="co">#</span>
+<span class="kw">plot.gam</span>(gam5, <span class="dt">residuals =</span> <span class="ot">FALSE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
+<span class="kw">summary</span>(gam6)  <span class="co">#+  MAP -&gt; DJMF</span>
+<span class="kw">plot.gam</span>(gam6, <span class="dt">residuals =</span> <span class="ot">FALSE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
 <span class="kw">summary</span>(gam7)
-<span class="kw">plot.gam</span>(gam7, <span class="dt">residuals =</span> <span class="ot">TRUE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
+<span class="kw">plot.gam</span>(gam7, <span class="dt">residuals =</span> <span class="ot">FALSE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
 <span class="kw">summary</span>(gam8)
-<span class="kw">plot.gam</span>(gam8, <span class="dt">residuals =</span> <span class="ot">TRUE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
-<span class="kw">summary</span>(gam9)
-<span class="kw">plot.gam</span>(gam9, <span class="dt">residuals =</span> <span class="ot">TRUE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
-<span class="kw">summary</span>(gam10)
-<span class="kw">plot.gam</span>(gam10, <span class="dt">residuals =</span> <span class="ot">TRUE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
-<span class="kw">summary</span>(gam11)  <span class="co"># This one or</span>
-<span class="kw">plot.gam</span>(gam11, <span class="dt">residuals =</span> <span class="ot">TRUE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
-<span class="kw">summary</span>(gam12)  <span class="co"># of this one, with smooth x, y terms</span>
-<span class="kw">plot.gam</span>(gam12, <span class="dt">residuals =</span> <span class="ot">TRUE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
-
+<span class="kw">plot.gam</span>(gam8, <span class="dt">residuals =</span> <span class="ot">FALSE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
+<span class="kw">summary</span>(gam9)  <span class="co">#- DJFM -&gt; MSP</span>
+<span class="kw">plot.gam</span>(gam9, <span class="dt">residuals =</span> <span class="ot">FALSE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
+<span class="kw">summary</span>(gam10) <span class="co">#+ MSP -&gt; JFM ~ DJMF</span>
+<span class="kw">plot.gam</span>(gam10, <span class="dt">residuals =</span> <span class="ot">FALSE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
+<span class="kw">summary</span>(gam11)  
+<span class="kw">plot.gam</span>(gam11, <span class="dt">residuals =</span> <span class="ot">FALSE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
+<span class="kw">summary</span>(gam12)  <span class="co">#&lt;-&gt; SLOC</span>
+<span class="kw">plot.gam</span>(gam12, <span class="dt">residuals =</span> <span class="ot">FALSE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
+<span class="kw">summary</span>(gam13)  <span class="co">#+ SLOC out SSRMI in</span>
+<span class="kw">plot.gam</span>(gam13, <span class="dt">residuals =</span> <span class="ot">FALSE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
+<span class="kw">summary</span>(gam14)  <span class="co">#+ SLOC out SSRMI in, full dataset</span>
+<span class="kw">plot.gam</span>(gam14, <span class="dt">residuals =</span> <span class="ot">FALSE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
+<span class="kw">summary</span>(gam15)  <span class="co">#+ SLOC out SSRMI in, means only</span>
+<span class="kw">plot.gam</span>(gam15, <span class="dt">residuals =</span> <span class="ot">FALSE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
+<span class="kw">summary</span>(gam16)  <span class="co">#- Smooth version of 13, explains less </span>
+<span class="kw">plot.gam</span>(gam16, <span class="dt">residuals =</span> <span class="ot">FALSE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
+<span class="kw">summary</span>(gam17)  <span class="co"># GDD Subs in exactly for TMU, less correlated with SSRMI</span>
+<span class="kw">plot.gam</span>(gam17, <span class="dt">residuals =</span> <span class="ot">FALSE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
+<span class="kw">summary</span>(gam18)  <span class="co"># 18 on full dataset</span>
+<span class="kw">plot.gam</span>(gam18, <span class="dt">residuals =</span> <span class="ot">FALSE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
+<span class="kw">summary</span>(gam19)  <span class="co">#+ DJFMP + TMU </span>
+<span class="kw">plot.gam</span>(gam19, <span class="dt">residuals =</span> <span class="ot">FALSE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
+<span class="kw">summary</span>(gam20)  <span class="co">#+ DJFMP GDD</span>
+<span class="kw">plot.gam</span>(gam20, <span class="dt">residuals =</span> <span class="ot">FALSE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
+<span class="kw">summary</span>(gam21)  <span class="co">#+ 20 with full dataset</span>
+<span class="kw">plot.gam</span>(gam21, <span class="dt">residuals =</span> <span class="ot">FALSE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
 
 <span class="kw">par</span>(<span class="dt">mfrow =</span> <span class="kw">c</span>(<span class="dv">2</span>, <span class="dv">2</span>))
-<span class="kw">plot</span>(regred2[CROP ==<span class="st"> &quot;maize&quot;</span>, YLDS], <span class="kw">predict</span>(gam11, <span class="dt">type =</span> <span class="st">&quot;response&quot;</span>))
-<span class="kw">plot</span>(regred2[CROP ==<span class="st"> &quot;maize&quot;</span>, YLDS], <span class="kw">predict</span>(gam12, <span class="dt">type =</span> <span class="st">&quot;response&quot;</span>))
-<span class="kw">plot</span>(regred2[CROP ==<span class="st"> &quot;maize&quot;</span>, YLDS], <span class="kw">predict</span>(gam4, <span class="dt">type =</span> <span class="st">&quot;response&quot;</span>))
+regred2[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">plot</span>(YLDS, <span class="kw">predict</span>(gam13, <span class="dt">type =</span> <span class="st">&quot;response&quot;</span>))]
+<span class="kw">lines</span>(<span class="kw">c</span>(<span class="dv">2000</span>, <span class="dv">12000</span>), <span class="kw">c</span>(<span class="dv">2000</span>, <span class="dv">12000</span>), <span class="dt">col =</span> <span class="st">&quot;red&quot;</span>)
+regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">plot</span>(YLDS, <span class="kw">predict</span>(gam14, <span class="dt">type =</span> <span class="st">&quot;response&quot;</span>))]
+<span class="kw">lines</span>(<span class="kw">c</span>(<span class="dv">2000</span>, <span class="dv">12000</span>), <span class="kw">c</span>(<span class="dv">2000</span>, <span class="dv">12000</span>), <span class="dt">col =</span> <span class="st">&quot;red&quot;</span>)
+regred2[YST ==<span class="st"> &quot;mu&quot;</span>, <span class="kw">plot</span>(YLDS, <span class="kw">predict</span>(gam15, <span class="dt">type =</span> <span class="st">&quot;response&quot;</span>))]
+<span class="kw">lines</span>(<span class="kw">c</span>(<span class="dv">2000</span>, <span class="dv">12000</span>), <span class="kw">c</span>(<span class="dv">2000</span>, <span class="dv">12000</span>), <span class="dt">col =</span> <span class="st">&quot;red&quot;</span>)
+regred2[, <span class="kw">plot</span>(YLDS, <span class="kw">predict</span>(gam20, <span class="dt">type =</span> <span class="st">&quot;response&quot;</span>))]
+<span class="kw">lines</span>(<span class="kw">c</span>(<span class="dv">2000</span>, <span class="dv">12000</span>), <span class="kw">c</span>(<span class="dv">2000</span>, <span class="dv">12000</span>), <span class="dt">col =</span> <span class="st">&quot;red&quot;</span>)
+regnew[CROP ==<span class="st"> &quot;maize&quot;</span>, <span class="kw">plot</span>(YLDS, <span class="kw">predict</span>(gam21, <span class="dt">type =</span> <span class="st">&quot;response&quot;</span>))]
+<span class="kw">lines</span>(<span class="kw">c</span>(<span class="dv">2000</span>, <span class="dv">12000</span>), <span class="kw">c</span>(<span class="dv">2000</span>, <span class="dv">12000</span>), <span class="dt">col =</span> <span class="st">&quot;red&quot;</span>)
 
-<span class="co"># Reduce down to model for mean, 10th, 90th)</span>
-gam12mu &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(MAP, <span class="dv">2</span>) +<span class="st"> </span>slhw +<span class="st"> </span><span class="kw">poly</span>(slcl, <span class="dv">2</span>) +<span class="st"> </span>
-<span class="st">               </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span>KDD +<span class="st"> </span><span class="kw">s</span>(x, y), 
-             <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;REML&quot;</span>, 
-             <span class="dt">data =</span> regred2[YST ==<span class="st"> &quot;mu&quot;</span>])
-<span class="kw">summary</span>(gam12mu)
-<span class="kw">plot.gam</span>(gam12mu, <span class="dt">residuals =</span> <span class="ot">TRUE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
-gam1210 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(MAP, <span class="dv">2</span>) +<span class="st"> </span>slhw +<span class="st"> </span><span class="kw">poly</span>(slcl, <span class="dv">2</span>) +<span class="st"> </span>
-<span class="st">               </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span>KDD +<span class="st"> </span><span class="kw">s</span>(x, y), 
-             <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;REML&quot;</span>, 
-             <span class="dt">data =</span> regred2[YST ==<span class="st"> &quot;10&quot;</span>])
-<span class="kw">summary</span>(gam1210)
-<span class="kw">plot.gam</span>(gam1210, <span class="dt">residuals =</span> <span class="ot">TRUE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
-gam1290 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(MAP, <span class="dv">2</span>) +<span class="st"> </span>slhw +<span class="st"> </span><span class="kw">poly</span>(slcl, <span class="dv">2</span>) +<span class="st"> </span>
-<span class="st">               </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span>KDD +<span class="st"> </span><span class="kw">s</span>(x, y), 
-             <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;REML&quot;</span>, 
-             <span class="dt">data =</span> regred2[YST ==<span class="st"> &quot;90&quot;</span>])
-<span class="kw">summary</span>(gam1290)
-<span class="kw">plot.gam</span>(gam1290, <span class="dt">residuals =</span> <span class="ot">TRUE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)</code></pre>
+<span class="co"># Predict on 17 and 18</span></code></pre>
 </div>
-<div id="soybean" class="section level3">
-<h3><span class="header-section-number">2.2.2</span> Soybean</h3>
-<pre class="sourceCode r"><code class="sourceCode r">regreds &lt;-<span class="st"> </span><span class="kw">copy</span>(regnew[CROP ==<span class="st"> &quot;soybean&quot;</span>])
+<div id="soy" class="section level3">
+<h3><span class="header-section-number">2.2.2</span> soy</h3>
+<pre class="sourceCode r"><code class="sourceCode r">regreds &lt;-<span class="st"> </span><span class="kw">copy</span>(regnew[CROP ==<span class="st"> &quot;soy&quot;</span>])
 regreds[, mid2 :<span class="er">=</span><span class="st"> </span><span class="dv">1</span>:.N]
 
-<span class="co"># regred[, c(&quot;Y10S&quot;, &quot;Y90S&quot;) := as.integer(0)]</span>
-
-regmus &lt;-<span class="st"> </span>regreds[, <span class="kw">lapply</span>(.SD, mean), by =<span class="st"> </span><span class="kw">list</span>(CROP, WTH, Zone, SOL), 
-                .SDcols =<span class="st"> </span><span class="kw">names</span>(regnew)[<span class="kw">c</span>(<span class="dv">3</span>:<span class="dv">4</span>, <span class="dv">11</span>:<span class="kw">ncol</span>(regnew))]]
+regmus &lt;-<span class="st"> </span>regreds[, <span class="kw">lapply</span>(.SD, mean), by =<span class="st"> </span><span class="kw">list</span>(CROP, x, y, WTH, SOL), 
+                  .SDcols =<span class="st"> </span><span class="kw">names</span>(regred)[<span class="kw">c</span>(<span class="dv">8</span>:<span class="kw">ncol</span>(regred))]]
 regmus[, YST :<span class="er">=</span><span class="st"> &quot;mu&quot;</span>]
 
 <span class="co"># Select out quantile values</span>
 m10 &lt;-<span class="st"> </span>regreds[,
-  <span class="kw">qs</span>(YLDR, mid2, <span class="fl">0.1</span>), by =<span class="st"> </span><span class="kw">list</span>(CROP, WTH, Zone, SOL)
+  <span class="kw">qs</span>(YLDR, mid2, <span class="fl">0.1</span>), by =<span class="st"> </span><span class="kw">list</span>(CROP, x, y, WTH, SOL)
 ][, V1]
 m90 &lt;-<span class="st"> </span>regreds[,
-  <span class="kw">qs</span>(YLDR, mid2, <span class="fl">0.9</span>), by =<span class="st"> </span><span class="kw">list</span>(CROP, WTH, Zone, SOL) 
+  <span class="kw">qs</span>(YLDR, mid2, <span class="fl">0.9</span>), by =<span class="st"> </span><span class="kw">list</span>(CROP, x, y, WTH, SOL)
 ][, V1]
 
-<span class="co"># </span>
+
+<span class="co"># Select out 10th and 90th percentile years</span>
 y10s &lt;-<span class="st"> </span>regreds[mid2 %in%<span class="st"> </span>m10]
 y90s &lt;-<span class="st"> </span>regreds[mid2 %in%<span class="st"> </span>m90]
 y10s[, YST :<span class="er">=</span><span class="st"> &quot;10&quot;</span>]
@@ -538,166 +468,218 @@ y1090s &lt;-<span class="st"> </span><span class="kw">rbind</span>(y10s, y90s)
 cnames &lt;-<span class="st"> </span><span class="kw">colnames</span>(y1090s)[<span class="kw">colnames</span>(y1090s) %in%<span class="st"> </span><span class="kw">colnames</span>(regmus)]
 <span class="kw">setcolorder</span>(regmus, cnames)
 regreds2 &lt;-<span class="st"> </span><span class="kw">rbind</span>(regmus, y1090s[, cnames, <span class="dt">with =</span> <span class="ot">FALSE</span>])
-regreds2[, slcf :<span class="er">=</span><span class="st"> </span><span class="dv">100</span> -<span class="st"> </span>(slcl +<span class="st"> </span>slsi)]
 
 <span class="kw">par</span>(<span class="dt">mfrow =</span> <span class="kw">c</span>(<span class="dv">2</span>, <span class="dv">2</span>))
 for(i in <span class="kw">c</span>(<span class="st">&quot;10&quot;</span>, <span class="st">&quot;mu&quot;</span>, <span class="st">&quot;90&quot;</span>)) {
-  regreds2[CROP ==<span class="st"> &quot;soybean&quot;</span> &amp;<span class="st"> </span>YST ==<span class="st"> </span>i, <span class="kw">hist</span>(YLDR)]
+  regreds2[YST ==<span class="st"> </span>i, <span class="kw">hist</span>(YLDR)]
 }
-regreds2[CROP ==<span class="st"> &quot;soybean&quot;</span>, <span class="kw">mean</span>(YLDR), by =<span class="st"> </span>YST]
+regreds2[ , <span class="kw">mean</span>(YLDR), by =<span class="st"> </span>YST]
 
-regreds2[, <span class="kw">reg_plotter</span>(YLDR, MAP)]  <span class="co"># L 0.065</span>
-regreds2[, <span class="kw">reg_plotter</span>(YLDR, MSP)]  <span class="co"># L 0.1105</span>
-regreds2[, <span class="kw">reg_plotter</span>(YLDR, JP)]  <span class="co"># L 0.08</span>
-regreds2[, <span class="kw">reg_plotter</span>(YLDR, FP)]  <span class="co"># P 0.016</span>
-regreds2[, <span class="kw">reg_plotter</span>(YLDR, <span class="dv">100</span> -<span class="st"> </span>slcl +<span class="st"> </span>slsi)]  <span class="co"># P 0.12</span>
-regreds2[, <span class="kw">reg_plotter</span>(YLDR, slcl)]  <span class="co"># P 0.31</span>
-regreds2[, <span class="kw">reg_plotter</span>(YLDR, slsi)]  <span class="co"># P 0.003</span>
-regreds2[, <span class="kw">reg_plotter</span>(YLDR, sloc)]  <span class="co"># P 0.31</span>
-regreds2[, <span class="kw">reg_plotter</span>(YLDR, slhw)]  <span class="co"># P 0.27</span>
-regreds2[, <span class="kw">reg_plotter</span>(YLDR, GDD)]  <span class="co"># P 0.006</span>
-regreds2[, <span class="kw">reg_plotter</span>(YLDR, KDD)]  <span class="co"># P 0.006</span>
-regreds2[, <span class="kw">reg_plotter</span>(YLDR, STMX)]  <span class="co"># L 0.029</span>
-regreds2[, <span class="kw">reg_plotter</span>(YLDR, NKF)]  <span class="co"># L 0.032</span>
-regreds2[, <span class="kw">reg_plotter</span>(YLDR, NKJ)]  <span class="co"># P 0.029</span>
-regreds2[, <span class="kw">reg_plotter</span>(YLDR, SSRT)]  <span class="co"># L 0.023</span>
-regreds2[, <span class="kw">reg_plotter</span>(YLDR, ASRM)]  <span class="co"># L 0.055</span>
+<span class="co"># Rainfall</span>
+regnew[CROP ==<span class="st"> &quot;soy&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, MAP)] ###
+regnew[CROP ==<span class="st"> &quot;soy&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, MSP)] ##
+regnew[CROP ==<span class="st"> &quot;soy&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, DJFMP)] ###
+regnew[CROP ==<span class="st"> &quot;soy&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, JFMP)] ###
+regnew[CROP ==<span class="st"> &quot;soy&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, JP)]   
+regnew[CROP ==<span class="st"> &quot;soy&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, FP)] <span class="co">#  </span>
+regnew[CROP ==<span class="st"> &quot;soy&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, OP)]  
 
-sgam1 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDR ~<span class="st"> </span><span class="kw">s</span>(MAP, <span class="dt">k =</span> <span class="dv">3</span>) +<span class="st"> </span><span class="kw">s</span>(JP, <span class="dt">k =</span> <span class="dv">3</span>) +<span class="st"> </span><span class="kw">s</span>(slhw, <span class="dt">k =</span> <span class="dv">3</span>) +<span class="st"> </span>
-<span class="st">               </span><span class="kw">s</span>(slcl, <span class="dt">k =</span> <span class="dv">3</span>) +<span class="st"> </span><span class="kw">s</span>(sbdm, <span class="dt">k =</span> <span class="dv">3</span>) +<span class="st"> </span><span class="kw">s</span>(GDD, <span class="dt">k =</span> <span class="dv">3</span>) +<span class="st"> </span>KDD +<span class="st"> </span>
-<span class="st">               </span><span class="kw">s</span>(ASRM, <span class="dt">k =</span> <span class="dv">3</span>), <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;ML&quot;</span>, 
-            <span class="dt">data =</span> regreds2)
+<span class="co"># soil</span>
+regnew[CROP ==<span class="st"> &quot;soy&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, SLHW)]  ###
+regnew[CROP ==<span class="st"> &quot;soy&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, SLOC)]  ## 
+regnew[CROP ==<span class="st"> &quot;soy&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, SLCL)]  ### 
+regnew[CROP ==<span class="st"> &quot;soy&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, SBDM)]  ##
 
-sgam2 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDR ~<span class="st"> </span><span class="kw">poly</span>(MAP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(JP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(slhw, <span class="dv">2</span>) +<span class="st"> </span>
-<span class="st">              </span><span class="kw">poly</span>(slcl, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(sbdm, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span>KDD +<span class="st"> </span>
-<span class="st">              </span><span class="kw">poly</span>(ASRM, <span class="dv">2</span>), <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;REML&quot;</span>, 
+<span class="co"># TEMP</span>
+regnew[CROP ==<span class="st"> &quot;soy&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, TMU)]  ### 
+regnew[CROP ==<span class="st"> &quot;soy&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, STMX)]  ### 
+regnew[CROP ==<span class="st"> &quot;soy&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, ATMX)]  ##
+regnew[CROP ==<span class="st"> &quot;soy&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, GDD)]  <span class="co"># </span>
+regnew[CROP ==<span class="st"> &quot;soy&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, KDD)]  
+regnew[CROP ==<span class="st"> &quot;soy&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, NKJ)]  <span class="co">#L</span>
+regnew[CROP ==<span class="st"> &quot;soy&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, NKF)]  ##
+
+<span class="co"># srad</span>
+regnew[CROP ==<span class="st"> &quot;soy&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, ASRT)]  ##
+regnew[CROP ==<span class="st"> &quot;soy&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, ASRM)]  ##
+regnew[CROP ==<span class="st"> &quot;soy&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, SSRMI)]  ## L
+regnew[CROP ==<span class="st"> &quot;soy&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, SSRMII)]  ## L 
+regnew[CROP ==<span class="st"> &quot;soy&quot;</span>, <span class="kw">reg_plotter</span>(YLDS, SSRMIII)] ### L
+
+sgam1 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDS ~<span class="st"> </span><span class="kw">s</span>(MAP, <span class="dt">k =</span> <span class="dv">3</span>) +<span class="st"> </span><span class="kw">s</span>(TMU, <span class="dt">k =</span> <span class="dv">3</span>)  +<span class="st"> </span><span class="kw">s</span>(SLHW, <span class="dt">k =</span> <span class="dv">3</span>) +<span class="st"> </span>
+<span class="st">               </span><span class="kw">s</span>(SLCL, <span class="dt">k =</span> <span class="dv">3</span>) +<span class="st"> </span><span class="kw">s</span>(SLOC, <span class="dt">k =</span> <span class="dv">3</span>) +<span class="st"> </span><span class="kw">s</span>(SSRMIII, <span class="dt">k =</span> <span class="dv">3</span>), 
+             <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;REML&quot;</span>, 
             <span class="dt">data =</span> regreds2)
-sgam3 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDR ~<span class="st"> </span><span class="kw">poly</span>(MAP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(FP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(slhw, <span class="dv">2</span>) +<span class="st"> </span>
-<span class="st">              </span><span class="kw">poly</span>(slcl, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(sbdm, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span>KDD +<span class="st"> </span>
-<span class="st">              </span><span class="kw">poly</span>(ASRM, <span class="dv">2</span>), <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;REML&quot;</span>, 
+sgam2 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(MAP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(TMU, <span class="dv">2</span>)  +<span class="st"> </span><span class="kw">poly</span>(SLHW, <span class="dv">2</span>) +<span class="st"> </span>
+<span class="st">               </span><span class="kw">poly</span>(SLCL, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(SLOC, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(SSRMIII, <span class="dv">2</span>), 
+             <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;REML&quot;</span>, 
             <span class="dt">data =</span> regreds2)
-sgam4 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDR ~<span class="st"> </span><span class="kw">poly</span>(MAP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(OP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(slhw, <span class="dv">2</span>) +<span class="st"> </span>
-<span class="st">              </span><span class="kw">poly</span>(slcl, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(sbdm, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span>KDD +<span class="st"> </span>
-<span class="st">              </span><span class="kw">poly</span>(ASRM, <span class="dv">2</span>), <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;REML&quot;</span>, 
+sgam3 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(DJFMP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(TMU, <span class="dv">2</span>)  +<span class="st"> </span><span class="kw">poly</span>(SLHW, <span class="dv">2</span>) +<span class="st"> </span>
+<span class="st">               </span><span class="kw">poly</span>(SLCL, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(SLOC, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(SSRMIII, <span class="dv">2</span>), 
+             <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;REML&quot;</span>, 
             <span class="dt">data =</span> regreds2)
-sgam5 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDR ~<span class="st"> </span><span class="kw">poly</span>(MAP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(OP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(slhw, <span class="dv">2</span>) +<span class="st"> </span>
-<span class="st">              </span><span class="kw">poly</span>(slcl, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(sloc, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span>KDD +<span class="st"> </span>
-<span class="st">              </span><span class="kw">poly</span>(ASRM, <span class="dv">2</span>), <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;REML&quot;</span>, 
+sgam4 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(JFMP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(TMU, <span class="dv">2</span>)  +<span class="st"> </span><span class="kw">poly</span>(SLHW, <span class="dv">2</span>) +<span class="st"> </span>
+<span class="st">               </span><span class="kw">poly</span>(SLCL, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(SLOC, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(SSRMIII, <span class="dv">2</span>), 
+             <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;REML&quot;</span>, 
             <span class="dt">data =</span> regreds2)
-sgam6 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDR ~<span class="st"> </span><span class="kw">poly</span>(MAP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(OP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(slhw, <span class="dv">2</span>) +<span class="st"> </span>
-<span class="st">              </span><span class="kw">poly</span>(slcl, <span class="dv">2</span>) +<span class="st"> </span>sloc +<span class="st"> </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span>KDD +<span class="st"> </span>
-<span class="st">              </span><span class="kw">poly</span>(ASRM, <span class="dv">2</span>), <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;REML&quot;</span>, 
+sgam5 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(JFMP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(TMU, <span class="dv">2</span>)  +<span class="st"> </span><span class="kw">poly</span>(SLHW, <span class="dv">2</span>) +<span class="st"> </span>
+<span class="st">               </span><span class="kw">poly</span>(SLCL, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(SLOC, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(SSRMIII, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">s</span>(x, y), 
+             <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;REML&quot;</span>, 
             <span class="dt">data =</span> regreds2)
-sgam7 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDR ~<span class="st"> </span><span class="kw">poly</span>(MAP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(OP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(slhw, <span class="dv">2</span>) +<span class="st"> </span>
-<span class="st">              </span><span class="kw">poly</span>(slcl, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span>KDD +<span class="st"> </span>
-<span class="st">              </span><span class="kw">poly</span>(ASRM, <span class="dv">2</span>), <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;REML&quot;</span>, 
+sgam6 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(JFMP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(TMU, <span class="dv">2</span>)  +<span class="st"> </span><span class="kw">poly</span>(SLHW, <span class="dv">2</span>) +<span class="st"> </span>
+<span class="st">               </span><span class="kw">poly</span>(SLCL, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(SSRMIII, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">s</span>(x, y), 
+             <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;REML&quot;</span>, 
             <span class="dt">data =</span> regreds2)
-sgam8 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDR ~<span class="st"> </span><span class="kw">poly</span>(MAP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(slhw, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(slcl, <span class="dv">2</span>) +<span class="st"> </span>
-<span class="st">               </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span>KDD +<span class="st"> </span><span class="kw">poly</span>(ASRM, <span class="dv">2</span>), 
-             <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;REML&quot;</span>, <span class="dt">data =</span> regreds2)
-sgam9 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDR ~<span class="st"> </span><span class="kw">poly</span>(MAP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(slhw, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(slcl, <span class="dv">2</span>) +<span class="st"> </span>
-<span class="st">               </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(ASRM, <span class="dv">2</span>), 
-             <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;REML&quot;</span>, <span class="dt">data =</span> regreds2)
-sgam10 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDR ~<span class="st"> </span><span class="kw">poly</span>(MSP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(slhw, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(slcl, <span class="dv">2</span>) +<span class="st"> </span>
-<span class="st">               </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(ASRM, <span class="dv">2</span>), 
-              <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;REML&quot;</span>, <span class="dt">data =</span> regreds2)
-sgam11 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDR ~<span class="st"> </span><span class="kw">poly</span>(MSP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(slhw, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(sbdm, <span class="dv">2</span>) +<span class="st"> </span>
-<span class="st">               </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(ASRM, <span class="dv">2</span>), 
-              <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;REML&quot;</span>, <span class="dt">data =</span> regreds2)
-sgam12 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDR ~<span class="st"> </span><span class="kw">poly</span>(MSP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(slhw, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(slcl, <span class="dv">2</span>) +<span class="st"> </span>
-<span class="st">               </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(SSRM, <span class="dv">2</span>), 
-              <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;REML&quot;</span>, <span class="dt">data =</span> regreds2)
-sgam13 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDR ~<span class="st"> </span><span class="kw">poly</span>(MSP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(slhw, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(slcl, <span class="dv">2</span>) +<span class="st"> </span>sloc +<span class="st">  </span>
-<span class="st">               </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(SSRM, <span class="dv">2</span>), 
-              <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;REML&quot;</span>, <span class="dt">data =</span> regreds2)
-sgam14 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDR ~<span class="st"> </span><span class="kw">poly</span>(MSP, <span class="dv">2</span>) +<span class="st"> </span>OP +<span class="st"> </span><span class="kw">poly</span>(slhw, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(slcl, <span class="dv">2</span>) +<span class="st"> </span>
-<span class="st">               </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(SSRM, <span class="dv">2</span>), 
-              <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;REML&quot;</span>, <span class="dt">data =</span> regreds2)
-sgam15 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDR ~<span class="st"> </span><span class="kw">poly</span>(MSP, <span class="dv">2</span>) +<span class="st"> </span>OP +<span class="st"> </span><span class="kw">poly</span>(slhw, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(slcl, <span class="dv">2</span>) +<span class="st"> </span>
-<span class="st">               </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span>KDD +<span class="st"> </span><span class="kw">poly</span>(SSRM, <span class="dv">2</span>), 
-              <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;REML&quot;</span>, <span class="dt">data =</span> regreds2)
-sgam16 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDR ~<span class="st"> </span><span class="kw">poly</span>(MSP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(OP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(slhw, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(slcl, <span class="dv">2</span>) +<span class="st"> </span>
-<span class="st">               </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(SSRM, <span class="dv">2</span>), 
-              <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;REML&quot;</span>, <span class="dt">data =</span> regreds2)
-sgam17 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDR ~<span class="st"> </span><span class="kw">poly</span>(MSP, <span class="dv">2</span>) +<span class="st"> </span>OP +<span class="st"> </span><span class="kw">poly</span>(slhw, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(slcl, <span class="dv">2</span>) +<span class="st"> </span>
-<span class="st">               </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(SSRM, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">s</span>(x, y), 
-              <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;REML&quot;</span>, <span class="dt">data =</span> regreds2)
-sgam18 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDR ~<span class="st"> </span><span class="kw">poly</span>(MSP, <span class="dv">2</span>) +<span class="st"> </span>OP +<span class="st"> </span><span class="kw">poly</span>(slhw, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(slcl, <span class="dv">2</span>) +<span class="st"> </span>
-<span class="st">               </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span>NKJ +<span class="st"> </span><span class="kw">poly</span>(SSRM, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">s</span>(x, y), 
-              <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;REML&quot;</span>, <span class="dt">data =</span> regreds2)
-sgam19 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDR ~<span class="st"> </span><span class="kw">poly</span>(MSP, <span class="dv">2</span>) +<span class="st"> </span>OP +<span class="st"> </span><span class="kw">poly</span>(slhw, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(slcl, <span class="dv">2</span>) +<span class="st"> </span>
-<span class="st">               </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span>NKF +<span class="st"> </span><span class="kw">poly</span>(SSRM, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">s</span>(x, y), 
-              <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;REML&quot;</span>, <span class="dt">data =</span> regreds2)
+sgam7 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(JFMP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(SLHW, <span class="dv">2</span>) +<span class="st"> </span>
+<span class="st">               </span><span class="kw">poly</span>(SLCL, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(SSRMIII, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">s</span>(x, y), 
+             <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;REML&quot;</span>, 
+            <span class="dt">data =</span> regreds2)
+sgam8 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(JFMP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(STMX, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(SLHW, <span class="dv">2</span>) +<span class="st"> </span>
+<span class="st">               </span><span class="kw">poly</span>(SLCL, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(SSRMIII, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">s</span>(x, y), 
+             <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;REML&quot;</span>, 
+            <span class="dt">data =</span> regreds2)
+sgam9 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(JFMP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(NKJ, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(SLHW, <span class="dv">2</span>) +<span class="st"> </span>
+<span class="st">               </span><span class="kw">poly</span>(SLCL, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(SSRMIII, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">s</span>(x, y), 
+             <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;REML&quot;</span>, 
+            <span class="dt">data =</span> regreds2)
+sgam10 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(JFMP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(NKF, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(SLHW, <span class="dv">2</span>) +<span class="st"> </span>
+<span class="st">               </span><span class="kw">poly</span>(SLCL, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(SSRMIII, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">s</span>(x, y), 
+             <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;REML&quot;</span>, 
+            <span class="dt">data =</span> regreds2)
+sgam11 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(JFMP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(ATMX, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(SLHW, <span class="dv">2</span>) +<span class="st"> </span>
+<span class="st">               </span><span class="kw">poly</span>(SLCL, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(SSRMIII, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">s</span>(x, y), 
+             <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;REML&quot;</span>, 
+            <span class="dt">data =</span> regreds2)
+sgam12 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(JFMP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(TMU, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(SLHW, <span class="dv">2</span>) +<span class="st"> </span>
+<span class="st">               </span><span class="kw">poly</span>(SLCL, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">s</span>(x, y), 
+             <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;REML&quot;</span>, 
+            <span class="dt">data =</span> regreds2)
+sgam13 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(JFMP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span>KDD +<span class="st"> </span><span class="kw">poly</span>(SLHW, <span class="dv">2</span>) +<span class="st"> </span>
+<span class="st">               </span><span class="kw">poly</span>(SLCL, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">s</span>(x, y), 
+             <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;REML&quot;</span>, 
+            <span class="dt">data =</span> regreds2)
+sgam14 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(JFMP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(TMU, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(SLHW, <span class="dv">2</span>) +<span class="st"> </span>
+<span class="st">               </span><span class="kw">poly</span>(SLCL, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(SSRMIII, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">s</span>(x, y), 
+             <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;REML&quot;</span>, 
+            <span class="dt">data =</span> regreds2)
+sgam15 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDS ~<span class="st"> </span><span class="kw">poly</span>(JFMP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(SLHW, <span class="dv">2</span>) +<span class="st"> </span>
+<span class="st">               </span><span class="kw">poly</span>(SLCL, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(SSRMIII, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">s</span>(x, y), 
+             <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;REML&quot;</span>, 
+            <span class="dt">data =</span> regnew[CROP ==<span class="st"> &quot;soy&quot;</span>])
 
 <span class="kw">summary</span>(sgam1)
-<span class="kw">plot.gam</span>(sgam1, <span class="dt">residuals =</span> <span class="ot">TRUE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
-<span class="kw">summary</span>(sgam2)
-<span class="kw">plot.gam</span>(sgam2, <span class="dt">residuals =</span> <span class="ot">TRUE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
-<span class="kw">summary</span>(sgam3)
-<span class="kw">plot.gam</span>(sgam3, <span class="dt">residuals =</span> <span class="ot">TRUE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
-<span class="kw">summary</span>(sgam4)
-<span class="kw">plot.gam</span>(sgam4, <span class="dt">residuals =</span> <span class="ot">TRUE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
-<span class="kw">summary</span>(sgam5)
-<span class="kw">plot.gam</span>(sgam5, <span class="dt">residuals =</span> <span class="ot">TRUE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
-<span class="kw">summary</span>(sgam6)
-<span class="kw">plot.gam</span>(sgam6, <span class="dt">residuals =</span> <span class="ot">TRUE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
-<span class="kw">summary</span>(sgam7)
-<span class="kw">plot.gam</span>(sgam7, <span class="dt">residuals =</span> <span class="ot">TRUE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
-<span class="kw">summary</span>(sgam8)
-<span class="kw">plot.gam</span>(sgam8, <span class="dt">residuals =</span> <span class="ot">TRUE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
-<span class="kw">summary</span>(sgam9)  <span class="co"># MSP stronger than MAP</span>
-<span class="kw">plot.gam</span>(sgam9, <span class="dt">residuals =</span> <span class="ot">TRUE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
-<span class="kw">summary</span>(sgam10)  <span class="co"># MSP stronger than MAP</span>
-<span class="kw">plot.gam</span>(sgam10, <span class="dt">residuals =</span> <span class="ot">TRUE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
-<span class="kw">summary</span>(sgam11)  <span class="co"># SBDM much weaker SLCL</span>
-<span class="kw">plot.gam</span>(sgam11, <span class="dt">residuals =</span> <span class="ot">TRUE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
-<span class="kw">summary</span>(sgam12)  <span class="co"># SSRM a tad better than </span>
-<span class="kw">plot.gam</span>(sgam12, <span class="dt">residuals =</span> <span class="ot">TRUE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
-<span class="kw">summary</span>(sgam13)  <span class="co"># SLOC goes in the wrong direction</span>
-<span class="kw">plot.gam</span>(sgam13, <span class="dt">residuals =</span> <span class="ot">TRUE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
-<span class="kw">summary</span>(sgam14)  <span class="co"># OP adds a bit</span>
-<span class="kw">plot.gam</span>(sgam14, <span class="dt">residuals =</span> <span class="ot">TRUE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
-<span class="kw">summary</span>(sgam15)  <span class="co"># KDD NS</span>
-<span class="kw">plot.gam</span>(sgam15, <span class="dt">residuals =</span> <span class="ot">TRUE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
-<span class="kw">summary</span>(sgam16)  <span class="co"># Polynomial term on October precip doesn't add much</span>
-<span class="kw">plot.gam</span>(sgam16, <span class="dt">residuals =</span> <span class="ot">TRUE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
-<span class="kw">summary</span>(sgam17)  <span class="co"># xy term added to model 15, all remain signif, seems way to go</span>
-<span class="kw">plot.gam</span>(sgam17, <span class="dt">residuals =</span> <span class="ot">TRUE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
-<span class="kw">summary</span>(sgam18)  <span class="co"># NKJ NS</span>
-<span class="kw">plot.gam</span>(sgam18, <span class="dt">residuals =</span> <span class="ot">TRUE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
-<span class="kw">summary</span>(sgam19)  <span class="co"># NKF NS</span>
-<span class="kw">plot.gam</span>(sgam19, <span class="dt">residuals =</span> <span class="ot">TRUE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
+<span class="kw">plot.gam</span>(sgam1, <span class="dt">residuals =</span> <span class="ot">FALSE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
+<span class="kw">summary</span>(sgam2)  <span class="co">#+ poly version</span>
+<span class="kw">plot.gam</span>(sgam2, <span class="dt">residuals =</span> <span class="ot">FALSE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
+<span class="kw">summary</span>(sgam3) <span class="co">#+ DJFMP </span>
+<span class="kw">plot.gam</span>(sgam3, <span class="dt">residuals =</span> <span class="ot">FALSE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
+<span class="kw">summary</span>(sgam4) <span class="co">#+ Weakly higher for JFMP</span>
+<span class="kw">plot.gam</span>(sgam4, <span class="dt">residuals =</span> <span class="ot">FALSE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
+<span class="kw">summary</span>(sgam5) <span class="co">#+ s(x,y)</span>
+<span class="kw">plot.gam</span>(sgam5, <span class="dt">residuals =</span> <span class="ot">FALSE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
+<span class="kw">summary</span>(sgam6) <span class="co">#- dropping SLOC doesn't lose too much, wasn't sensible</span>
+<span class="kw">plot.gam</span>(sgam6, <span class="dt">residuals =</span> <span class="ot">FALSE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
+<span class="kw">summary</span>(sgam7) <span class="co"># &lt;-&gt; swapping in GDD doesn't change much</span>
+<span class="kw">plot.gam</span>(sgam7, <span class="dt">residuals =</span> <span class="ot">FALSE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
+<span class="kw">summary</span>(sgam8) <span class="co">#+ STMX </span>
+<span class="kw">plot.gam</span>(sgam8, <span class="dt">residuals =</span> <span class="ot">FALSE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
+<span class="kw">summary</span>(sgam9) <span class="co">#- NKJ loses a bit, but looks more sensible</span>
+<span class="kw">plot.gam</span>(sgam9, <span class="dt">residuals =</span> <span class="ot">FALSE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
+<span class="kw">summary</span>(sgam10) <span class="co">#&lt;-&gt; NKF loses a bit, but wrong direction</span>
+<span class="kw">plot.gam</span>(sgam10, <span class="dt">residuals =</span> <span class="ot">FALSE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
+<span class="kw">summary</span>(sgam11) <span class="co">#&lt;-&gt; Annual TMx, same deal</span>
+<span class="kw">plot.gam</span>(sgam11, <span class="dt">residuals =</span> <span class="ot">FALSE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
+<span class="kw">summary</span>(sgam12) <span class="co">#&lt;-&gt; TMU still increasing, even with SSRMIII dropped</span>
+<span class="kw">plot.gam</span>(sgam12, <span class="dt">residuals =</span> <span class="ot">FALSE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
+<span class="kw">summary</span>(sgam13) <span class="co">#&lt;-&gt; KDD added, going in wrong direction</span>
+<span class="kw">plot.gam</span>(sgam13, <span class="dt">residuals =</span> <span class="ot">FALSE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
+<span class="kw">summary</span>(sgam14) <span class="co">#&lt;-&gt; same as 6</span>
+<span class="kw">plot.gam</span>(sgam14, <span class="dt">residuals =</span> <span class="ot">FALSE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
+<span class="kw">summary</span>(sgam15) <span class="co">#&lt;-&gt; Full data version of 7 (with GDD), becomes significant</span>
+<span class="kw">plot.gam</span>(sgam15, <span class="dt">residuals =</span> <span class="ot">FALSE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
 
+<span class="kw">par</span>(<span class="dt">mfrow =</span> <span class="kw">c</span>(<span class="dv">2</span>, <span class="dv">2</span>))
+<span class="kw">plot</span>(regreds2[, YLDS], <span class="kw">predict</span>(sgam7, <span class="dt">type =</span> <span class="st">&quot;response&quot;</span>))
+<span class="kw">lines</span>(<span class="kw">c</span>(<span class="dv">0</span>, <span class="dv">8000</span>), <span class="kw">c</span>(<span class="dv">0</span>, <span class="dv">8000</span>), <span class="dt">col =</span> <span class="st">&quot;red&quot;</span>)
+<span class="kw">plot</span>(regnew[CROP ==<span class="st"> &quot;soy&quot;</span>, YLDS], <span class="kw">predict</span>(sgam15, <span class="dt">type =</span> <span class="st">&quot;response&quot;</span>))
+<span class="kw">lines</span>(<span class="kw">c</span>(<span class="dv">0</span>, <span class="dv">8000</span>), <span class="kw">c</span>(<span class="dv">0</span>, <span class="dv">8000</span>), <span class="dt">col =</span> <span class="st">&quot;red&quot;</span>)
+<span class="kw">plot</span>(regreds2[, YLDS], <span class="kw">predict</span>(sgam14, <span class="dt">type =</span> <span class="st">&quot;response&quot;</span>))
+<span class="kw">lines</span>(<span class="kw">c</span>(<span class="dv">0</span>, <span class="dv">8000</span>), <span class="kw">c</span>(<span class="dv">0</span>, <span class="dv">8000</span>), <span class="dt">col =</span> <span class="st">&quot;red&quot;</span>)
 
-<span class="co"># Now see about taking same model and fitting separately to 10th/90th/mean years</span>
-sgam17mu &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDR ~<span class="st"> </span><span class="kw">poly</span>(MSP, <span class="dv">2</span>) +<span class="st"> </span>OP +<span class="st"> </span><span class="kw">poly</span>(slhw, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(slcl, <span class="dv">2</span>) +<span class="st"> </span>
-<span class="st">                  </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(SSRM, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">s</span>(x, y), 
-                <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;REML&quot;</span>, 
-                <span class="dt">data =</span> regreds2[YST ==<span class="st"> &quot;mu&quot;</span>])
-<span class="kw">summary</span>(sgam17mu)  <span class="co"># OP drops out, SSRM drops out</span>
-<span class="kw">plot.gam</span>(sgam17mu, <span class="dt">residuals =</span> <span class="ot">TRUE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
-sgam17mu &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDR ~<span class="st"> </span><span class="kw">poly</span>(MSP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(slhw, <span class="dv">2</span>) +<span class="st"> </span>
-<span class="st">                  </span><span class="kw">poly</span>(slcl, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">s</span>(x, y), 
-                <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;REML&quot;</span>, 
-                <span class="dt">data =</span> regreds2[YST ==<span class="st"> &quot;mu&quot;</span>])
-<span class="kw">summary</span>(sgam17mu)  <span class="co"># OP drops out, SSRM drops out</span>
-<span class="kw">plot.gam</span>(sgam17mu, <span class="dt">residuals =</span> <span class="ot">TRUE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
-sgam1710 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDR ~<span class="st"> </span><span class="kw">poly</span>(MSP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(slhw, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(slcl, <span class="dv">2</span>)
-                +<span class="st"> </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">s</span>(x, y), 
-                <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;REML&quot;</span>, 
-                <span class="dt">data =</span> regreds2[YST ==<span class="st"> &quot;10&quot;</span>])
-<span class="kw">summary</span>(sgam1710)  <span class="co"># OP drops out, SSRM drops out</span>
-<span class="kw">plot.gam</span>(sgam1710, <span class="dt">residuals =</span> <span class="ot">TRUE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)
-sgam1790 &lt;-<span class="st"> </span><span class="kw">gam</span>(YLDR ~<span class="st"> </span><span class="kw">poly</span>(MSP, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(slhw, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">poly</span>(slcl, <span class="dv">2</span>)
-                +<span class="st"> </span><span class="kw">poly</span>(GDD, <span class="dv">2</span>) +<span class="st"> </span><span class="kw">s</span>(x, y), 
-                <span class="dt">family =</span> <span class="kw">gaussian</span>(<span class="dt">link =</span> <span class="st">&quot;log&quot;</span>), <span class="dt">method =</span> <span class="st">&quot;REML&quot;</span>, 
-                <span class="dt">data =</span> regreds2[YST ==<span class="st"> &quot;90&quot;</span>])
-<span class="kw">summary</span>(sgam1790)  <span class="co"># OP drops out, SSRM drops out</span>
-<span class="kw">plot.gam</span>(sgam1790, <span class="dt">residuals =</span> <span class="ot">TRUE</span>, <span class="dt">se =</span> <span class="ot">TRUE</span>, <span class="dt">all.terms =</span> <span class="ot">TRUE</span>, <span class="dt">pages =</span> <span class="dv">1</span>)</code></pre>
+<span class="co"># gams to keep </span>
+<span class="kw">save</span>(gam20, gam21, sgam7, sgam15, 
+     <span class="dt">file =</span> <span class="kw">fp</span>(p_yield, <span class="st">&quot;empirical/gams1.rda&quot;</span>))</code></pre>
 </div>
 </div>
-<div id="save-gams-outputs" class="section level2">
-<h2><span class="header-section-number">2.3</span> Save GAMs outputs</h2>
+<div id="load-in-grid-predictors" class="section level2">
+<h2><span class="header-section-number">2.3</span> Load in grid predictors</h2>
+<pre class="sourceCode r"><code class="sourceCode r">soilgrids &lt;-<span class="st"> </span><span class="kw">brick</span>(<span class="kw">fp</span>(p_sgrids, <span class="st">&quot;soilgrids.tif&quot;</span>))
+climvars &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;djfmtot&quot;</span>, <span class="st">&quot;^jfmtot&quot;</span>, <span class="st">&quot;gdd</span><span class="ch">\\</span><span class="st">.&quot;</span>, <span class="st">&quot;srmu_gs1&quot;</span>, <span class="st">&quot;srmu_gs3&quot;</span>)
+climgrids &lt;-<span class="st"> </span><span class="kw">sapply</span>(climvars, function(x) {  <span class="co"># x &lt;- climvars[2]</span>
+  <span class="kw">print</span>(x)
+  <span class="kw">brick</span>(<span class="kw">dir</span>(p_clim, <span class="dt">full.names =</span> <span class="ot">TRUE</span>)[<span class="kw">grep</span>(x, <span class="kw">dir</span>(p_clim))])
+})
+climgrids_mu &lt;-<span class="st"> </span><span class="kw">sapply</span>(climgrids, function(x) <span class="kw">calc</span>(x, mean))
+climst &lt;-<span class="st"> </span><span class="kw">stack</span>(climgrids_mu)
+<span class="kw">names</span>(climst) &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;DJFMP&quot;</span>, <span class="st">&quot;JFMP&quot;</span>, <span class="st">&quot;GDD&quot;</span>, <span class="st">&quot;SSRMI&quot;</span>, <span class="st">&quot;SSRMIII&quot;</span>)
+
+<span class="co"># disaggregate down to 1 km</span>
+climstbase &lt;-<span class="st"> </span><span class="kw">disaggregate</span>(climst[[<span class="dv">1</span>]], <span class="dt">fact =</span> <span class="dv">30</span>)
+climststep &lt;-<span class="st"> </span><span class="kw">disaggregate</span>(climst, <span class="dt">fact =</span> <span class="dv">20</span>)
+climst1km &lt;-<span class="st"> </span><span class="kw">resample</span>(climst, climstbase)
+
+<span class="co"># need to warp soilgrids back to that also</span>
+ext &lt;-<span class="st"> </span><span class="kw">bbox</span>(climst1km)[<span class="dv">1</span>:<span class="dv">4</span>]  <span class="co"># extent   </span>
+onm &lt;-<span class="st"> </span><span class="kw">fp</span>(p_sgrids, <span class="st">&quot;soilgridsgcs.tif&quot;</span>)
+<span class="kw">gdalwarp</span>(<span class="dt">srcfile =</span> soilgrids@file@name, <span class="dt">t_srs =</span> <span class="kw">projection</span>(climst1km), 
+         <span class="dt">dstfile =</span> onm, <span class="dt">r =</span> <span class="st">&quot;average&quot;</span>, <span class="dt">ot =</span> <span class="st">&quot;Float32&quot;</span>, <span class="dt">te =</span> ext, 
+         <span class="dt">srcnodata =</span> -<span class="dv">32768</span>, <span class="dt">dstnodata =</span> -<span class="dv">99</span>, <span class="dt">tr =</span> <span class="kw">res</span>(climst1km), 
+         <span class="dt">of =</span> <span class="st">&quot;GTiff&quot;</span>, <span class="dt">multi =</span> <span class="ot">TRUE</span>, <span class="dt">verbose =</span> <span class="ot">FALSE</span>, <span class="dt">overwrite =</span> <span class="ot">TRUE</span>)
+soilgcs &lt;-<span class="st"> </span><span class="kw">brick</span>(onm)
+<span class="kw">names</span>(soilgcs) &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;SLOC&quot;</span>, <span class="st">&quot;SLCL&quot;</span>, <span class="st">&quot;SLHW&quot;</span>)
+<span class="kw">plot</span>(soilgcs)
+
+<span class="co"># need also a grid of x,y values</span>
+x &lt;-<span class="st"> </span>soilgcs[[<span class="dv">1</span>]]
+x[] &lt;-<span class="st"> </span><span class="kw">xFromCell</span>(x, <span class="dv">1</span>:<span class="kw">ncell</span>(x))
+y &lt;-<span class="st"> </span>soilgcs[[<span class="dv">1</span>]]
+y[] &lt;-<span class="st"> </span><span class="kw">yFromCell</span>(y, <span class="dv">1</span>:<span class="kw">ncell</span>(y))
+<span class="kw">plot</span>(y)
+xy &lt;-<span class="st"> </span><span class="kw">stack</span>(x, y)
+<span class="kw">names</span>(xy) &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;x&quot;</span>, <span class="st">&quot;y&quot;</span>)
+predst &lt;-<span class="st"> </span><span class="kw">stack</span>(xy, climst1km, soilgcs)</code></pre>
+</div>
+<div id="predicted-yields-surfaces" class="section level2">
+<h2><span class="header-section-number">2.4</span> Predicted yields surfaces</h2>
+<pre class="sourceCode r"><code class="sourceCode r">mzred &lt;-<span class="st"> </span>raster::<span class="kw">predict</span>(predst, gam20, <span class="dt">type =</span> <span class="st">&quot;response&quot;</span>)
+mzfull &lt;-<span class="st"> </span>raster::<span class="kw">predict</span>(predst, gam21, <span class="dt">type =</span> <span class="st">&quot;response&quot;</span>)
+soyred &lt;-<span class="st"> </span>raster::<span class="kw">predict</span>(predst, sgam7, <span class="dt">type =</span> <span class="st">&quot;response&quot;</span>)
+soyfull &lt;-<span class="st"> </span>raster::<span class="kw">predict</span>(predst, sgam15, <span class="dt">type =</span> <span class="st">&quot;response&quot;</span>)
+
+<span class="co"># Not unplausible looking, maize not sure</span>
+<span class="kw">par</span>(<span class="dt">mfrow =</span> <span class="kw">c</span>(<span class="dv">2</span>, <span class="dv">2</span>), <span class="dt">mar =</span> <span class="kw">c</span>(<span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">1</span>))
+<span class="kw">plot</span>(mzred)
+<span class="kw">plot</span>(mzfull)
+<span class="kw">plot</span>(soyred)
+<span class="kw">plot</span>(soyfull)
+
+prov@proj4string &lt;-<span class="st"> </span>soyfull@crs
+soymsk &lt;-<span class="st"> </span><span class="kw">crop</span>(soyfull, prov)
+soymsk2 &lt;-<span class="st"> </span><span class="kw">crop</span>(soyfull2, prov)
+soymsk3 &lt;-<span class="st"> </span><span class="kw">crop</span>(soyfull3, prov)
+
+<span class="co"># Save bricks and models</span>
+yldrs &lt;-<span class="st"> </span><span class="kw">brick</span>(<span class="kw">stack</span>(<span class="kw">list</span>(mzred, mzfull, soyred, soyfull)))
+<span class="kw">writeRaster</span>(yldrs, <span class="dt">filename =</span> <span class="kw">fp</span>(p_yield, <span class="st">&quot;empirical/yield_surfaces2.tif&quot;</span>))
+yldrs &lt;-<span class="st"> </span><span class="kw">brick</span>(<span class="kw">fp</span>(p_yield, <span class="st">&quot;empirical/yield_surfaces2.tif&quot;</span>))
+
+onm &lt;-<span class="st"> </span><span class="kw">fp</span>(p_yield, <span class="st">&quot;empirical/yield_surfaces2_alb.tif&quot;</span>)
+<span class="kw">gdalwarp</span>(<span class="dt">srcfile =</span> yldrs@file@name, <span class="dt">t_srs =</span> <span class="kw">projection</span>(mgrid), 
+         <span class="dt">dstfile =</span> onm, <span class="dt">r =</span> <span class="st">&quot;average&quot;</span>, <span class="dt">ot =</span> <span class="st">&quot;Float32&quot;</span>, <span class="dt">te =</span> <span class="kw">bbox</span>(mgrid)[<span class="dv">1</span>:<span class="dv">4</span>], 
+         <span class="dt">srcnodata =</span> <span class="dv">255</span>, <span class="dt">dstnodata =</span> <span class="dv">255</span>, <span class="dt">tr =</span> <span class="kw">c</span>(<span class="dv">1000</span>, <span class="dv">1000</span>), 
+         <span class="dt">of =</span> <span class="st">&quot;GTiff&quot;</span>, <span class="dt">multi =</span> <span class="ot">TRUE</span>, <span class="dt">verbose =</span> <span class="ot">FALSE</span>, <span class="dt">overwrite =</span> <span class="ot">TRUE</span>)
+yldralb &lt;-<span class="st"> </span><span class="kw">brick</span>(onm)
+<span class="kw">plot</span>(yldralb)</code></pre>
 </div>
 </div>
 

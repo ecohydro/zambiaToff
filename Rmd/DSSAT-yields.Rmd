@@ -29,6 +29,7 @@ p_yield <- fp(p_root, "external/input_devel/yield")
 p_pgf <- "~/Dropbox/data/climate/afdm/pgf_bc/zambia/"
 p_sgrids <- "~/Dropbox/data/soil/"
 
+
 load(fp(p_yield, "empirical/stations.rda"))
 
 # Read in original soil-climate data from rCropMod
@@ -308,6 +309,6 @@ for(i in 1:nrow(unixy)) {  # i = 17
 }
 
 
-```
 
+```
 

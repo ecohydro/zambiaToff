@@ -48,7 +48,7 @@ tabl <- cbind(
              "Updated carbon layers"), 
   "Notes" = c("Single production to follow (Alastair)", 
               "Exact method for variability and production zones, including inability to reach potential yields", 
-              "Run with improved soils maps", 
+              "Run with improved soils maps, using two stage regression", 
               "With ILUA database (and Nate's help)", 
               "Removable unfarmable areas, add new supporting logic", 
               "Habitat rarity/threatenedness", 
@@ -56,7 +56,7 @@ tabl <- cbind(
               "Estimate profitability per pixel. Either input modification or code modification", 
               "See where map overlaps are greatest, most divergent", 
               "Upgrade all maps to SERVIR landcover, and rebase yield estimates on that", "Baccini vegetation carbon + ISRIC grids"),
-  "Doing" = c("D", "F*", "U", "U", "D", "D", "D", "L", "D", "F**", "F")
+  "Doing" = c("D", "F*", "F", "U", "F", "F", "F***", "L", "D", "F**", "F")
 )
 print(xtable::xtable(tabl), align = rep("c", dim(table)[2] + 1), type = "html", 
       include.rownames = FALSE)
@@ -64,4 +64,6 @@ print(xtable::xtable(tabl), align = rep("c", dim(table)[2] + 1), type = "html",
 *Temporary soybean grid with bias adjustment from FAO GAEZ yields. Developed weighted merged method for different types of management.
 
 **Just using total production estimates, which will not be mapped for now. These will be basis for estimating production targets. 
+
+***This is what the model effectively does, and issue has been resolved.
 
