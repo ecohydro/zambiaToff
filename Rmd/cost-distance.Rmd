@@ -38,6 +38,7 @@ library(raster)
 library(rgdal)
 library(rgeos)
 library(gdalUtils)
+setwd("~/Dropbox/publications/zambiaToff/private/zambiaToff/")
 p_root <- lmisc::set_base_path("zambiaToff")
 p_roads <- full_path(p_root, "external/input_devel/roads/")
 p_roads2 <- paste0("~/Dropbox/data/zari/infrastructure/zambia/rda_dump/", 
@@ -70,20 +71,23 @@ zambia@proj4string <- zframe@proj4string
 
 # towns
 setwd(p_roads)
-ztowns <- readOGR(dsn = "district_towns.shp", layer = "district_towns")
-ntowns <- readOGR("zambia-neighbor-cities.shp", 
-                  layer = "zambia-neighbor-cities")
-ntowns <- ntowns[ntowns$ES00POP > 10000, ]  # filter down to 10,000 or greater
-ztowns$cid <- 1:nrow(ztowns)
-ztowns@data <- ztowns@data[, "cid", drop = FALSE]  # reduce for binding
-ntowns$cid <- (max(ztowns$cid) + 1):(nrow(ntowns) + (max(ztowns$cid)))
-ntowns@data <- ntowns@data[, "cid", drop = FALSE]  # reduce for binding
-ntowns@proj4string <- ztowns@proj4string
-alltowns <- spTransform(rbind(ztowns, ntowns), CRSobj = projection(zfr))
+# ztowns <- readOGR(dsn = "district_towns.shp", layer = "district_towns")
+# ntowns <- readOGR("zambia-neighbor-cities.shp", 
+#                   layer = "zambia-neighbor-cities")
+# ntowns <- ntowns[ntowns$ES00POP > 10000, ]  # filter down to 10,000 or greater
+# ztowns$cid <- 1:nrow(ztowns)
+# ztowns@data <- ztowns@data[, "cid", drop = FALSE]  # reduce for binding
+# ntowns$cid <- (max(ztowns$cid) + 1):(nrow(ntowns) + (max(ztowns$cid)))
+# ntowns@data <- ntowns@data[, "cid", drop = FALSE]  # reduce for binding
+# ntowns@proj4string <- ztowns@proj4string
+# alltowns <- spTransform(rbind(ztowns, ntowns), CRSobj = projection(zfr))
 
 # write this out--needed for determining nodes in cost distance analysis
-writeOGR(alltowns, dsn = "alltowns.shp", layer = "alltowns", 
-         driver = "ESRI Shapefile", overwrite = TRUE)
+# writeOGR(alltowns, dsn = "alltowns.shp", layer = "alltowns", 
+#          driver = "ESRI Shapefile", overwrite = TRUE)
+
+alltowns <- readOGR("alltowns.shp", layer = "alltowns")
+
 
 # rivers & lakes
 setwd(p_roads)
@@ -105,7 +109,7 @@ roadnms <- sapply(rtypes, function(x) {
   dir(p_roads, pattern = paste0("^roads_", x))
 })
 rdrcl <- c(1, 2, 4, 8)
-roads <- lapply(1:length(roads), function(x) {
+roads <- lapply(1:length(roadnms), function(x) {
   nm <- unname(roadnms)[x]
   rdspoly <- readOGR(nm, layer = gsub("\\.sqlite", "", nm))
   rdspoly@proj4string <- zframe@proj4string
@@ -120,6 +124,14 @@ tmd@proj4string <- zambia@proj4string
 pfr <- readOGR(r4, layer = gsub("\\.sqlite", "", r4))
 pfr@proj4string <- zambia@proj4string
 
+tmd2 <- spChFIDs(tmd, as.character(1:nrow(tmd)))
+pfr2 <- spChFIDs(pfr, as.character((nrow(tmd) + 1):(nrow(tmd) + nrow(pfr))))
+tmd2@data <- tmd2@data[, "roadid", drop = FALSE]
+pfr2@data <- pfr2@data[, "roadid", drop = FALSE]
+
+zroads <- rbind(tmd2, pfr2)
+zroads <- spTransform(zroads, mgrid@crs)
+# save(zroads, file = fp(p_roads, "tmdpfroads.rda"))
 # plot(zframe)
 # plot(lakes, add = TRUE)
 # plot(ztowns, pch = 20, cex = 0.5)
@@ -321,4 +333,70 @@ Your final output csv file will want to replace the ZA-cost.csv file in agroEcoT
 Full analysis: 
 `ZA-cost.tif` - for masking, etc
 
+
+## Later fix
+
+Attempt to fix roads so they display properly in model output maps. Essentially combined OSM roads with Zambia roads, rasterized them to 30 m, added them, reduced all to values of 1, and then within ArcGIS (a bit of it earlier done in QGIS) I converted to polylines. Results used in main-analysis.Rmd. 
+```{r, eval = FALSE}
+# roads
+setwd("~/Dropbox/publications/zambiaToff/private/zambiaToff/")
+p_root <- getwd()
+p_demand <- fp(p_root, "external/input_devel/demand/")
+p_mod <- fp(p_root, "agroEcoTradeoff")
+p_moddat <- fp(p_mod, "external/data/ZA")
+p_figures <- full_path(p_root, "paper/figures/")
+p_roads <- fp(p_root, "external/input_devel/roads")
+p_roads2 <- paste0("/Users/lestes/Dropbox/data/zari/infrastructure/zambia/", 
+                   "rda_dump/Final Shape files RDA/")
+
+mgrid <- raster(fp(p_moddat, "ZA-mask.tif"))
+osmroads <- readOGR(fp(p_roads, "osmroads/zamroads.shp"), layer = "zamroads")
+
+osmroads$val <- 1
+tmd <- readOGR(fp(p_roads2, "TMDLinks_Merged.shp"), layer = "TMDLinks_Merged")
+pfr <- readOGR(fp(p_roads2, "PFRLinks.shp"), layer = "PFRLinks")
+pfrf <- pfr[-which(duplicated(pfr@data$RoadId)), ]
+tmdf <- tmd[-which(duplicated(tmd@data$RoadId)), ]
+tmdf <- spChFIDs(tmdf, as.character(1:nrow(tmdf)))
+pfrf <- spChFIDs(pfrf, as.character((nrow(tmdf) + 1):(nrow(tmdf) + nrow(pfrf))))
+tmdf@data <- tmdf@data[, "RoadId", drop = FALSE]
+pfrf@data <- pfrf@data[, "RoadId", drop = FALSE]
+roads <- rbind(tmdf, pfrf)
+roads <- spTransform(roads, pas@proj4string)
+osmroads <- spTransform(osmroads, pas@proj4string)
+roads$val <- 1
+plot(roads)
+plot(tmd)
+plot(pfr, add = TRUE, col = "red")
+plot(osmroads)
+plot(tmdf)
+writeOGR(roads, dsn = fp(p_roads, "osmroads/tmdpfrf.shp"), layer = "tmpdpfr", 
+         driver = "ESRI Shapefile", overwrite_layer = TRUE)
+writeOGR(osmroads, dsn = fp(p_roads, "osmroads/zamroadsalb.shp"), 
+         layer = "zamroadsalb", driver = "ESRI Shapefile")
+writeOGR(spTransform(roads, osmroads@proj4string),
+         dsn = fp(p_roads, "tmdpfrf_gcs.shp"), layer = "tmpdpfr", 
+         driver = "ESRI Shapefile")
+inm <- fp(p_roads, "osmroads/zamroadsalb.shp")
+onm <- fp(p_roads, "osmroads/zamroadsalb.tif")
+gdal_rasterize(src_datasource = inm, l = "zamroadsalb", ot = "Byte", 
+               a = "val", tr = c(30, 30), at = TRUE, co = "COMPRESS=LZW",
+               dst_filename = onm, te = bbox(mgrid)[1:4], of = "GTiff", 
+               verbose = TRUE)
+inm <- fp(p_roads, "osmroads/zamroadsalb.shp")
+onm <- fp(p_roads, "osmroads/zamroadsalb.tif")
+gdal_rasterize(src_datasource = inm, l = "zamroadsalb", ot = "Byte", 
+               a = "val", tr = c(30, 30), at = TRUE, co = "COMPRESS=LZW",
+               dst_filename = onm, te = bbox(mgrid)[1:4], of = "GTiff", 
+               verbose = TRUE)
+inm <- fp(p_roads, "osmroads/tmdpfrf.shp")
+onm <- fp(p_roads, "osmroads/tmdpfrf.tif")
+gdal_rasterize(src_datasource = inm, l = "tmdpfrf", ot = "Byte", 
+               a = "val", tr = c(30, 30), at = TRUE, co = "COMPRESS=LZW",
+               dst_filename = onm, te = bbox(mgrid)[1:4], of = "GTiff", 
+               verbose = TRUE)
+r <- raster(fp(p_roads, "osmroads/tmdpfr_plus_osm.tif"))
+r2 <- rast_math(r > 0, tmpdir = fp(p_roads, "osmroads"))
+
+```
 

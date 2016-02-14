@@ -59,13 +59,14 @@ vnms <- dir(full_path(p_bd, "act_veg"), pattern = ".tif$")
 vnms <- vnms[vnms != "veg88.tif"]  # drop water bodies
 fnms <- full_path(full_path(p_bd, "act_veg"), vnms)
 s <- stack(lapply(fnms, function(x) raster(x)))
-sm <- mask(s, mgrid)
+sm <- raster::mask(s, mgrid)
 
 # keep for assessing impacts
 writeRaster(sm, filename = full_path(p_bd, "ZA-vegremain.tif"), 
             overwrite = TRUE)
 vegnames <- gsub("\\.tif", "", gsub("veg", "v", vnms))
 save(vegnames, file = full_path(p_bd, "ZA-vegremain.rda"))
+
 
 # Sum for total - the inverse of this will be the farmable areas
 remfrac <- calc(s, sum)

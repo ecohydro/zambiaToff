@@ -80,7 +80,7 @@ crops <- c("maize", "soy")
 ynms <- dir(p_yield, pattern = "fao")  # FAO adjusted now
 ylds <- lapply(ynms, function(x) brick(full_path(p_yield, x)))
 names(ylds) <- crops
-ylds <- stack(list(ylds[[1]][[5]], ylds[[2]][[4]]))  # take the last two of each
+ylds <- stack(list(ylds[[1]][[1]], ylds[[2]][[1]]))  # take first two of each
 names(ylds) <- crops
 ylds <- round(ylds, 2)
 
@@ -122,17 +122,20 @@ yield_fix <- function(x, w, na.rm = TRUE) {
   rmsk <- (!is.na(r) & is.na(x)) * r
   x[is.na(x)] <- 0
   rfix <- x + rmsk  # add back in edge bits
+  # rfix[rfix == 0] <- NA
+  # rfix
 }
 w <- matrix(nrow = 9, ncol = 9, rep(1, 81))
 mzf <- yield_fix(ylds[[1]], w)
 soyf <- yield_fix(ylds[[2]], w)
-ylds_s <- stack(sapply(list(mzf, soyf), function(x) {
-  x[is.na(x)] <- 0
-  x
-}))
-ylds_s <- raster::mask(ylds_s, mgrid)
-names(ylds_s) <- crops
-# plot(ylds_s[[1]])
+yld_s <- stack(list(mzf, soyf))
+# ylds_s <- stack(sapply(list(mzf, soyf), function(x) {
+#   x[is.na(x)] <- 0
+#   x
+# }))
+yld_s <- raster::mask(yld_s, mgrid)
+names(yld_s) <- crops
+# plot(yld_s[[1]])
 # potmaizef2 <- yield_fix(potmaizef[[1]], w)
 # plot(potmaizef2)
 # # first get rid of all NA area in all grids
@@ -172,11 +175,10 @@ carbonf <- stack(lapply(1:nlayers(carbon), function(x) {
 
 # pas and intactness
 intpa <- stack(intact, pas)
-
 mgridc <- crop(mgrid, avail)
 inlist <- list("convertible" = avail, "bd" = bd, "carbon" = carbonf, 
                "cost" = cost, "cons" = cons, "cropland" = cropland, 
-               "intpa" = intpa, "p_yield" = ylds_s)
+               "intpa" = intpa, "p_yield" = yld_s)
 inlist <- lapply(inlist, function(x) crop(x, mgridc))
 inlist2 <- lapply(inlist, function(x) calc(x, mean))
 inlist3 <- calc(stack(inlist2), mean)
@@ -218,6 +220,8 @@ base <- base[!is.na(val)][, val := NULL]
 fnm <- full_path(p_production, paste0(cnames, "-mask.csv"))
 write.table(base, file = fnm, sep = ",", col.names = TRUE, row.names = FALSE)
 # plot(dt_to_raster(base, mgridf@crs))
+# plot(dt_to_raster(cbind(base[, .(x, y)], DT), mgridf@crs))
+
 
 # # data.table them
 # cnames <- "ZA"  
@@ -231,10 +235,16 @@ write.table(base, file = fnm, sep = ",", col.names = TRUE, row.names = FALSE)
 ```{r, eval}
 p_mod <- full_path(p_proj, "agroEcoTradeoff/external/data/ZA/")
 p_master <- "~/Dropbox/projects/agroEcoTradeoff/external/data/ZA/"
+p_downloads <- "~/Dropbox/projects/agroEcoTradeoff/external/data/downloads/"
 fnms <- dir(p_production)
 file.copy(dir(p_production, full.names = TRUE), full_path(p_mod, fnms),
           overwrite = TRUE)
 file.copy(dir(p_production, full.names = TRUE), full_path(p_master, fnms),
           overwrite = TRUE)
+setwd(p_production)
+zip("demodat.zip", dir())
+file.copy("demodat.zip", fp(p_downloads, "demodat.zip"), overwrite = TRUE)
+file.remove("demodat.zip")
+setwd(p_proj)
 
 ```

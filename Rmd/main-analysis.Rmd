@@ -1,0 +1,370 @@
+---
+title: "Main Analyses"
+author: "Lyndon Estes"
+date: "February 11, 2016"
+output: 
+  html_document:
+    highlight: tango
+    theme: spacelab
+    toc: yes 
+    number_sections: yes
+---
+
+
+# Main Analyses
+
+```{r, warning=FALSE, message=FALSE}
+library(agroEcoTradeoff)
+library(readxl)
+library(gdalUtils)
+library(gisutils)
+setwd("~/Dropbox/publications/zambiaToff/private/zambiaToff/")
+p_root <- getwd()
+p_demand <- fp(p_root, "external/input_devel/demand/")
+p_mod <- fp(p_root, "agroEcoTradeoff")
+p_moddat <- fp(p_mod, "external/data/ZA")
+p_figures <- full_path(p_root, "paper/figures/")
+p_roads <- fp(p_root, "external/input_devel/roads")
+p_roads2 <- paste0("/Users/lestes/Dropbox/data/zari/infrastructure/zambia/", 
+                   "rda_dump/Final Shape files RDA/")
+p_out <- fp(p_mod, "external/output")
+```
+
+```{r, eval = FALSE}
+# roads
+mgrid <- raster(fp(p_moddat, "ZA-mask.tif"))
+load(fp(p_mod, "external/data/ZA/parks_roads.rda"))
+zamroads <- readOGR(fp(p_roads, "osmroads/zamroadsfp.shp"), 
+                    layer = "zamroadsfp")
+roads <- zamroads
+save(pas, roads, zambia, 
+     file = full_path(p_mod, "external/data/ZA/parks_roads.rda"))
+
+```
+
+## Demand
+Following the example of Gasparri et al (2015), who report demand and area planted trends for soybean in Southern Africa (9 countries) between 2000-2013, we use the production trends for both maize and soybean for the periods for 2000-2014 to calculate scenario for production increases by extrapolating linearly from recent trends in production for each crop between 2014 and 2050. We took an average of both the 2000-2014 as well as the 2005-2014 trends, which show larger rates of gain, which may reflect the more recent agricultural development interests (cite). 
+
+```{r, eval = FALSE}
+# fao stats for maize area harvested
+ha <- data.table(read_excel(fp(p_demand, "fao-saf-maize-soybean-ha.xlsx")))
+prod <- data.table(read_excel(fp(p_demand, "fao-saf-maize-soybean-prod.xlsx")))
+
+# countries included in Gasparri et al (2015)
+gasparri <- unique(ha$AreaName)[c(1:2, 7:8, 13, 15, 17, 19, 22)]
+har <- ha[AreaName %in% gasparri]
+setkey(har, "AreaName")
+prodr <- prod[AreaName %in% gasparri]
+setkey(prodr, "AreaName")
+# prodr[AreaName == "Zambia" & Year %in% 2012:2014, mean(Value), by = ItemName]
+# har[, unique(AreaName)]; prodr[, unique(AreaName)]
+
+haregion <- har[, mean(Value), by = .(ItemName, Year)]
+ha_rates <- sapply(c("Maize", "Soybeans"), function(i) {
+  haregion[ItemName == i, coef(lm(V1 / V1[1] ~ Year))[2]]
+})
+prodregion <- prodr[, mean(Value), by = .(ItemName, Year)]
+prod_rates <- sapply(c("Maize", "Soybeans"), function(i) {
+  prodregion[ItemName == i, coef(lm(V1 / V1[1] ~ Year))[2]]
+})
+# prodregion[ItemName == "Maize", plot(Year, V1)]
+# prodregion[ItemName == "Soybeans", plot(Year, V1)]
+# haregion[ItemName == "Maize", plot(Year, V1)]
+# haregion[ItemName == "Soybeans", plot(Year, V1)]
+
+ha_rates05 <- sapply(c("Maize", "Soybeans"), function(i) {
+  haregion[ItemName == i & Year > 2004, coef(lm(V1 / V1[1] ~ Year))[2]]
+})
+prod_rates05 <- sapply(c("Maize", "Soybeans"), function(i) {
+  prodregion[ItemName == i & Year > 2004, coef(lm(V1 / V1[1] ~ Year))[2]]
+})
+# (1 + prod_rates05[2] * 13) * prodregion[ItemName == "Soybeans", V1]
+
+allrates <- rbind(1 + ha_rates * (2050-2014), 1 + prod_rates * (2050-2014), 
+                  1 + ha_rates05 * (2050-2014), 1 + prod_rates05 * (2050-2014))
+
+# a <- 2
+# b <- 10
+# (a + sum((b - a) / (2010 - 2000) * rep(1, 10))) / a
+# ((b - a) / (2010 - 2000))
+# 5 * 100
+# targets(c("maize" = 2), 10, 2)
+
+round(colMeans(allrates[c(2, 4), ]), 1)  ## by production
+round(colMeans(allrates[c(1, 3), ]), 1)  ## by area harvested
+round(colMeans(allrates), 1)  ## averaged across production and area harvested
+```
+
+### Yield gap closure on existing land
+
+We use the production based target as our potential scenario for Zambia.  Next is to factor in an assumption for how much demand will be met by closing current yield gaps
+```{r}
+setwd(p_mod)
+path <- "external/data/ZA"
+# load(fp(path, "currprod.rda"))
+# load("~/Dropbox/projects/agroEcoTradeoff/external/data/ZA/currprod.rda")
+# save(currprod, file = fp(path, "currprod.rda"))
+cp <- c("maize" = 2912004, "soy" = 203732)
+
+# gap closing function
+gapper <- function(cp, gaps, pct) ((((cp * gaps) - cp) * pct) + cp) / cp
+
+# Current gaps
+mzgap <- 4.43 / 2.3 
+soygap <- 3.4 / 2
+
+# assume 50% closed on current land
+g <- gapper(cp, c(mzgap, soygap), 0.25)
+
+# targets given g
+targ <- c("maize" = 3, "soy" = 9)
+# targ <- c("maize" = 3.2, "soy" = 8.7)
+targs <- targets(targ, cp, g)
+
+```
+
+## Tradeoff runs
+
+### Best areas to meet targets for each crop
+
+Running the model individually for each crop. This currently entails updating and the `currprod.rda` file, and then reinvoking `input_handler`  
+```{r, eval = FALSE}
+# currprod_switch <- function(cropind, path = p_moddat) {
+#   master_prod <- c("maize" = 2912004, "soy" = 203732)
+#   currprod <- master_prod[cropind]
+#   save(currprod, file = fp(path, "currprod.rda"))
+#   return(currprod)
+# }
+
+# Separate soy and maize impacts
+cb <- c("Y" = 1, "C" = 0, "BD" = 0, "COST" = 0)
+mzto <- tradeoff_mod(prod_targ = targ["maize"], cbetas = cb, currprodmod = g[1])
+soyto <- tradeoff_mod(prod_targ = targ["soy"], cbetas = cb, currprodmod = g[2])
+mzsoyto <- tradeoff_mod(prod_targ = targ, cbetas = cb, currprodmod = g)
+
+# mzto$conv[, sum(maize)]
+# soyto$conv[, sum(soy)]
+
+CRSobj <- CRS(mzto$inputs$sp$crs)
+mztor <- dt_to_raster(mzto$conv, CRSobj)
+soytor <- dt_to_raster(soyto$conv, CRSobj)
+mzsoytor <- dt_to_raster(mzsoyto$conv, CRSobj)  # converges on same results
+
+# rasters
+mzsoyr <- stack(list(mztor, soytor * 2))
+mzsoyr <- calc(mzsoyr, sum)
+plot(mzsoyr)
+# plot(roads)
+
+# Plot
+i1 <- rbind(mzto$impacts, soyto$impacts)
+crops <- c("maize", "soy", "maize/soy")
+# plot(1:10, pch = 20, cex = 4, col = "gold2")
+# plot(mzsoyr, col = c("grey", "goldenrod", "green4", "orange"))
+imp_plot2(mzsoyr, i1, p_figures, "ideal_yield2", "", crops, TRUE, 
+         c("gold2", "green3", "orange"))
+
+```
+
+### Best Areas for Other Three Factors
+```{r, eval = FALSE}
+basedt <- soyto$inputs$mask
+ybl <- list(yb1 <- c(1, 1))
+step <- 0.05
+cnames <- c("C", "BD", "COST")
+ps <- round(do.call(rbind, pareto_steps(cnames, step)), 2); head(ps)
+Yv = "conv_area"; Cv = "tot_C"; BDv = "int_mean"; COSTv = "mu_cost"
+Yst = sum; Cst = sum; BDst = mean; COSTst = mean
+crops <- list("maize", "soy", c("maize", "soy"))
+croplnms <- list("maize", "soy", "both")
+# lapply(crops, function(x) targ[x])
+# lapply(crops, function(x) g[x])
+cbdc <- lapply(crops, function(x) {
+  a <- Sys.time()
+  print(paste("Starting run for", x, "at", a))
+  otab <- pareto(cnames, step = step, prod_targ = targ[x], 
+                 yblist = ybl, currprodmod = g[x], input_key = "ZA", 
+                 Yv = Yv, Cv = Cv, BDv = BDv, COSTv = COSTv, Yst = Yst, 
+                 Cst = Cst, BDst = BDst, COSTst = COSTst, todisk = TRUE, 
+                 silent = FALSE, ncl = 7)
+  load(fp(p_out, "bcode.rda"))
+  heatr <- heat(fp(p_out, bcode), basedt, todisk = TRUE) 
+  print(Sys.time() - a)
+  c("bcode" = bcode, otab, "heat" = heatr)
+})
+names(cbdc) <- croplnms
+
+# check for datasets where certain weights were removed from contention
+clength <- t(sapply(cbdc, function(x) c(nrow(x$params), nrow(x$optitab))))
+cbdcmz <- heat2(cbdc$maize, fp(p_out, cbdc$maize$bcode), basedt, todisk = TRUE)
+cbdc$maize$heat <- cbdcmz
+
+# load(fp(p_out, "ZA_20160213_172518_13217_37779/impacts_tab.rda"))
+# save(cbdc, file = fp(p_out, "results.rda"))
+# par(mfrow = c(2, 2), mar = c(0, 0, 0, 4))
+# plot(cbdc$both$heat, axes = FALSE, box = FALSE)
+# plot(cbdc$maize$heat, axes = FALSE, box = FALSE)
+# plot(cbdc$soy$heat, axes = FALSE, box = FALSE)
+# a <- Sys.time()
+# print(a)
+# cbdc_mz <- pareto(cnames, step = step, prod_targ = targ["maize"], 
+#                   yblist = ybl, currprodmod = g["maize"], input_key = "ZA", 
+#                   Yv = Yv, Cv = Cv, BDv = BDv, COSTv = COSTv, Yst = Yst, 
+#                   Cst = Cst, BDst = BDst, COSTst = COSTst, todisk = TRUE, 
+#                   silent = FALSE, ncl = 8)
+# Sys.time() - a
+# load(fp(p_out, "bcode.rda"))
+# bcodes <- bcode
+# a <- Sys.time()
+# cbdc_soy <- pareto(cnames, step = step, prod_targ = targ["soy"], 
+#                    yblist = ybl, currprodmod = g["soy"], input_key = "ZA", 
+#                    Yv = Yv, Cv = Cv, BDv = BDv, COSTv = COSTv, Yst = Yst, 
+#                    Cst = Cst, BDst = BDst, COSTst = COSTst, todisk = TRUE, 
+#                    silent = FALSE, ncl = 8)
+# Sys.time() - a
+# load(fp(p_out, "bcode.rda"))
+# bcodes[2] <- bcode
+# implist <- list(cbdc_mz, cbdc_soy)
+# names(implist) <- bcodes
+
+# tstmp <- function() {
+#   paste0(gsub(" ", "", gsub(":|-", "", as.character(Sys.time()))))
+# }
+# save(implist, file = fp(p_out, paste0("imptabs_", tstmp(), ".rda")))
+# load(fp(p_out, "imptabs_20160212165418.rda"))
+# implist
+
+# Create overlap maps
+# CRSobj <- CRS(soyto$inputs$sp$crs)
+# cbdc_mz_ht <- heat_func(fp(p_out, names(implist)[1]), basedt) 
+# cbdc_soy_ht <- heat_func(fp(p_out, names(implist)[2]), basedt) 
+# plot(cbdc_soy_ht + cbdc_mz_ht)
+# plot(cbdc_soy_ht)
+# Might need to run it for both crops simultaneously
+
+# Do RGB plot comparing overlaps between two 
+
+```
+
+### Conservation interests versus agricultural interests
+```{r, eval = FALSE}
+ybl <- list(yb1 <- c(1, 1))
+step <- 0.02
+cnames <- c("Y", "COST")
+ps <- round(do.call(rbind, pareto_steps(cnames, step)), 2)
+# ps[which(rowSums(ps[, c(1, 3)]) == 0), ]
+
+ycost <- lapply(crops, function(x) {
+  a <- Sys.time()
+  print(paste("Starting run for", x, "at", a))
+  otab <- pareto(cnames, step = step, prod_targ = targ[x], 
+                  yblist = ybl, currprodmod = g[x], input_key = "ZA", 
+                  Yv = Yv, Cv = Cv, BDv = BDv, COSTv = COSTv, Yst = Yst, 
+                  Cst = Cst, BDst = BDst, COSTst = COSTst, todisk = TRUE, 
+                  silent = FALSE, ncl = 7)
+  load(fp(p_out, "bcode.rda"))
+  heatr <- heat(fp(p_out, bcode), basedt, todisk = TRUE) 
+  print(Sys.time() - a)
+  c("bcode" = bcode, otab, "heat" = heatr)
+})
+names(ycost) <- croplnms
+
+clength <- t(sapply(ycost, function(x) c(nrow(x$params), nrow(x$optitab))))
+
+cnames <- c("C", "BD")
+bdc <- lapply(crops, function(x) {
+  a <- Sys.time()
+  print(paste("Starting run for", x, "at", a))
+  otab <- pareto(cnames, step = step, prod_targ = targ[x], 
+                  yblist = ybl, currprodmod = g[x], input_key = "ZA", 
+                  Yv = Yv, Cv = Cv, BDv = BDv, COSTv = COSTv, Yst = Yst, 
+                  Cst = Cst, BDst = BDst, COSTst = COSTst, todisk = TRUE, 
+                  silent = FALSE, ncl = 7)
+  load(fp(p_out, "bcode.rda"))
+  heatr <- heat(fp(p_out, bcode), basedt, todisk = TRUE) 
+  print(Sys.time() - a)
+  c("bcode" = bcode, otab, "heat" = heatr)
+})
+names(bdc) <- croplnms
+# bdc3 <- c(bdc, bdc2)  # vestiges to show I forgot to do maize soy case
+# bdc <- bdc3
+
+bdcfix <- lapply(bdc, function(x) {  # x <- bdc$maize
+  if(nrow(x$params) > nrow(x$optitab)) {
+    print(paste("fixing heat map for", x$bcode))
+    heatfix <- heat2(x, fp(p_out, x$bcode), basedt, todisk = TRUE)
+  } else {
+    heatfix <- NULL
+  }
+  heatfix
+})
+for(i in 1:length(bdc)) bdc[[i]]$heat <- bdcfix[[i]]
+
+save(cbdc, ycost, bdc, file = fp(p_out, "mainresults1302.rda"))
+```
+
+### All 4 together
+```{r, eval = FALSE}
+step <- 0.05
+cnames <- c("Y", "C", "BD", "COST")
+ps <- round(do.call(rbind, pareto_steps(cnames, step)), 2)
+ybdc <- lapply(crops, function(x) {
+  a <- Sys.time()
+  print(paste("Starting run for", x, "at", a))
+  otab <- pareto(cnames, step = step, prod_targ = targ[x], 
+                  yblist = ybl, currprodmod = g[x], input_key = "ZA", 
+                  Yv = Yv, Cv = Cv, BDv = BDv, COSTv = COSTv, Yst = Yst, 
+                  Cst = Cst, BDst = BDst, COSTst = COSTst, todisk = TRUE, 
+                  silent = FALSE, ncl = 7)
+  load(fp(p_out, "bcode.rda"))
+  # heatr <- heat(fp(p_out, bcode), basedt, todisk = TRUE) 
+  print(Sys.time() - a)
+  c("bcode" = bcode, otab) #, "heat" = heatr)
+})
+names(ybdc) <- croplnms
+
+# ran because of fail on iteration for both (croplnms not properly compiled)
+# bnames <- c("ZA_20160213_231906_17404_28678", "ZA_20160213_234959_17404_39818")
+# ybdc <- lapply(bnames, function(x) {
+#   bpath <- fp(p_out, x)
+#   load(fp(bpath, "optitab.rda"))
+#   load(fp(bpath, "parms.rda"))
+#   list("bcode" = x, "optitab" = optimal, "params" = parms)
+# })
+# names(ybdc) <- croplnms[1:2]
+
+# ybdc2 <- lapply(crops[3], function(x) {
+#   a <- Sys.time()
+#   print(paste("Starting run for", x, "at", a))
+#   otab <- pareto(cnames, step = step, prod_targ = targ[x], 
+#                   yblist = ybl, currprodmod = g[x], input_key = "ZA", 
+#                   Yv = Yv, Cv = Cv, BDv = BDv, COSTv = COSTv, Yst = Yst, 
+#                   Cst = Cst, BDst = BDst, COSTst = COSTst, todisk = TRUE, 
+#                   silent = FALSE, ncl = 7)
+#   load(fp(p_out, "bcode.rda"))
+#   # heatr <- heat(fp(p_out, bcode), basedt, todisk = TRUE) 
+#   print(Sys.time() - a)
+#   c("bcode" = bcode, otab) #, "heat" = heatr)
+# })
+# names(ybdc2) <- croplnms[[3]]
+# ybdc3 <- c(ybdc, ybdc2)  # vestiges to show I forgot to do maize soy case
+# ybdc <- ybdc3
+
+# heat maps
+ybdcheat <- lapply(ybdc, function(x) {  # x <- bdc$maize
+  print(paste("N params =", nrow(x$params), ": N optimal =",  nrow(x$optitab)))
+  heatfix <- heat2(x, fp(p_out, x$bcode), basedt, todisk = TRUE, 
+                   overwrite = TRUE)
+  heatfix
+})
+for(i in 1:length(ybdc)) ybdc[[i]]$heat <- ybdcheat[[i]]
+
+plot(ybdc$maize$heat)
+par(mfrow = c(1, 2))
+plot(ycost$maize$heat)
+plot(ycost$soy$heat)
+plot(ycost$both$heat)
+plot(bdc$both$heat)
+
+```
+

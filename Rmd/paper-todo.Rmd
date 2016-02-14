@@ -18,13 +18,13 @@ A summary of data and model upgrades and analyses to-do.
 
 ## Crops
 
-+ Near-term: See if we can bias-correct using NPP.  
-+ Longer-term: DSSAT yields -> machine learning (Nate)
++ Near-term: See if we can bias-correct using NPP.  __Not workable__
++ Longer-term: DSSAT yields -> machine learning (Nate) __Done, with GAMs__
 
 ## Biodiversity: 
 
-+ Near-term: Code in impact based on intactness + protected weight
-+ Longer-term: Code in Newbold model (Laura and Tobias)
++ Near-term: Code in impact based on intactness + protected weight __Done__
++ Longer-term: Code in Newbold model (Laura and Tobias) __Pending__
 
 # Analyses and timeline
 
@@ -50,10 +50,10 @@ To figure out the analysis, we need to know what questions we are asking first:
 
 Analysis/fix | Drop-dead date | Date Finished
 ------------- | -------------  | -------------
-NPP-crop correct  | 29 Jan |
-Biodiversity fix  | 31 Jan |
-Crop overlaps | ??? |
-Yield variability |  ??? |
+NPP-crop correct  | 29 Jan | Not pursued
+Biodiversity fix  | 31 Jan | 11 Feb
+Crop overlaps | ??? | 
+Yield variability |  ??? | Not pursued
 Combined optimization, back out weights? |  ???
 
 

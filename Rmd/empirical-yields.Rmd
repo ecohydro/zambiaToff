@@ -19,7 +19,10 @@ library(agroEcoTradeoff)
 library(matrixStats)
 library(doMC)
 library(mgcv)
+library(rworldxtra)
 
+
+setwd("~/Dropbox/publications/zambiaToff/private/zambiaToff/")
 p_root <- lmisc::set_base_path()
 p_clim <- fp(p_root, "external/input_devel/climate")
 p_yield <- fp(p_root, "external/input_devel/yield")
@@ -27,6 +30,7 @@ p_sgrids <- fp(p_root, "external/input_devel/soil")
 p_basedat <- paste0("/Users/lestes/Dropbox/projects/agroEcoTradeoff/external/",
                     "base_data/")
 p_cropland <- full_path(p_root, "external/input_devel/cropland")
+p_figures <- full_path(p_root, "paper/figures/")
 
 # Read in Zambia grid
 mgrid <- raster(full_path(p_basedat, "ZA-grid.tif"))
@@ -505,6 +509,12 @@ sgam14 <- gam(YLDS ~ poly(JFMP, 2) + poly(TMU, 2) + poly(SLHW, 2) +
                poly(SLCL, 2) + poly(SSRMIII, 2) + s(x, y), 
              family = gaussian(link = "log"), method = "REML", 
             data = regreds2)
+# sgam14a <- gam(YLDS ~ poly(MAP, 2) + poly(TMU, 2) + poly(SLHW, 2) + 
+#                poly(SLCL, 2) + poly(SSRMIII, 2) + s(x, y), 
+#              family = gaussian(link = "log"), method = "REML", 
+#             data = regreds2[YST == "mu"])
+# summary(sgam14a)
+# plot.gam(sgam14a, residuals = FALSE, se = TRUE, all.terms = TRUE, pages = 1)
 sgam15 <- gam(YLDS ~ poly(JFMP, 2) + poly(GDD, 2) + poly(SLHW, 2) + 
                poly(SLCL, 2) + poly(SSRMIII, 2) + s(x, y), 
              family = gaussian(link = "log"), method = "REML", 
@@ -513,7 +523,6 @@ sgam16 <- gam(YLDS ~ poly(JFMP, 2) + poly(TMU, 2) + poly(SLHW, 2) +
                poly(SLCL, 2) + poly(SSRMIII, 2) + s(x, y), 
              family = gaussian(link = "log"), method = "REML", 
             data = regnew[CROP == "soy"])
-
 
 summary(sgam1)
 plot.gam(sgam1, residuals = FALSE, se = TRUE, all.terms = TRUE, pages = 1)
@@ -541,8 +550,8 @@ summary(sgam12) #<-> TMU still increasing, even with SSRMIII dropped
 plot.gam(sgam12, residuals = FALSE, se = TRUE, all.terms = TRUE, pages = 1)
 summary(sgam13) #<-> KDD added, going in wrong direction
 plot.gam(sgam13, residuals = FALSE, se = TRUE, all.terms = TRUE, pages = 1)
-summary(sgam14) #<-> same as 6
-plot.gam(sgam14, residuals = FALSE, se = TRUE, all.terms = TRUE, pages = 1)
+summary(sgam14a) #<-> same as 6
+plot.gam(sgam14a, residuals = FALSE, se = TRUE, all.terms = TRUE, pages = 1)
 summary(sgam15) #<-> Full data version of 7 (with GDD), becomes significant
 plot.gam(sgam15, residuals = FALSE, se = TRUE, all.terms = TRUE, pages = 1)
 summary(sgam16) #<-> Full data version of 14 (Tmu)
@@ -559,6 +568,9 @@ lines(c(0, 8000), c(0, 8000), col = "red")
 # gams to keep 
 save(gam13, gam14, gam20, gam21, gam23, sgam7, sgam14, sgam15, sgam16, 
      file = fp(p_yield, "empirical/gams1.rda"))
+# load(fp(p_yield, "empirical/gams1.rda"))
+summary(gam13)
+summary(sgam14)
 
 ```
 
@@ -653,6 +665,10 @@ names(yldralb) <- c("maizer1", "maizer2", "maizef1", "maizef2", "maizef3",
 yldralbmsk <- raster::mask(yldralb, mgrid)
 writeRaster(yldralbmsk, 
             filename = fp(p_yield, "empirical/yield_surfaces2_albmsk.tif"))
+# yldralbmsk <- brick(fp(p_yield, "empirical/yield_surfaces2_albmsk.tif"))
+# names(yldralbmsk) <- c("maizer1", "maizer2", "maizef1", "maizef2", "maizef3",
+#                        "soyr1", "soyr2", "soyf1", "soyf2")
+
 
 prov@proj4string <- raster()@crs
 png(fp(p_yield, "empirical/yield_maps.png"), height = 800, width = 800)
@@ -722,9 +738,18 @@ dssat_cmus <- sapply(ydiffs, function(x) sapply(x, function(y) y$croplandmu))
 
 # Bruinsma 2007-2050 growth
 bruinsma <- c(maize = 3224 / 1674, soy = 2124 / 1257)
+fao <- fread(fp(p_yield, "empirical/zambia-maize-soy-yield.csv"))
+fao2005 <- fao[year > 2004,]
+yrates <- sapply(c("Maize", "Soybeans"), function(i) {
+  fao[crop == i, coef(lm(yield / yield[1] ~ year))[2]]
+})
+ymult <- 1 + yrates * (2050-2014)  # fao yield multipliers
+
+# take average of Bruinsma and FAO projection to account for maize
+ymults <- c("maize" = sum(ymult[1] * 0.25, bruinsma[1] * 0.75), bruinsma[2])
 
 # adjusted DSSAT factors
-potmus <- curr_mu * c(bruinsma)  # 4.43 maize, 3.4 soy
+potmus <- curr_mu * c(ymults)  # 4.43 maize, 3.4 soy
 potmu_mz <- potmus[1] / (dssat_cmus[[1]] / 1000)  # maize on cropland mean
 potmu_soy <- potmus[2] / (dssat_mus[[2]] / 1000)  # soy on overall mean
 
@@ -742,9 +767,24 @@ names(soyfao) <- names(yldralbmsk)[6:9]
 # plot(soyfao[[1]])
 mzfao <- brick(stack(mzfao))
 soyfao <- brick(stack(soyfao))
-writeRaster(mzfao, filename = fp(p_yield, "empirical/maize-faoadj.tif"))
-writeRaster(soyfao, filename = fp(p_yield, "empirical/soy-faoadj.tif"))
+writeRaster(mzfao, filename = fp(p_yield, "empirical/maize-faoadj.tif"), 
+            overwrite = TRUE)
+writeRaster(soyfao, filename = fp(p_yield, "empirical/soy-faoadj.tif"), 
+            overwrite = TRUE)
+# mzfao <- brick(fp(p_yield, "empirical/maize-faoadj.tif"))
+# soyfao <- brick(fp(p_yield, "empirical/soy-faoadj.tif"))
 
+data("countriesHigh")
+zambia <- countriesHigh[countriesHigh@data$SOVEREIGNT == "Zambia", ]
+zambia <- spTransform(zambia, mzfao@crs)
+
+png(fp(p_figures, "yields.png"), width = 800, height = 400)
+par(mfrow = c(1, 2), mar = c(0, 0, 0, 4))
+plot(zambia, col = "grey80", border = "transparent")
+plot(mzfao[[1]], add = TRUE)
+plot(zambia, col = "grey80", border = "transparent")
+plot(soyfao[[1]], add = TRUE)
+dev.off()
 ```
 
 
