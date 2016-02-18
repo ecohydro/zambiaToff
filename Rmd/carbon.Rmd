@@ -36,14 +36,24 @@ names(ocarb) <- c("veg", "soil", "total")
 
 ## Vegetation carbon
 ```{r, eval=FALSE}
-onm <- full_path(p_devel, "veg-carbon.tif")
+onm <- full_path(p_devel, "veg-biomass.tif")
 ext <- bbox(mgrid)[1:4]  # extent   
 gdalwarp(srcfile = vcarb@file@name, t_srs = projection(mgrid), 
          dstfile = onm, r = "average", ot = "Float32", te = ext, 
          srcnodata = -32768, dstnodata = -99, tr = c(1000, 1000), 
          of = "GTiff", multi = TRUE, verbose = FALSE, overwrite = TRUE)
-zvcarb <- raster(onm)  # vegetation carbon
-plot(zvcarb)
+zvbiom <- raster(onm)  # vegetation carbon
+
+# convert to carbon and then above and below ground carbon
+zvcarb <- zvbiom * 0.47  # IPCC 2006
+
+# mean root shoot ratio, average of Mokany et al (2006) for savannas (Table 2)
+# and Mugasha et al (2013), Tanzanian miombo root-shoot ratio
+rooshoo <- 1 + mean(c(0.642, 0.4))
+zvcarbf <- zvcarb * rooshoo
+onm2 <- fp(p_devel, "veg-carbon.tif")
+writeRaster(zvcarbf, filename = onm2, overwrite = TRUE)
+# plot(zvcarbf - ocarb[[1]])
 
 ```
 
@@ -88,14 +98,16 @@ soct <- lapply(1:length(thickness), function(x) {
 # then total for top 1 m
 soct_1m <- calc(stack(soct[1:5]), sum)
 soct_1ma <- projectRaster(soct_1m, mgrid)
-writeRaster(soct_1ma, filename = full_path(p_devel, "soil-C-1m.tif"))
+writeRaster(soct_1ma, filename = full_path(p_devel, "soil-C-1m.tif"), 
+            overwrite = TRUE)
 
 # plot(mask(soct_1ma, mgrid))
 # plot(ocarb$soil)
 # plot(mask(soct_1ma, mgrid) - ocarb$soil)  # same order of magnitude
 
-zamcarb <- brick(stack(zvcarb, soct_1ma), 
-                 filename = full_path(p_devel, "ZA-carbon.tif"))
+zamcarb <- brick(stack(zvcarbf, soct_1ma), 
+                 filename = full_path(p_devel, "ZA-carbon.tif"), 
+                 overwrite = TRUE)
 
 ```
 

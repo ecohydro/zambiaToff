@@ -18,6 +18,7 @@ library(agroEcoTradeoff)
 library(readxl)
 library(gdalUtils)
 library(gisutils)
+
 setwd("~/Dropbox/publications/zambiaToff/private/zambiaToff/")
 p_root <- getwd()
 p_demand <- fp(p_root, "external/input_devel/demand/")
@@ -153,7 +154,7 @@ mzsoytor <- dt_to_raster(mzsoyto$conv, CRSobj)  # converges on same results
 # rasters
 mzsoyr <- stack(list(mztor, soytor * 2))
 mzsoyr <- calc(mzsoyr, sum)
-plot(mzsoyr)
+# plot(mzsoyr)
 # plot(roads)
 
 # Plot
@@ -161,88 +162,69 @@ i1 <- rbind(mzto$impacts, soyto$impacts)
 crops <- c("maize", "soy", "maize/soy")
 # plot(1:10, pch = 20, cex = 4, col = "gold2")
 # plot(mzsoyr, col = c("grey", "goldenrod", "green4", "orange"))
-imp_plot2(mzsoyr, i1, p_figures, "ideal_yield2", "", crops, TRUE, 
+imp_plot2(mzsoyr, i1, p_figures, "ideal_yield", "", crops, 1, TRUE, 
          c("gold2", "green3", "orange"))
 
+basedt <- soyto$inputs$mask
 ```
 
 ### Best Areas for Other Three Factors
+
+Switch off for now
 ```{r, eval = FALSE}
-basedt <- soyto$inputs$mask
-ybl <- list(yb1 <- c(1, 1))
-step <- 0.05
-cnames <- c("C", "BD", "COST")
-ps <- round(do.call(rbind, pareto_steps(cnames, step)), 2); head(ps)
-Yv = "conv_area"; Cv = "tot_C"; BDv = "int_mean"; COSTv = "mu_cost"
-Yst = sum; Cst = sum; BDst = mean; COSTst = mean
-crops <- list("maize", "soy", c("maize", "soy"))
-croplnms <- list("maize", "soy", "both")
-# lapply(crops, function(x) targ[x])
-# lapply(crops, function(x) g[x])
-cbdc <- lapply(crops, function(x) {
-  a <- Sys.time()
-  print(paste("Starting run for", x, "at", a))
-  otab <- pareto(cnames, step = step, prod_targ = targ[x], 
-                 yblist = ybl, currprodmod = g[x], input_key = "ZA", 
-                 Yv = Yv, Cv = Cv, BDv = BDv, COSTv = COSTv, Yst = Yst, 
-                 Cst = Cst, BDst = BDst, COSTst = COSTst, todisk = TRUE, 
-                 silent = FALSE, ncl = 7)
-  load(fp(p_out, "bcode.rda"))
-  heatr <- heat(fp(p_out, bcode), basedt, todisk = TRUE) 
-  print(Sys.time() - a)
-  c("bcode" = bcode, otab, "heat" = heatr)
-})
-names(cbdc) <- croplnms
-
-# check for datasets where certain weights were removed from contention
-clength <- t(sapply(cbdc, function(x) c(nrow(x$params), nrow(x$optitab))))
-cbdcmz <- heat2(cbdc$maize, fp(p_out, cbdc$maize$bcode), basedt, todisk = TRUE)
-cbdc$maize$heat <- cbdcmz
-
-# load(fp(p_out, "ZA_20160213_172518_13217_37779/impacts_tab.rda"))
-# save(cbdc, file = fp(p_out, "results.rda"))
-# par(mfrow = c(2, 2), mar = c(0, 0, 0, 4))
-# plot(cbdc$both$heat, axes = FALSE, box = FALSE)
-# plot(cbdc$maize$heat, axes = FALSE, box = FALSE)
-# plot(cbdc$soy$heat, axes = FALSE, box = FALSE)
-# a <- Sys.time()
-# print(a)
-# cbdc_mz <- pareto(cnames, step = step, prod_targ = targ["maize"], 
-#                   yblist = ybl, currprodmod = g["maize"], input_key = "ZA", 
-#                   Yv = Yv, Cv = Cv, BDv = BDv, COSTv = COSTv, Yst = Yst, 
-#                   Cst = Cst, BDst = BDst, COSTst = COSTst, todisk = TRUE, 
-#                   silent = FALSE, ncl = 8)
-# Sys.time() - a
-# load(fp(p_out, "bcode.rda"))
-# bcodes <- bcode
-# a <- Sys.time()
-# cbdc_soy <- pareto(cnames, step = step, prod_targ = targ["soy"], 
-#                    yblist = ybl, currprodmod = g["soy"], input_key = "ZA", 
-#                    Yv = Yv, Cv = Cv, BDv = BDv, COSTv = COSTv, Yst = Yst, 
-#                    Cst = Cst, BDst = BDst, COSTst = COSTst, todisk = TRUE, 
-#                    silent = FALSE, ncl = 8)
-# Sys.time() - a
-# load(fp(p_out, "bcode.rda"))
-# bcodes[2] <- bcode
-# implist <- list(cbdc_mz, cbdc_soy)
-# names(implist) <- bcodes
-
-# tstmp <- function() {
-#   paste0(gsub(" ", "", gsub(":|-", "", as.character(Sys.time()))))
+# ybl <- list(yb1 <- c(1, 1))
+# step <- 0.05
+# cnames <- c("C", "BD", "COST")
+# ps <- round(do.call(rbind, pareto_steps(cnames, step)), 2); head(ps)
+# Yv = "conv_area"; Cv = "tot_C"; #BDv = "int_prior"; COSTv = "mu_cost"
+# BDv = c(Yv, "int_prior"); COSTv = c(Yv, "mu_cost")
+# wmu <- function(x, na.rm = na.rm) {
+#   weighted.mean(x = x[, 2], w = x[, 1], na.rm = na.rm)
 # }
-# save(implist, file = fp(p_out, paste0("imptabs_", tstmp(), ".rda")))
-# load(fp(p_out, "imptabs_20160212165418.rda"))
-# implist
-
-# Create overlap maps
-# CRSobj <- CRS(soyto$inputs$sp$crs)
-# cbdc_mz_ht <- heat_func(fp(p_out, names(implist)[1]), basedt) 
-# cbdc_soy_ht <- heat_func(fp(p_out, names(implist)[2]), basedt) 
-# plot(cbdc_soy_ht + cbdc_mz_ht)
-# plot(cbdc_soy_ht)
-# Might need to run it for both crops simultaneously
-
-# Do RGB plot comparing overlaps between two 
+# # Yst = sum; Cst = sum; BDst = mean; COSTst = mean
+# Yst = sum; Cst = sum; BDst = wmu; COSTst = wmu
+# 
+# # crops <- list("maize", "soy", c("maize", "soy"))
+# crops <- list(c("maize", "soy"))
+# # croplnms <- list("maize", "soy", "both")
+# croplnms <- list("both")
+# # lapply(crops, function(x) targ[x])
+# # lapply(crops, function(x) g[x])
+# cbdc <- lapply(crops, function(x) {
+#   a <- Sys.time()
+#   print(paste("Starting run for", x, "at", a))
+#   otab <- pareto(cnames, step = step, prod_targ = targ[x], 
+#                  yblist = ybl, currprodmod = g[x], input_key = "ZA", 
+#                  Yv = Yv, Cv = Cv, BDv = BDv, COSTv = COSTv, Yst = Yst, 
+#                  Cst = Cst, BDst = BDst, COSTst = COSTst, todisk = TRUE, 
+#                  silent = FALSE, ncl = 7)
+#   load(fp(p_out, "bcode.rda"))
+#   heatr <- heat(fp(p_out, bcode), basedt, todisk = TRUE) 
+#   print(Sys.time() - a)
+#   c("bcode" = bcode, otab, "heat" = heatr)
+# })
+# names(cbdc) <- croplnms
+# 
+# # cbdc <- lapply("ZA_20160215_071436_1558_16149", function(x) {
+# #   bpath <- fp(p_out, x)
+# #   load(fp(bpath, "impacts_tab.rda"))
+# #   inlist <- lapply(unique(outtab$iter), function(x) {
+# #     outtab[outtab$iter == x, ]
+# #   })
+# #   # load(fp(bpath, "optitab.rda"))
+# #   optimal <- batch_stat(inlist, Yv = Yv, Cv = Cv, BDv = BDv, COSTv = COSTv, 
+# #                         Yst = Yst, Cst = Cst, BDst = BDst, COSTst = COSTst)
+# #   save(optimal, file = fp(bpath, "optitab.rda"))
+# #   load(fp(bpath, "parms.rda"))
+# #   heatr <- heat2(fp(p_out, x), basedt, todisk = TRUE, overwrite = TRUE) 
+# #   list("bcode" = x, "optimal" = optimal, "params" = parms, "heat" = heatr)
+# # })
+# # names(cbdc) <- croplnms
+# 
+# # check for datasets where certain weights were removed from contention
+# # clength <- t(sapply(cbdc, function(x) c(nrow(x$params), nrow(x$optitab))))
+# # cbdcmz <- heat2(cbdc$maize, fp(p_out, cbdc$maize$bcode), basedt, todisk = TRUE)
+# # cbdc$maize$heat <- cbdcmz
 
 ```
 
@@ -253,6 +235,15 @@ step <- 0.02
 cnames <- c("Y", "COST")
 ps <- round(do.call(rbind, pareto_steps(cnames, step)), 2)
 # ps[which(rowSums(ps[, c(1, 3)]) == 0), ]
+Yv = "conv_area"; Cv = "tot_C"
+BDv = c(Yv, "int_prior"); COSTv = c(Yv, "mu_cost")
+wmu <- function(x, na.rm = na.rm) {
+  weighted.mean(x = x[, 2], w = x[, 1], na.rm = na.rm)
+}
+Yst = sum; Cst = sum; BDst = wmu; COSTst = wmu
+
+crops <- list(c("maize", "soy"))
+croplnms <- list("both")
 
 ycost <- lapply(crops, function(x) {
   a <- Sys.time()
@@ -263,13 +254,41 @@ ycost <- lapply(crops, function(x) {
                   Cst = Cst, BDst = BDst, COSTst = COSTst, todisk = TRUE, 
                   silent = FALSE, ncl = 7)
   load(fp(p_out, "bcode.rda"))
-  heatr <- heat(fp(p_out, bcode), basedt, todisk = TRUE) 
+  heatr <- heat2(fp(p_out, bcode), basedt, todisk = TRUE) 
   print(Sys.time() - a)
   c("bcode" = bcode, otab, "heat" = heatr)
 })
 names(ycost) <- croplnms
+# plot(ycost$both$optitab$Y, ycost$both$optitab$COST)
 
-clength <- t(sapply(ycost, function(x) c(nrow(x$params), nrow(x$optitab))))
+# fix because ran with heat2 not yet adjusted for improperly ordered csv files
+ycostfix <- lapply(ycost, function(x) {  # x <- ycost$both
+  if(nrow(x$params) > nrow(x$optitab)) {
+    print(paste("fixing heat map for", x$bcode))
+    heatfix <- heat2(fp(p_out, x$bcode), basedt, TRUE, TRUE)
+  } else {
+    heatfix <- NULL
+  }
+  heatfix
+})
+for(i in 1:length(ycost)) ycost[[i]]$heat <- ycostfix[[i]]
+
+
+# ycost <- lapply("ZA_20160215_072118_1558_04246", function(x) {
+#   bpath <- fp(p_out, x)
+#   load(fp(bpath, "impacts_tab.rda"))
+#   inlist <- lapply(unique(outtab$iter), function(x) {
+#     outtab[outtab$iter == x, ]
+#   })
+#   optimal <- batch_stat(inlist, Yv = Yv, Cv = Cv, BDv = BDv, COSTv = COSTv, 
+#                         Yst = Yst, Cst = Cst, BDst = BDst, COSTst = COSTst)
+#   save(optimal, file = fp(bpath, "optitab.rda"))
+#   load(fp(bpath, "parms.rda"))
+#   heatr <- heat2(fp(p_out, x), basedt, todisk = TRUE, overwrite = TRUE) 
+#   list("bcode" = x, "optimal" = optimal, "params" = parms, "heat" = heatr)
+# })
+# names(ycost) <- croplnms
+# clength <- t(sapply(ycost, function(x) c(nrow(x$params), nrow(x$optitab))))
 
 cnames <- c("C", "BD")
 bdc <- lapply(crops, function(x) {
@@ -281,18 +300,17 @@ bdc <- lapply(crops, function(x) {
                   Cst = Cst, BDst = BDst, COSTst = COSTst, todisk = TRUE, 
                   silent = FALSE, ncl = 7)
   load(fp(p_out, "bcode.rda"))
-  heatr <- heat(fp(p_out, bcode), basedt, todisk = TRUE) 
+  # heatr <- heat2(fp(p_out, bcode), basedt, todisk = TRUE) 
   print(Sys.time() - a)
   c("bcode" = bcode, otab, "heat" = heatr)
 })
 names(bdc) <- croplnms
-# bdc3 <- c(bdc, bdc2)  # vestiges to show I forgot to do maize soy case
-# bdc <- bdc3
 
-bdcfix <- lapply(bdc, function(x) {  # x <- bdc$maize
+# fix because ran with heat2 not yet adjusted for improperly ordered csv files
+bdcfix <- lapply(bdc, function(x) {  # x <- ycost$both
   if(nrow(x$params) > nrow(x$optitab)) {
     print(paste("fixing heat map for", x$bcode))
-    heatfix <- heat2(x, fp(p_out, x$bcode), basedt, todisk = TRUE)
+    heatfix <- heat2(fp(p_out, x$bcode), basedt, TRUE, TRUE)
   } else {
     heatfix <- NULL
   }
@@ -300,7 +318,45 @@ bdcfix <- lapply(bdc, function(x) {  # x <- bdc$maize
 })
 for(i in 1:length(bdc)) bdc[[i]]$heat <- bdcfix[[i]]
 
-save(cbdc, ycost, bdc, file = fp(p_out, "mainresults1302.rda"))
+# plot(bdc$both$optitab$C, bdc$both$optitab$BD)
+# bdc3 <- c(bdc, bdc2)  # vestiges to show I forgot to do maize soy case
+# bdc <- bdc3
+
+# # Fix pareto tab
+# load(fp(fp(p_out, bdc$both$bcode), "impacts_tab.rda"))
+# inlist <- lapply(unique(outtab$iter), function(x) outtab[outtab$iter == x, ])
+# outtabf <- batch_stat(inlist, Yv = Yv, Cv = Cv, BDv = BDv, COSTv = COSTv, 
+#                       Yst = Yst, Cst = Cst, BDst = BDst, COSTst = COSTst)
+
+# bdcfix <- lapply(bdc, function(x) {  # x <- bdc$maize
+#   if(nrow(x$params) > nrow(x$optitab)) {
+#     print(paste("fixing heat map for", x$bcode))
+#     heatfix <- heat2(x, fp(p_out, x$bcode), basedt, todisk = TRUE)
+#   } else {
+#     heatfix <- NULL
+#   }
+#   heatfix
+# })
+# for(i in 1:length(bdc)) bdc[[i]]$heat <- bdcfix[[i]]
+
+# bdc <- lapply("ZA_20160215_072332_1558_54465", function(x) {
+#   bpath <- fp(p_out, x)
+#   load(fp(bpath, "impacts_tab.rda"))
+#   inlist <- lapply(unique(outtab$iter), function(x) {
+#     outtab[outtab$iter == x, ]
+#   })
+#   # load(fp(bpath, "optitab.rda"))
+#   optimal <- batch_stat(inlist, Yv = Yv, Cv = Cv, BDv = BDv, COSTv = COSTv, 
+#                         Yst = Yst, Cst = Cst, BDst = BDst, COSTst = COSTst)
+#   save(optimal, file = fp(bpath, "optitab.rda"))
+#   load(fp(bpath, "parms.rda"))
+#   heatr <- heat2(fp(p_out, x), basedt, todisk = TRUE, overwrite = TRUE) 
+#   list("bcode" = x, "optimal" = optimal, "params" = parms, "heat" = heatr)
+# })
+# names(bdc) <- croplnms
+
+# save(cbdc, ycost, bdc, file = fp(p_out, "mainresults1402.rda"))
+save(ycost, bdc, file = fp(p_out, "mainresults1702.rda"))
 ```
 
 ### All 4 together
@@ -323,15 +379,35 @@ ybdc <- lapply(crops, function(x) {
 })
 names(ybdc) <- croplnms
 
+# fix because ran with heat2 not yet adjusted for improperly ordered csv files
+ybdcfix <- lapply(ybdc, function(x) {  # x <- ycost$both
+  if(nrow(x$params) > nrow(x$optitab)) {
+    print(paste("fixing heat map for", x$bcode))
+    heatfix <- heat2(fp(p_out, x$bcode), basedt, TRUE, TRUE)
+  } else {
+    heatfix <- NULL
+  }
+  heatfix
+})
+for(i in 1:length(ybdc)) ybdc[[i]]$heat <- ybdcfix[[i]]
+
 # ran because of fail on iteration for both (croplnms not properly compiled)
 # bnames <- c("ZA_20160213_231906_17404_28678", "ZA_20160213_234959_17404_39818")
-# ybdc <- lapply(bnames, function(x) {
+# ybdc <- lapply("ZA_20160215_072541_1558_17131", function(x) {
 #   bpath <- fp(p_out, x)
-#   load(fp(bpath, "optitab.rda"))
+#   load(fp(bpath, "impacts_tab.rda"))
+#   inlist <- lapply(unique(outtab$iter), function(x) {
+#     outtab[outtab$iter == x, ]
+#   })
+#   # load(fp(bpath, "optitab.rda"))
+#   optimal <- batch_stat(inlist, Yv = Yv, Cv = Cv, BDv = BDv, COSTv = COSTv, 
+#                         Yst = Yst, Cst = Cst, BDst = BDst, COSTst = COSTst)
+#   save(optimal, file = fp(bpath, "optitab.rda"))
 #   load(fp(bpath, "parms.rda"))
-#   list("bcode" = x, "optitab" = optimal, "params" = parms)
+#   heatr <- heat2(fp(p_out, x), basedt, todisk = TRUE, overwrite = TRUE) 
+#   list("bcode" = x, "optimal" = optimal, "params" = parms, "heat" = heatr)
 # })
-# names(ybdc) <- croplnms[1:2]
+# names(ybdc) <- croplnms
 
 # ybdc2 <- lapply(crops[3], function(x) {
 #   a <- Sys.time()
@@ -351,20 +427,368 @@ names(ybdc) <- croplnms
 # ybdc <- ybdc3
 
 # heat maps
-ybdcheat <- lapply(ybdc, function(x) {  # x <- bdc$maize
-  print(paste("N params =", nrow(x$params), ": N optimal =",  nrow(x$optitab)))
-  heatfix <- heat2(x, fp(p_out, x$bcode), basedt, todisk = TRUE, 
-                   overwrite = TRUE)
-  heatfix
-})
-for(i in 1:length(ybdc)) ybdc[[i]]$heat <- ybdcheat[[i]]
+# ybdcheat <- lapply(ybdc, function(x) {  # x <- bdc$maize
+#   print(paste("N params =", nrow(x$params), ": N optimal =",  nrow(x$optitab)))
+#   heatfix <- heat2(x, fp(p_out, x$bcode), basedt, todisk = TRUE, 
+#                    overwrite = TRUE)
+#   heatfix
+# })
+# for(i in 1:length(ybdc)) ybdc[[i]]$heat <- ybdcheat[[i]]
 
-plot(ybdc$maize$heat)
-par(mfrow = c(1, 2))
-plot(ycost$maize$heat)
-plot(ycost$soy$heat)
-plot(ycost$both$heat)
-plot(bdc$both$heat)
+# plot(ybdc$maize$heat)
+# par(mfrow = c(1, 2))
+# plot(ycost$maize$heat)
+# plot(ycost$soy$heat)
+# plot(ycost$both$heat)
+# plot(bdc$both$heat)
+# save(ybdc, cbdc, ycost, bdc, file = fp(p_out, "mainresults1502.rda"))
+save(ybdc, ycost, bdc, file = fp(p_out, "mainresults1702.rda"))
+# load(fp(p_out, "mainresults1402.rda"))
+```
+
+## Figures
+
+How reconcilable are the different land use interests, and what would be the impacts of each?
+
+I am using the two crops combined approach because there is little overlap between the two.  
+
+### Figure 1
+```{r, eval = FALSE}
+# select out results for "pure" cases (weight = 1)
+pure <- sapply(cnames, function(x) which(round(ybdc$both$params[, x], 4) == 1))
+
+fnames <- imp_sorter(fp(p_out, ybdc$both$bcode), inds = pure, fullnames = TRUE)
+pure_r <- lapply(fnames, function(x) {  # x <- pure[1]
+  DT <- cbind(fread(x), basedt[, .(x, y, convertible)])
+  DTr <- dt_to_raster(DT, CRSobj)
+})
+# sapply(1:4, function(x) which(ps[, x] == 1))
+# sum across crops and multiply by convertible areas
+rs <- lapply(pure_r, function(x) calc(x[[1:2]], sum) * x[[3]])  # actual area
+rs2 <- lapply(pure_r, function(x) calc(x[[1:2]], sum))  # conv pixels
+# check
+# sapply(rs, function(x) cellStats(x, sum))
+# ybdc$both$optitab[ind %in% pure, Y]  # same, but C optimized out
+# sapply(rs2, function(x) cellStats(x, sum))
+# plot(pure_r[[3]])
+
+# figure out overlaps between different pure objectives
+pms <- expand.grid(rep(list(0:1), 4))[-1, ]  # logic grid
+rownames(pms) <- 1:15
+rs_over <- lapply(1:nrow(pms), function(x) {  # apply logic tests
+  (rs2[[1]] == pms[x, 1]) & (rs2[[2]] == pms[x, 2]) & (rs2[[3]] == pms[x, 3]) &     (rs2[[4]] == pms[x, 4])
+})
+rs_overs <- stack(rs_over)
+
+# legend to show class of overlap
+pms$leg <- c("Y", "C", "YC", "Bd", "YBd", "BdC", "YBdC", "Ct", 
+             "YCt", "CCt", "YCCt", "BdCt", "YBdCt", "CBdCt", 
+             "YCBdCt")
+
+# frequency of overlaps in different categories
+# sum(pms[c(1, 3, 5, 7, 9, 11, 13, 15), "hist"])
+pms$hist <- sapply(1:nlayers(rs_overs), function(x) {
+  round(cellStats(rs_overs[[x]] * pure_r[[1]]$convertible, sum), 1)
+})
+
+# legend color
+pms$col <- c("dodgerblue3", "goldenrod2", "tomato1", "yellow", 
+             rep("tomato1", 2), "red3", "deepskyblue1", rep("tomato1", 2),
+             rep("red3", 5))
+
+# recode with unique number for overlap class, collapse to RasterLayer, 
+# simplify classes for plotting
+rs_over_rc <- stack(lapply(1:length(rs_over), function(x) rs_over[[x]] * x))
+rs_over_rc <- calc(rs_over_rc, sum)
+# plot(rs_over_rc == 6)
+rclmat <- cbind(0:15, c(0, 1, 3, 5, 4, 5, 5, 6, 2, 5, 5, 6, 5, 6, 6, 6))
+leg2 <- c("Yield", "Cost", "Carbon", "Biodiversity", "2 overlap", "3+ overlap")
+rs_over_rc2 <- raster::reclassify(rs_over_rc, rclmat)
+
+# plot(1:2, pch = 20, cex = 3, col = c("yellow", "yellow2"))
+
+# For Panel B - impact statistics 
+bpath <- fp(p_out, ybdc$both$bcode)
+load(fp(bpath, "impacts_tab.rda"))  # get impacts table
+
+# select out corresponding impact statistics, summarize
+pure2 <- unlist(lapply(pure, function(x) c(x, x+1)))
+vars <- c("iter", "conv_area", "tot_C", "fpa_conv", "mu_cost", "rarity",
+          "priority",  "int_prior", "int_mean")
+conv_stats <- selected_impacts(pure, fp(p_out, ybdc$both$bcode))
+# conv_stats <- outtab[outtab$iter %in% pure, vars]
+# conv_stats <- data.frame(t(sapply(pure, function(x) {  # x <- pure[1]
+#   DF <- conv_stats[conv_stats$iter == x, ]
+#   c(colSums(DF[, 2:4]), 
+#     sapply(5:ncol(DF), function(y) weighted.mean(DF[, y], DF$conv_area)))
+# }))) 
+# colnames(conv_stats) <- vars[-1]
+
+# rescale for common plot
+svec <- c(100000, 10000000, 1000, 1, 0.1, 0.1, 0.1, 0.1)  # rescale factor
+conv_stats_n <- sweep(as.matrix(conv_stats)[, -1], MARGIN = 2, svec, "/")
+conv_stats_n <- conv_stats_n[, c(1, 4, 2, 6:ncol(conv_stats_n), 3)]
+
+# Plots
+# Panel A
+# cols <- RColorBrewer::brewer.pal(11, "RdYlBu")
+# cols <- colorspace::diverge_hsv(n = 11)
+# colsi <- sapply(c(0.5, 0.75, 1), function(x) rgb(1, 1, 0.9, alpha = x))
+cols <- c("dodgerblue3", "deepskyblue1", "goldenrod2", "yellow", "tomato1",
+          "red3")
+plot(1:6, pch = 20, cex = 3, col = cols)
+
+tiff(fp(p_figures, "single_priorities.tif"), height = 3, width = 8, 
+     units = "in", res = 300)
+par(mfrow = c(1, 3))
+imp_plot2(dtr = rs_over_rc2, impacts = i1, fpath = p_figures, 
+          fnm = "pure_overlap", cexscale = 0.6, ftitle = "", crops = leg2, 
+          stats = FALSE, cols = cols, hold = TRUE, marg = c(0, 0, 0, 0))
+
+# Panel B
+# totf <- cellStats(rs_over_rc > 0, sum)
+par(mar = c(7, 4, 2, 2))
+bp <- barplot(pms$hist / sum(pms$hist) * 100, ylim = c(0, 25), las = 2, 
+              col = pms$col, mgp = c(2, 0.25, 0), tcl = -0.2, 
+              ylab = "% converted area")
+axis(side = 1, at = bp, labels = pms$leg, las = 2, mgp = c(2, 0.25, 0), 
+     tcl = -0.2)
+# TeachingDemos::subplot( 
+#   bp <- barplot(pms$hist / sum(pms$hist) * 100, ylim = c(0, 25), las = 2, 
+#                 col = pms$col, mgp = c(2, 0.25, 0), tcl = -0.2, 
+#                 ylab = "% converted pixels", names.arg = pms$leg), 
+#   x=grconvertX(c(0.1,0.45), from='npc'),
+#   y=grconvertY(c(0.6,1), from='npc'),
+#   type='fig', pars=list(mar=c(3,3,0,0) + 0.1))
+
+
+# Panel C
+# barplot(conv_stats_n)
+blabs <- c("Area", "Time", "Carbon", "Priority", "Priority/intactness", 
+           "Intactness", "Forest reserves")
+# blabs <- sub(':', '\n', blabs)
+tlabs <- c(expression(10^5~"km"^2), "hours", expression(10^7~"tons"), 
+           rep("X10", 3), expression(10^3~"km"^2))
+bp <- barplot(conv_stats_n, beside = TRUE, ylim = c(0, 14), las = 2, 
+              col = pms$col[c(1, 2, 4, 8)], names.arg = rep("", length(blabs)), 
+              ylab = "Impact*", mgp = c(2, 0.25, 0), tcl = -0.2)
+text(x = bp[2, ] - 0.4, y = rep(-0.3, length(bp[1, ])), adj = 1, 
+     labels = blabs, xpd = NA, srt = 90)
+text(x = bp[3, ] + 0.4, y = rep(-0.3, length(bp[3, ])), adj = 1, 
+     labels = tlabs, xpd = NA, srt = 90, cex = 0.8)
+dev.off()
+
+  
+#### Need to redo pareto to pass in weighted mean function for all average 
+#### costs (DONE)
+
 
 ```
+
+## Figure 2 & 3 (probably supplemental)
+```{r, eval = FALSE}
+# yc_bdc_st <- as.matrix(stack(ycost$both$heat, bdc$both$heat) / 100)
+# yc_bdc_st <- stack(ycost$both$heat, ycost$both$heat * 0, bdc$both$heat) / 100
+# plot(ycost$both$heat > 1)
+# plotRGB(yc_bdc_st, r = 1, g = 2, b = 3, colNA = "transparent", scale = 1)
+# rgb(red = yc_bdc_st[, 1], rep(0, nrow(yc_bdc_st)), yc_bdc_st[, 2])
+# plot(ycost$both$heat)
+
+# individual maps
+png(full_path(p_figures, "all-4-maps.png"), height = 7, width = 7, 
+     units = "in", res = 300)
+par(mfrow = c(2, 2))#, oma = c(0, 0, 0, 2))
+ftitles <- c("Yield", "Carbon", "Biodiversity", "Cost")
+legp <- c(TRUE, rep(FALSE, 3))
+for(i in 1:4) {
+  dtr <- calc(pure_r[[i]][[1:2]] * c(1, 2), sum)
+  imp_plot2(dtr, impacts = i1, fpath = p_figures, fnm = "all-4-maps", 
+            cexscale = 0.6, ftitle = ftitles[i], crops = c("maize", "soy"), 
+            stats = FALSE, hold = TRUE, legend = legp[i], marg = c(0, 0, 2, 0))
+}
+dev.off()
+
+# heat maps
+implist <- list(ycost$both, bdc$both)
+load(full_path(set_base_path(), paste0("external/data/ZA/parks_roads.rda")))
+pacols <- c("transparent", "grey85", "grey75")
+png(full_path(p_figures, "ycost-bdc-heat.png"), height = 400, width = 900)
+par(mfrow = c(1, 2), oma = c(0, 0, 0, 2))
+for(i in 1:2) {
+  par(mar = c(1, 1, 1, 4))
+  plot(zambia, col = "grey90", border = "transparent")
+  ir <- implist[[i]]$heat
+  ir[ir == 0] <- NA
+  plot(ir, col = rev(heat.colors(20)), add = TRUE, )
+  plot(pas[pas@data$type == "gma", ], add = TRUE, col = pacols[2],
+       border = FALSE)
+  plot(pas[pas@data$type == "npark", ], add = TRUE, col = pacols[3],
+       border = FALSE)
+  plot(roads, add = TRUE, lwd = 0.1, col = "grey")
+}
+dev.off()
+
+
+```
+
+## Figure 4
+
+Value of just a bit of compromise
+
+```{r, eval = FALSE}
+p <- data.frame(ybdc$both$params)
+outtab[1, ]
+p[, c("Y", "C", "BD" ,"COST")] <- round(p[, c("Y", "C", "BD" ,"COST")], 2)
+# scens <- list(c(0.9, 0.05, 0.05, 0), 
+#               c(0.85, 0.05, 0.05, 0.05), 
+#               c(0.1, 0.45, 0.45, 0.0), 
+#               c(0.05, 0.45, 0.45, 0.05))
+scens <- lapply(c(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9), function(x) {
+  c(1 - x, rep(x / 2, 2), 0)
+})
+# scens <- lapply(c(0, 0.15, 0.3, 0.45, 0.6, 0.75), function(x) {
+#   c(1 - x, rep(x / 3, 3))
+# })
+pind <- sapply(scens, function(x) {
+  x <- round(x, 2)
+  which(p$Y == x[1] & p$C == x[2] & p$BD == x[3] & p$COST == x[4])
+})
+
+# select out impacts corresponding to those runs
+cstats <- selected_impacts(pind, p_out, ybdc$both$bcode)
+
+# check on selection
+# il <- input_handler(p_moddat, crops[[1]])
+# chk <- tradeoff_mod(targ, ybdc$both$params[pind[5], 7:10], 
+#                     currprodmod = g, exist_list = il)
+# DF <- data.frame(chk$impacts)
+# outtab[outtab$iter == pind[5], -2]
+# round(c(colSums(DF[, 2:4]),
+#         sapply(5:ncol(DF), function(z) weighted.mean(DF[, z], DF$conv_area))), 
+#       2)
+# cstats[5, ]
+outtab[outtab$iter == pind[5], ]
+outtab[, 1:4][1:100,]
+
+fnames <- dir(bpath, pattern = "csv")
+fnames[pind[5]]
+
+# calculate max impacts across both crops, and figure out the impact range, 
+# and what percent that is relative to the worst case
+allstats <- selected_impacts(1:nrow(p), p_out, ybdc$both$bcode)
+minmaxstats <- allstats[, lapply(.SD, range)]
+imp_range <- minmaxstats[, lapply(.SD, diff)]  # difference between best/worst
+pct_of_tot <- minmaxstats[, lapply(.SD, function(x) diff(x) / max(x))]
+
+
+dfunc <- function(x, y) 100 - y / x * 100
+stnms <- names(cstats)[-1]
+imp_pct <- cstats[, lapply(stnms, function(x) {
+  dfunc(minmaxstats[[x]][2], get(x))
+})]
+setnames(imp_pct, stnms)
+
+plot(imp_pct$tot_C, imp_pct$conv_area, type = "l", xlab = "", ylab = "", 
+     axes = FALSE)        # xaxs = "r", yaxs = "r")
+
+sctab <- do.call(rbind, scens) * 100
+cx <- 0.7
+lcols <- c("black", "red", "blue")
+imp_pct[, {
+  png(fp(p_figures, "weight_impact.png"), height = 4, width = 4, 
+      units = "in", res = 300)
+  par(mgp = c(2, 0.75, 0), mar = c(3, 3, 1, 1))
+  plot(conv_area, tot_C, type = "l", xlab = "", ylab = "", #xaxt = "n", 
+       axes = FALSE, ylim = c(0, 65), xlim = c(2, 12))#, xaxs = "r", yaxs = "r")
+  lines(conv_area, int_prior, col = "red")
+  lines(conv_area, mu_cost, col = "blue")
+  axis(1, at = seq(2, 12, 1), cex = cx, cex.axis = cx, line = -0.25, 
+       tcl = -0.2, mgp = c(1, 0.25, 0))
+  axis(2, at = seq(0, 60, 5), las = 2, cex = cx, cex.axis = cx, line = -0.25, 
+       tcl = -0.15, mgp = c(1, 0.25, 0))
+  mtext("% land savings", side = 1, line = 1, cex = cx)
+  mtext("% Carbon/Biodiv/Cost savings", side = 2, line = 1, cex = cx)
+  inms <- c("tot_C", "int_prior", "mu_cost")
+  for(i in 1:length(inms)) {
+    text(conv_area[-1], get(inms[i])[-1], labels = sctab[-1, i + 1], 
+         cex = cx * 0.8, pos = 3, offset = 0.2, col = lcols[i])
+    text(conv_area[1] + 0.1, i, labels = 0, cex = cx * 0.8, pos = 3, 
+         offset = i * 0.15 - 0.2, col = lcols[i])
+  }
+  legend("bottomleft", legend = c("Carbon", "Biodiv", "Cost"), cex = cx,
+         text.col = lcols, col = lcols, bty = "n", lty = 1)
+  dev.off()
+}]
+
+scens_r <- lapply(pind, function(x) {  # x <- pind[[1]]
+  print(x)
+  inm <- paste0(outtab[outtab$iter == x, "rc"][1], ".csv")
+  fpath <- fp(fp(p_out, ybdc$both$bcode), inm)
+  # fname <- dir(bpath, pattern = "csv", full.names = TRUE)[x]
+  DT <- cbind(fread(fpath), basedt[, .(x, y, convertible)])
+  DTr <- dt_to_raster(DT, CRSobj)
+})
+
+scens_rs2 <- lapply(scens_r, function(x) calc(stack(x[[1:2]]), sum))
+# freq((rs2$Y + scens_rs2[[1]]) * scens_r[[1]]$convertible
+# plot(scens_rs2[[1]] + scens_rs2[[2]])
+
+# round(sapply(scens_rs2, function(x) {
+#   cellStats(x * scens_r[[1]]$convertible * 100, sum)
+# }))
+# cstats$conv_area
+
+# pms <- list(c(1, 2), c(1, 3), c(1, 4), c(1, 5))
+# pms <- expand.grid(rep(list(0:1), 5))[-1, ]  # logic grid
+
+# rasters showing overlap as weight is progressively put on C and BD
+scens_over <- lapply(2:6, function(x) scens_rs2[[1]] + scens_rs2[[x]] * 2)
+
+# overlap areas
+scens_over_a <- sapply(1:length(scens_over), function(x) { # x <- 4
+  sapply(1:3, function(y) {  # y <- 3
+    r <- scens_over[[x]] == y
+    # plot(r)
+    round(cellStats(r * scens_r[[1]]$convertible, sum), 1)
+  })
+})
+sum(scens_over_a[c(2, 3), 4])
+# over_cols <- sapply(seq(0, 0.4, 0.1), function(x) rgb(1 - x, 0, x))
+# par(mar = c(0, 0, 0, 0))
+# plot(1:3, pch = 20, col = rgb(1, 0, 1))
+# plot(zambia)
+
+cols <- c("grey", c(rgb(0, 1, 0), rgb(0, 0, 1), rgb(1, 0, 1)))
+ftits <- c("Y=0.9")
+par(mfrow = c(1, 4))
+for(i in 1:4) {
+  plot(zambia)
+  imp_plot2(scens_over[[i]], impacts = i1, fpath = p_figures, fnm = "bob", 
+            col = cols, add = TRUE, 
+            legend = FALSE)
+}
+plot(scens_over[[1]], col = c("transparent", over_cols[[5]]))
+plot(scens_rs2[[1]])
+plot(scens_over[[4]])
+plot(calc(stack(scens_over), sum))
+
+plot(calc(stack(scens_rs2[2:4]), sum))
+
+
+
+
+ybdc$both$optimal[, {
+  par(mfrow = c(2, 2), mar = rep(3, 4))
+  hist(.SD, axes = FALSE, labels = FALSE)
+}, .SDcol = 1:4]
+
+frange <- function(x) diff(range(x)) / max(x)
+fqtile <- function(x) diff(quantile(x, probs = c(0.025, 0.975))) / max(x) 
+ybdc$both$optimal[, lapply(.SD, frange), .SDcol = 1:4]
+ybdc$both$optimal[, lapply(.SD, fqtile), .SDcol = 1:4]
+
+hist(ybdc$both$optimal$Y)
+
+```
+
 
