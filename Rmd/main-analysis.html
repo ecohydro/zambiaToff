@@ -93,8 +93,10 @@ img {
 </ul></li>
 <li><a href="#figures"><span class="toc-section-number">1.3</span> Figures</a><ul>
 <li><a href="#figure-1"><span class="toc-section-number">1.3.1</span> Figure 1</a></li>
+<li><a href="#figures-2-3-probably-supplemental"><span class="toc-section-number">1.3.2</span> Figures 2 &amp; 3 (probably supplemental)</a></li>
+<li><a href="#figures-4-main-and-5-probably-supplemental"><span class="toc-section-number">1.3.3</span> Figures 4 (main) and 5 (probably supplemental)</a></li>
+<li><a href="#figure-6"><span class="toc-section-number">1.3.4</span> Figure 6</a></li>
 </ul></li>
-<li><a href="#section"><span class="toc-section-number">1.4</span> </a></li>
 </ul></li>
 </ul>
 </div>
@@ -124,6 +126,7 @@ zamroads &lt;-<span class="st"> </span><span class="kw">readOGR</span>(<span cla
 roads &lt;-<span class="st"> </span>zamroads
 <span class="kw">save</span>(pas, roads, zambia, 
      <span class="dt">file =</span> <span class="kw">full_path</span>(p_mod, <span class="st">&quot;external/data/ZA/parks_roads.rda&quot;</span>))</code></pre>
+<p><a href="#top">Back to top</a></p>
 <div id="demand" class="section level2">
 <h2><span class="header-section-number">1.1</span> Demand</h2>
 <p>Following the example of Gasparri et al (2015), who report demand and area planted trends for soybean in Southern Africa (9 countries) between 2000-2013, we use the production trends for both maize and soybean for the periods for 2000-2014 to calculate scenario for production increases by extrapolating linearly from recent trends in production for each crop between 2014 and 2050. We took an average of both the 2000-2014 as well as the 2005-2014 trends, which show larger rates of gain, which may reflect the more recent agricultural development interests (cite).</p>
@@ -174,6 +177,7 @@ allrates &lt;-<span class="st"> </span><span class="kw">rbind</span>(<span class
 <span class="kw">round</span>(<span class="kw">colMeans</span>(allrates[<span class="kw">c</span>(<span class="dv">2</span>, <span class="dv">4</span>), ]), <span class="dv">1</span>)  ## by production
 <span class="kw">round</span>(<span class="kw">colMeans</span>(allrates[<span class="kw">c</span>(<span class="dv">1</span>, <span class="dv">3</span>), ]), <span class="dv">1</span>)  ## by area harvested
 <span class="kw">round</span>(<span class="kw">colMeans</span>(allrates), <span class="dv">1</span>)  ## averaged across production and area harvested</code></pre>
+<p><a href="#top">Back to top</a></p>
 <div id="yield-gap-closure-on-existing-land" class="section level3">
 <h3><span class="header-section-number">1.1.1</span> Yield gap closure on existing land</h3>
 <p>We use the production based target as our potential scenario for Zambia. Next is to factor in an assumption for how much demand will be met by closing current yield gaps</p>
@@ -198,6 +202,7 @@ g &lt;-<span class="st"> </span><span class="kw">gapper</span>(cp, <span class="
 targ &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;maize&quot;</span> =<span class="st"> </span><span class="dv">3</span>, <span class="st">&quot;soy&quot;</span> =<span class="st"> </span><span class="dv">9</span>)
 <span class="co"># targ &lt;- c(&quot;maize&quot; = 3.2, &quot;soy&quot; = 8.7)</span>
 targs &lt;-<span class="st"> </span><span class="kw">targets</span>(targ, cp, g)</code></pre>
+<p><a href="#top">Back to top</a></p>
 </div>
 </div>
 <div id="tradeoff-runs" class="section level2">
@@ -237,65 +242,69 @@ i1 &lt;-<span class="st"> </span><span class="kw">rbind</span>(mzto$impacts, soy
 crops &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;maize&quot;</span>, <span class="st">&quot;soy&quot;</span>, <span class="st">&quot;maize/soy&quot;</span>)
 <span class="co"># plot(1:10, pch = 20, cex = 4, col = &quot;gold2&quot;)</span>
 <span class="co"># plot(mzsoyr, col = c(&quot;grey&quot;, &quot;goldenrod&quot;, &quot;green4&quot;, &quot;orange&quot;))</span>
-<span class="kw">imp_plot2</span>(mzsoyr, i1, p_figures, <span class="st">&quot;ideal_yield2&quot;</span>, <span class="st">&quot;&quot;</span>, crops, <span class="ot">TRUE</span>, 
-         <span class="kw">c</span>(<span class="st">&quot;gold2&quot;</span>, <span class="st">&quot;green3&quot;</span>, <span class="st">&quot;orange&quot;</span>))</code></pre>
+<span class="kw">imp_plot2</span>(mzsoyr, i1, p_figures, <span class="st">&quot;ideal_yield&quot;</span>, <span class="st">&quot;&quot;</span>, crops, <span class="dv">1</span>, <span class="ot">TRUE</span>, 
+         <span class="kw">c</span>(<span class="st">&quot;gold2&quot;</span>, <span class="st">&quot;green3&quot;</span>, <span class="st">&quot;orange&quot;</span>))
+
+basedt &lt;-<span class="st"> </span>soyto$inputs$mask</code></pre>
+<p><a href="#top">Back to top</a></p>
 </div>
 <div id="best-areas-for-other-three-factors" class="section level3">
 <h3><span class="header-section-number">1.2.2</span> Best Areas for Other Three Factors</h3>
-<pre class="sourceCode r"><code class="sourceCode r">basedt &lt;-<span class="st"> </span>soyto$inputs$mask
-ybl &lt;-<span class="st"> </span><span class="kw">list</span>(yb1 &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="dv">1</span>, <span class="dv">1</span>))
-step &lt;-<span class="st"> </span><span class="fl">0.05</span>
-cnames &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;C&quot;</span>, <span class="st">&quot;BD&quot;</span>, <span class="st">&quot;COST&quot;</span>)
-ps &lt;-<span class="st"> </span><span class="kw">round</span>(<span class="kw">do.call</span>(rbind, <span class="kw">pareto_steps</span>(cnames, step)), <span class="dv">2</span>); <span class="kw">head</span>(ps)
-Yv =<span class="st"> &quot;conv_area&quot;</span>; Cv =<span class="st"> &quot;tot_C&quot;</span>; <span class="co">#BDv = &quot;int_prior&quot;; COSTv = &quot;mu_cost&quot;</span>
-BDv =<span class="st"> </span><span class="kw">c</span>(Yv, <span class="st">&quot;int_prior&quot;</span>); COSTv =<span class="st"> </span><span class="kw">c</span>(Yv, <span class="st">&quot;mu_cost&quot;</span>)
-wmu &lt;-<span class="st"> </span>function(x, <span class="dt">na.rm =</span> na.rm) {
-  <span class="kw">weighted.mean</span>(<span class="dt">x =</span> x[, <span class="dv">2</span>], <span class="dt">w =</span> x[, <span class="dv">1</span>], <span class="dt">na.rm =</span> na.rm)
-}
-<span class="co"># Yst = sum; Cst = sum; BDst = mean; COSTst = mean</span>
-Yst =<span class="st"> </span>sum; Cst =<span class="st"> </span>sum; BDst =<span class="st"> </span>wmu; COSTst =<span class="st"> </span>wmu
-
-<span class="co"># crops &lt;- list(&quot;maize&quot;, &quot;soy&quot;, c(&quot;maize&quot;, &quot;soy&quot;))</span>
-crops &lt;-<span class="st"> </span><span class="kw">list</span>(<span class="kw">c</span>(<span class="st">&quot;maize&quot;</span>, <span class="st">&quot;soy&quot;</span>))
-<span class="co"># croplnms &lt;- list(&quot;maize&quot;, &quot;soy&quot;, &quot;both&quot;)</span>
-croplnms &lt;-<span class="st"> </span><span class="kw">list</span>(<span class="st">&quot;both&quot;</span>)
-<span class="co"># lapply(crops, function(x) targ[x])</span>
-<span class="co"># lapply(crops, function(x) g[x])</span>
-cbdc &lt;-<span class="st"> </span><span class="kw">lapply</span>(crops, function(x) {
-  a &lt;-<span class="st"> </span><span class="kw">Sys.time</span>()
-  <span class="kw">print</span>(<span class="kw">paste</span>(<span class="st">&quot;Starting run for&quot;</span>, x, <span class="st">&quot;at&quot;</span>, a))
-  otab &lt;-<span class="st"> </span><span class="kw">pareto</span>(cnames, <span class="dt">step =</span> step, <span class="dt">prod_targ =</span> targ[x], 
-                 <span class="dt">yblist =</span> ybl, <span class="dt">currprodmod =</span> g[x], <span class="dt">input_key =</span> <span class="st">&quot;ZA&quot;</span>, 
-                 <span class="dt">Yv =</span> Yv, <span class="dt">Cv =</span> Cv, <span class="dt">BDv =</span> BDv, <span class="dt">COSTv =</span> COSTv, <span class="dt">Yst =</span> Yst, 
-                 <span class="dt">Cst =</span> Cst, <span class="dt">BDst =</span> BDst, <span class="dt">COSTst =</span> COSTst, <span class="dt">todisk =</span> <span class="ot">TRUE</span>, 
-                 <span class="dt">silent =</span> <span class="ot">FALSE</span>, <span class="dt">ncl =</span> <span class="dv">7</span>)
-  <span class="kw">load</span>(<span class="kw">fp</span>(p_out, <span class="st">&quot;bcode.rda&quot;</span>))
-  heatr &lt;-<span class="st"> </span><span class="kw">heat</span>(<span class="kw">fp</span>(p_out, bcode), basedt, <span class="dt">todisk =</span> <span class="ot">TRUE</span>) 
-  <span class="kw">print</span>(<span class="kw">Sys.time</span>() -<span class="st"> </span>a)
-  <span class="kw">c</span>(<span class="st">&quot;bcode&quot;</span> =<span class="st"> </span>bcode, otab, <span class="st">&quot;heat&quot;</span> =<span class="st"> </span>heatr)
-})
-<span class="kw">names</span>(cbdc) &lt;-<span class="st"> </span>croplnms
-
-<span class="co"># cbdc &lt;- lapply(&quot;ZA_20160215_071436_1558_16149&quot;, function(x) {</span>
-<span class="co">#   bpath &lt;- fp(p_out, x)</span>
-<span class="co">#   load(fp(bpath, &quot;impacts_tab.rda&quot;))</span>
-<span class="co">#   inlist &lt;- lapply(unique(outtab$iter), function(x) {</span>
-<span class="co">#     outtab[outtab$iter == x, ]</span>
-<span class="co">#   })</span>
-<span class="co">#   # load(fp(bpath, &quot;optitab.rda&quot;))</span>
-<span class="co">#   optimal &lt;- batch_stat(inlist, Yv = Yv, Cv = Cv, BDv = BDv, COSTv = COSTv, </span>
-<span class="co">#                         Yst = Yst, Cst = Cst, BDst = BDst, COSTst = COSTst)</span>
-<span class="co">#   save(optimal, file = fp(bpath, &quot;optitab.rda&quot;))</span>
-<span class="co">#   load(fp(bpath, &quot;parms.rda&quot;))</span>
-<span class="co">#   heatr &lt;- heat2(fp(p_out, x), basedt, todisk = TRUE, overwrite = TRUE) </span>
-<span class="co">#   list(&quot;bcode&quot; = x, &quot;optimal&quot; = optimal, &quot;params&quot; = parms, &quot;heat&quot; = heatr)</span>
+<p>Switch off for now</p>
+<pre class="sourceCode r"><code class="sourceCode r"><span class="co"># ybl &lt;- list(yb1 &lt;- c(1, 1))</span>
+<span class="co"># step &lt;- 0.05</span>
+<span class="co"># cnames &lt;- c(&quot;C&quot;, &quot;BD&quot;, &quot;COST&quot;)</span>
+<span class="co"># ps &lt;- round(do.call(rbind, pareto_steps(cnames, step)), 2); head(ps)</span>
+<span class="co"># Yv = &quot;conv_area&quot;; Cv = &quot;tot_C&quot;; #BDv = &quot;int_prior&quot;; COSTv = &quot;mu_cost&quot;</span>
+<span class="co"># BDv = c(Yv, &quot;int_prior&quot;); COSTv = c(Yv, &quot;mu_cost&quot;)</span>
+<span class="co"># wmu &lt;- function(x, na.rm = na.rm) {</span>
+<span class="co">#   weighted.mean(x = x[, 2], w = x[, 1], na.rm = na.rm)</span>
+<span class="co"># }</span>
+<span class="co"># # Yst = sum; Cst = sum; BDst = mean; COSTst = mean</span>
+<span class="co"># Yst = sum; Cst = sum; BDst = wmu; COSTst = wmu</span>
+<span class="co"># </span>
+<span class="co"># # crops &lt;- list(&quot;maize&quot;, &quot;soy&quot;, c(&quot;maize&quot;, &quot;soy&quot;))</span>
+<span class="co"># crops &lt;- list(c(&quot;maize&quot;, &quot;soy&quot;))</span>
+<span class="co"># # croplnms &lt;- list(&quot;maize&quot;, &quot;soy&quot;, &quot;both&quot;)</span>
+<span class="co"># croplnms &lt;- list(&quot;both&quot;)</span>
+<span class="co"># # lapply(crops, function(x) targ[x])</span>
+<span class="co"># # lapply(crops, function(x) g[x])</span>
+<span class="co"># cbdc &lt;- lapply(crops, function(x) {</span>
+<span class="co">#   a &lt;- Sys.time()</span>
+<span class="co">#   print(paste(&quot;Starting run for&quot;, x, &quot;at&quot;, a))</span>
+<span class="co">#   otab &lt;- pareto(cnames, step = step, prod_targ = targ[x], </span>
+<span class="co">#                  yblist = ybl, currprodmod = g[x], input_key = &quot;ZA&quot;, </span>
+<span class="co">#                  Yv = Yv, Cv = Cv, BDv = BDv, COSTv = COSTv, Yst = Yst, </span>
+<span class="co">#                  Cst = Cst, BDst = BDst, COSTst = COSTst, todisk = TRUE, </span>
+<span class="co">#                  silent = FALSE, ncl = 7)</span>
+<span class="co">#   load(fp(p_out, &quot;bcode.rda&quot;))</span>
+<span class="co">#   heatr &lt;- heat(fp(p_out, bcode), basedt, todisk = TRUE) </span>
+<span class="co">#   print(Sys.time() - a)</span>
+<span class="co">#   c(&quot;bcode&quot; = bcode, otab, &quot;heat&quot; = heatr)</span>
 <span class="co"># })</span>
 <span class="co"># names(cbdc) &lt;- croplnms</span>
-
-<span class="co"># check for datasets where certain weights were removed from contention</span>
-<span class="co"># clength &lt;- t(sapply(cbdc, function(x) c(nrow(x$params), nrow(x$optitab))))</span>
-<span class="co"># cbdcmz &lt;- heat2(cbdc$maize, fp(p_out, cbdc$maize$bcode), basedt, todisk = TRUE)</span>
-<span class="co"># cbdc$maize$heat &lt;- cbdcmz</span></code></pre>
+<span class="co"># </span>
+<span class="co"># # cbdc &lt;- lapply(&quot;ZA_20160215_071436_1558_16149&quot;, function(x) {</span>
+<span class="co"># #   bpath &lt;- fp(p_out, x)</span>
+<span class="co"># #   load(fp(bpath, &quot;impacts_tab.rda&quot;))</span>
+<span class="co"># #   inlist &lt;- lapply(unique(outtab$iter), function(x) {</span>
+<span class="co"># #     outtab[outtab$iter == x, ]</span>
+<span class="co"># #   })</span>
+<span class="co"># #   # load(fp(bpath, &quot;optitab.rda&quot;))</span>
+<span class="co"># #   optimal &lt;- batch_stat(inlist, Yv = Yv, Cv = Cv, BDv = BDv, COSTv = COSTv, </span>
+<span class="co"># #                         Yst = Yst, Cst = Cst, BDst = BDst, COSTst = COSTst)</span>
+<span class="co"># #   save(optimal, file = fp(bpath, &quot;optitab.rda&quot;))</span>
+<span class="co"># #   load(fp(bpath, &quot;parms.rda&quot;))</span>
+<span class="co"># #   heatr &lt;- heat2(fp(p_out, x), basedt, todisk = TRUE, overwrite = TRUE) </span>
+<span class="co"># #   list(&quot;bcode&quot; = x, &quot;optimal&quot; = optimal, &quot;params&quot; = parms, &quot;heat&quot; = heatr)</span>
+<span class="co"># # })</span>
+<span class="co"># # names(cbdc) &lt;- croplnms</span>
+<span class="co"># </span>
+<span class="co"># # check for datasets where certain weights were removed from contention</span>
+<span class="co"># # clength &lt;- t(sapply(cbdc, function(x) c(nrow(x$params), nrow(x$optitab))))</span>
+<span class="co"># # cbdcmz &lt;- heat2(cbdc$maize, fp(p_out, cbdc$maize$bcode), basedt, todisk = TRUE)</span>
+<span class="co"># # cbdc$maize$heat &lt;- cbdcmz</span></code></pre>
+<p><a href="#top">Back to top</a></p>
 </div>
 <div id="conservation-interests-versus-agricultural-interests" class="section level3">
 <h3><span class="header-section-number">1.2.3</span> Conservation interests versus agricultural interests</h3>
@@ -304,6 +313,15 @@ step &lt;-<span class="st"> </span><span class="fl">0.02</span>
 cnames &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;Y&quot;</span>, <span class="st">&quot;COST&quot;</span>)
 ps &lt;-<span class="st"> </span><span class="kw">round</span>(<span class="kw">do.call</span>(rbind, <span class="kw">pareto_steps</span>(cnames, step)), <span class="dv">2</span>)
 <span class="co"># ps[which(rowSums(ps[, c(1, 3)]) == 0), ]</span>
+Yv =<span class="st"> &quot;conv_area&quot;</span>; Cv =<span class="st"> &quot;tot_C&quot;</span>
+BDv =<span class="st"> </span><span class="kw">c</span>(Yv, <span class="st">&quot;int_prior&quot;</span>); COSTv =<span class="st"> </span><span class="kw">c</span>(Yv, <span class="st">&quot;mu_cost&quot;</span>)
+wmu &lt;-<span class="st"> </span>function(x, <span class="dt">na.rm =</span> na.rm) {
+  <span class="kw">weighted.mean</span>(<span class="dt">x =</span> x[, <span class="dv">2</span>], <span class="dt">w =</span> x[, <span class="dv">1</span>], <span class="dt">na.rm =</span> na.rm)
+}
+Yst =<span class="st"> </span>sum; Cst =<span class="st"> </span>sum; BDst =<span class="st"> </span>wmu; COSTst =<span class="st"> </span>wmu
+
+crops &lt;-<span class="st"> </span><span class="kw">list</span>(<span class="kw">c</span>(<span class="st">&quot;maize&quot;</span>, <span class="st">&quot;soy&quot;</span>))
+croplnms &lt;-<span class="st"> </span><span class="kw">list</span>(<span class="st">&quot;both&quot;</span>)
 
 ycost &lt;-<span class="st"> </span><span class="kw">lapply</span>(crops, function(x) {
   a &lt;-<span class="st"> </span><span class="kw">Sys.time</span>()
@@ -319,6 +337,20 @@ ycost &lt;-<span class="st"> </span><span class="kw">lapply</span>(crops, functi
   <span class="kw">c</span>(<span class="st">&quot;bcode&quot;</span> =<span class="st"> </span>bcode, otab, <span class="st">&quot;heat&quot;</span> =<span class="st"> </span>heatr)
 })
 <span class="kw">names</span>(ycost) &lt;-<span class="st"> </span>croplnms
+<span class="co"># plot(ycost$both$optitab$Y, ycost$both$optitab$COST)</span>
+
+<span class="co"># fix because ran with heat2 not yet adjusted for improperly ordered csv files</span>
+ycostfix &lt;-<span class="st"> </span><span class="kw">lapply</span>(ycost, function(x) {  <span class="co"># x &lt;- ycost$both</span>
+  if(<span class="kw">nrow</span>(x$params) &gt;<span class="st"> </span><span class="kw">nrow</span>(x$optitab)) {
+    <span class="kw">print</span>(<span class="kw">paste</span>(<span class="st">&quot;fixing heat map for&quot;</span>, x$bcode))
+    heatfix &lt;-<span class="st"> </span><span class="kw">heat2</span>(<span class="kw">fp</span>(p_out, x$bcode), basedt, <span class="ot">TRUE</span>, <span class="ot">TRUE</span>)
+  } else {
+    heatfix &lt;-<span class="st"> </span><span class="ot">NULL</span>
+  }
+  heatfix
+})
+for(i in <span class="dv">1</span>:<span class="kw">length</span>(ycost)) ycost[[i]]$heat &lt;-<span class="st"> </span>ycostfix[[i]]
+
 
 <span class="co"># ycost &lt;- lapply(&quot;ZA_20160215_072118_1558_04246&quot;, function(x) {</span>
 <span class="co">#   bpath &lt;- fp(p_out, x)</span>
@@ -334,7 +366,7 @@ ycost &lt;-<span class="st"> </span><span class="kw">lapply</span>(crops, functi
 <span class="co">#   list(&quot;bcode&quot; = x, &quot;optimal&quot; = optimal, &quot;params&quot; = parms, &quot;heat&quot; = heatr)</span>
 <span class="co"># })</span>
 <span class="co"># names(ycost) &lt;- croplnms</span>
-clength &lt;-<span class="st"> </span><span class="kw">t</span>(<span class="kw">sapply</span>(ycost, function(x) <span class="kw">c</span>(<span class="kw">nrow</span>(x$params), <span class="kw">nrow</span>(x$optitab))))
+<span class="co"># clength &lt;- t(sapply(ycost, function(x) c(nrow(x$params), nrow(x$optitab))))</span>
 
 cnames &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;C&quot;</span>, <span class="st">&quot;BD&quot;</span>)
 bdc &lt;-<span class="st"> </span><span class="kw">lapply</span>(crops, function(x) {
@@ -346,19 +378,33 @@ bdc &lt;-<span class="st"> </span><span class="kw">lapply</span>(crops, function
                   <span class="dt">Cst =</span> Cst, <span class="dt">BDst =</span> BDst, <span class="dt">COSTst =</span> COSTst, <span class="dt">todisk =</span> <span class="ot">TRUE</span>, 
                   <span class="dt">silent =</span> <span class="ot">FALSE</span>, <span class="dt">ncl =</span> <span class="dv">7</span>)
   <span class="kw">load</span>(<span class="kw">fp</span>(p_out, <span class="st">&quot;bcode.rda&quot;</span>))
-  heatr &lt;-<span class="st"> </span><span class="kw">heat2</span>(<span class="kw">fp</span>(p_out, bcode), basedt, <span class="dt">todisk =</span> <span class="ot">TRUE</span>) 
+  <span class="co"># heatr &lt;- heat2(fp(p_out, bcode), basedt, todisk = TRUE) </span>
   <span class="kw">print</span>(<span class="kw">Sys.time</span>() -<span class="st"> </span>a)
   <span class="kw">c</span>(<span class="st">&quot;bcode&quot;</span> =<span class="st"> </span>bcode, otab, <span class="st">&quot;heat&quot;</span> =<span class="st"> </span>heatr)
 })
 <span class="kw">names</span>(bdc) &lt;-<span class="st"> </span>croplnms
+
+<span class="co"># fix because ran with heat2 not yet adjusted for improperly ordered csv files</span>
+bdcfix &lt;-<span class="st"> </span><span class="kw">lapply</span>(bdc, function(x) {  <span class="co"># x &lt;- ycost$both</span>
+  if(<span class="kw">nrow</span>(x$params) &gt;<span class="st"> </span><span class="kw">nrow</span>(x$optitab)) {
+    <span class="kw">print</span>(<span class="kw">paste</span>(<span class="st">&quot;fixing heat map for&quot;</span>, x$bcode))
+    heatfix &lt;-<span class="st"> </span><span class="kw">heat2</span>(<span class="kw">fp</span>(p_out, x$bcode), basedt, <span class="ot">TRUE</span>, <span class="ot">TRUE</span>)
+  } else {
+    heatfix &lt;-<span class="st"> </span><span class="ot">NULL</span>
+  }
+  heatfix
+})
+for(i in <span class="dv">1</span>:<span class="kw">length</span>(bdc)) bdc[[i]]$heat &lt;-<span class="st"> </span>bdcfix[[i]]
+
+<span class="co"># plot(bdc$both$optitab$C, bdc$both$optitab$BD)</span>
 <span class="co"># bdc3 &lt;- c(bdc, bdc2)  # vestiges to show I forgot to do maize soy case</span>
 <span class="co"># bdc &lt;- bdc3</span>
 
-<span class="co"># Fix pareto tab</span>
-<span class="kw">load</span>(<span class="kw">fp</span>(<span class="kw">fp</span>(p_out, bdc$both$bcode), <span class="st">&quot;impacts_tab.rda&quot;</span>))
-inlist &lt;-<span class="st"> </span><span class="kw">lapply</span>(<span class="kw">unique</span>(outtab$iter), function(x) outtab[outtab$iter ==<span class="st"> </span>x, ])
-outtabf &lt;-<span class="st"> </span><span class="kw">batch_stat</span>(inlist, <span class="dt">Yv =</span> Yv, <span class="dt">Cv =</span> Cv, <span class="dt">BDv =</span> BDv, <span class="dt">COSTv =</span> COSTv, 
-                      <span class="dt">Yst =</span> Yst, <span class="dt">Cst =</span> Cst, <span class="dt">BDst =</span> BDst, <span class="dt">COSTst =</span> COSTst)
+<span class="co"># # Fix pareto tab</span>
+<span class="co"># load(fp(fp(p_out, bdc$both$bcode), &quot;impacts_tab.rda&quot;))</span>
+<span class="co"># inlist &lt;- lapply(unique(outtab$iter), function(x) outtab[outtab$iter == x, ])</span>
+<span class="co"># outtabf &lt;- batch_stat(inlist, Yv = Yv, Cv = Cv, BDv = BDv, COSTv = COSTv, </span>
+<span class="co">#                       Yst = Yst, Cst = Cst, BDst = BDst, COSTst = COSTst)</span>
 
 <span class="co"># bdcfix &lt;- lapply(bdc, function(x) {  # x &lt;- bdc$maize</span>
 <span class="co">#   if(nrow(x$params) &gt; nrow(x$optitab)) {</span>
@@ -387,7 +433,9 @@ outtabf &lt;-<span class="st"> </span><span class="kw">batch_stat</span>(inlist,
 <span class="co"># })</span>
 <span class="co"># names(bdc) &lt;- croplnms</span>
 
-<span class="kw">save</span>(cbdc, ycost, bdc, <span class="dt">file =</span> <span class="kw">fp</span>(p_out, <span class="st">&quot;mainresults1402.rda&quot;</span>))</code></pre>
+<span class="co"># save(cbdc, ycost, bdc, file = fp(p_out, &quot;mainresults1402.rda&quot;))</span>
+<span class="kw">save</span>(ycost, bdc, <span class="dt">file =</span> <span class="kw">fp</span>(p_out, <span class="st">&quot;mainresults1702.rda&quot;</span>))</code></pre>
+<p><a href="#top">Back to top</a></p>
 </div>
 <div id="all-4-together" class="section level3">
 <h3><span class="header-section-number">1.2.4</span> All 4 together</h3>
@@ -403,11 +451,23 @@ ybdc &lt;-<span class="st"> </span><span class="kw">lapply</span>(crops, functio
                   <span class="dt">Cst =</span> Cst, <span class="dt">BDst =</span> BDst, <span class="dt">COSTst =</span> COSTst, <span class="dt">todisk =</span> <span class="ot">TRUE</span>, 
                   <span class="dt">silent =</span> <span class="ot">FALSE</span>, <span class="dt">ncl =</span> <span class="dv">7</span>)
   <span class="kw">load</span>(<span class="kw">fp</span>(p_out, <span class="st">&quot;bcode.rda&quot;</span>))
-  heatr &lt;-<span class="st"> </span><span class="kw">heat</span>(<span class="kw">fp</span>(p_out, bcode), basedt, <span class="dt">todisk =</span> <span class="ot">TRUE</span>) 
+  <span class="co"># heatr &lt;- heat(fp(p_out, bcode), basedt, todisk = TRUE) </span>
   <span class="kw">print</span>(<span class="kw">Sys.time</span>() -<span class="st"> </span>a)
   <span class="kw">c</span>(<span class="st">&quot;bcode&quot;</span> =<span class="st"> </span>bcode, otab) <span class="co">#, &quot;heat&quot; = heatr)</span>
 })
 <span class="kw">names</span>(ybdc) &lt;-<span class="st"> </span>croplnms
+
+<span class="co"># fix because ran with heat2 not yet adjusted for improperly ordered csv files</span>
+ybdcfix &lt;-<span class="st"> </span><span class="kw">lapply</span>(ybdc, function(x) {  <span class="co"># x &lt;- ycost$both</span>
+  if(<span class="kw">nrow</span>(x$params) &gt;<span class="st"> </span><span class="kw">nrow</span>(x$optitab)) {
+    <span class="kw">print</span>(<span class="kw">paste</span>(<span class="st">&quot;fixing heat map for&quot;</span>, x$bcode))
+    heatfix &lt;-<span class="st"> </span><span class="kw">heat2</span>(<span class="kw">fp</span>(p_out, x$bcode), basedt, <span class="ot">TRUE</span>, <span class="ot">TRUE</span>)
+  } else {
+    heatfix &lt;-<span class="st"> </span><span class="ot">NULL</span>
+  }
+  heatfix
+})
+for(i in <span class="dv">1</span>:<span class="kw">length</span>(ybdc)) ybdc[[i]]$heat &lt;-<span class="st"> </span>ybdcfix[[i]]
 
 <span class="co"># ran because of fail on iteration for both (croplnms not properly compiled)</span>
 <span class="co"># bnames &lt;- c(&quot;ZA_20160213_231906_17404_28678&quot;, &quot;ZA_20160213_234959_17404_39818&quot;)</span>
@@ -459,8 +519,10 @@ ybdc &lt;-<span class="st"> </span><span class="kw">lapply</span>(crops, functio
 <span class="co"># plot(ycost$soy$heat)</span>
 <span class="co"># plot(ycost$both$heat)</span>
 <span class="co"># plot(bdc$both$heat)</span>
-<span class="kw">save</span>(ybdc, cbdc, ycost, bdc, <span class="dt">file =</span> <span class="kw">fp</span>(p_out, <span class="st">&quot;mainresults1502.rda&quot;</span>))
+<span class="co"># save(ybdc, cbdc, ycost, bdc, file = fp(p_out, &quot;mainresults1502.rda&quot;))</span>
+<span class="kw">save</span>(ybdc, ycost, bdc, <span class="dt">file =</span> <span class="kw">fp</span>(p_out, <span class="st">&quot;mainresults1702.rda&quot;</span>))
 <span class="co"># load(fp(p_out, &quot;mainresults1402.rda&quot;))</span></code></pre>
+<p><a href="#top">Back to top</a></p>
 </div>
 </div>
 <div id="figures" class="section level2">
@@ -471,28 +533,27 @@ ybdc &lt;-<span class="st"> </span><span class="kw">lapply</span>(crops, functio
 <h3><span class="header-section-number">1.3.1</span> Figure 1</h3>
 <pre class="sourceCode r"><code class="sourceCode r"><span class="co"># select out results for &quot;pure&quot; cases (weight = 1)</span>
 pure &lt;-<span class="st"> </span><span class="kw">sapply</span>(cnames, function(x) <span class="kw">which</span>(<span class="kw">round</span>(ybdc$both$params[, x], <span class="dv">4</span>) ==<span class="st"> </span><span class="dv">1</span>))
-pure_r &lt;-<span class="st"> </span><span class="kw">lapply</span>(pure, function(x) {  <span class="co"># x &lt;- pure[1]</span>
-  bpath &lt;-<span class="st"> </span><span class="kw">fp</span>(p_out, ybdc$both$bcode)
-  fname &lt;-<span class="st"> </span><span class="kw">dir</span>(bpath, <span class="dt">pattern =</span> <span class="st">&quot;csv&quot;</span>, <span class="dt">full.names =</span> <span class="ot">TRUE</span>)[x]
-  DT &lt;-<span class="st"> </span><span class="kw">cbind</span>(<span class="kw">fread</span>(fname), basedt[, .(x, y, convertible)])
+
+fnames &lt;-<span class="st"> </span><span class="kw">imp_sorter</span>(<span class="kw">fp</span>(p_out, ybdc$both$bcode), <span class="dt">inds =</span> pure, <span class="dt">fullnames =</span> <span class="ot">TRUE</span>)
+pure_r &lt;-<span class="st"> </span><span class="kw">lapply</span>(fnames, function(x) {  <span class="co"># x &lt;- pure[1]</span>
+  DT &lt;-<span class="st"> </span><span class="kw">cbind</span>(<span class="kw">fread</span>(x), basedt[, .(x, y, convertible)])
   DTr &lt;-<span class="st"> </span><span class="kw">dt_to_raster</span>(DT, CRSobj)
 })
 <span class="co"># sapply(1:4, function(x) which(ps[, x] == 1))</span>
 <span class="co"># sum across crops and multiply by convertible areas</span>
 rs &lt;-<span class="st"> </span><span class="kw">lapply</span>(pure_r, function(x) <span class="kw">calc</span>(x[[<span class="dv">1</span>:<span class="dv">2</span>]], sum) *<span class="st"> </span>x[[<span class="dv">3</span>]])  <span class="co"># actual area</span>
 rs2 &lt;-<span class="st"> </span><span class="kw">lapply</span>(pure_r, function(x) <span class="kw">calc</span>(x[[<span class="dv">1</span>:<span class="dv">2</span>]], sum))  <span class="co"># conv pixels</span>
+<span class="co"># check</span>
 <span class="co"># sapply(rs, function(x) cellStats(x, sum))</span>
+<span class="co"># ybdc$both$optitab[ind %in% pure, Y]  # same, but C optimized out</span>
 <span class="co"># sapply(rs2, function(x) cellStats(x, sum))</span>
 <span class="co"># plot(pure_r[[3]])</span>
 
 <span class="co"># figure out overlaps between different pure objectives</span>
 pms &lt;-<span class="st"> </span><span class="kw">expand.grid</span>(<span class="kw">rep</span>(<span class="kw">list</span>(<span class="dv">0</span>:<span class="dv">1</span>), <span class="dv">4</span>))[-<span class="dv">1</span>, ]  <span class="co"># logic grid</span>
 <span class="kw">rownames</span>(pms) &lt;-<span class="st"> </span><span class="dv">1</span>:<span class="dv">15</span>
-<span class="co"># rs &lt;- lapply(pure_r, function(x) calc(x, sum)) # sum across crops  </span>
-<span class="kw">sapply</span>(rs2, function(x) <span class="kw">cellStats</span>(x, sum))
 rs_over &lt;-<span class="st"> </span><span class="kw">lapply</span>(<span class="dv">1</span>:<span class="kw">nrow</span>(pms), function(x) {  <span class="co"># apply logic tests</span>
-  (rs2[[<span class="dv">1</span>]] ==<span class="st"> </span>pms[x, <span class="dv">1</span>]) &amp;<span class="st"> </span>(rs2[[<span class="dv">2</span>]] ==<span class="st"> </span>pms[x, <span class="dv">2</span>]) &amp;<span class="st"> </span>(rs2[[<span class="dv">3</span>]] ==<span class="st"> </span>pms[x, <span class="dv">3</span>]) &amp;<span class="st"> </span>
-<span class="st">    </span>(rs2[[<span class="dv">4</span>]] ==<span class="st"> </span>pms[x, <span class="dv">4</span>])
+  (rs2[[<span class="dv">1</span>]] ==<span class="st"> </span>pms[x, <span class="dv">1</span>]) &amp;<span class="st"> </span>(rs2[[<span class="dv">2</span>]] ==<span class="st"> </span>pms[x, <span class="dv">2</span>]) &amp;<span class="st"> </span>(rs2[[<span class="dv">3</span>]] ==<span class="st"> </span>pms[x, <span class="dv">3</span>]) &amp;<span class="st">     </span>(rs2[[<span class="dv">4</span>]] ==<span class="st"> </span>pms[x, <span class="dv">4</span>])
 })
 rs_overs &lt;-<span class="st"> </span><span class="kw">stack</span>(rs_over)
 
@@ -531,19 +592,12 @@ bpath &lt;-<span class="st"> </span><span class="kw">fp</span>(p_out, ybdc$both$
 pure2 &lt;-<span class="st"> </span><span class="kw">unlist</span>(<span class="kw">lapply</span>(pure, function(x) <span class="kw">c</span>(x, x<span class="dv">+1</span>)))
 vars &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;iter&quot;</span>, <span class="st">&quot;conv_area&quot;</span>, <span class="st">&quot;tot_C&quot;</span>, <span class="st">&quot;fpa_conv&quot;</span>, <span class="st">&quot;mu_cost&quot;</span>, <span class="st">&quot;rarity&quot;</span>,
           <span class="st">&quot;priority&quot;</span>,  <span class="st">&quot;int_prior&quot;</span>, <span class="st">&quot;int_mean&quot;</span>)
-conv_stats &lt;-<span class="st"> </span>outtab[outtab$iter %in%<span class="st"> </span>pure, vars]
-conv_stats &lt;-<span class="st"> </span><span class="kw">data.frame</span>(<span class="kw">t</span>(<span class="kw">sapply</span>(pure, function(x) {  <span class="co"># x &lt;- pure[1]</span>
-  DF &lt;-<span class="st"> </span>conv_stats[conv_stats$iter ==<span class="st"> </span>x, ]
-  <span class="kw">c</span>(<span class="kw">colSums</span>(DF[, <span class="dv">2</span>:<span class="dv">4</span>]), 
-    <span class="kw">sapply</span>(<span class="dv">5</span>:<span class="kw">ncol</span>(DF), function(y) <span class="kw">weighted.mean</span>(DF[, y], DF$conv_area)))
-}))) 
-<span class="kw">colnames</span>(conv_stats) &lt;-<span class="st"> </span>vars[-<span class="dv">1</span>]
+conv_stats &lt;-<span class="st"> </span><span class="kw">selected_impacts</span>(pure, <span class="kw">fp</span>(p_out, ybdc$both$bcode))
 
 <span class="co"># rescale for common plot</span>
 svec &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="dv">100000</span>, <span class="dv">10000000</span>, <span class="dv">1000</span>, <span class="dv">1</span>, <span class="fl">0.1</span>, <span class="fl">0.1</span>, <span class="fl">0.1</span>, <span class="fl">0.1</span>)  <span class="co"># rescale factor</span>
-conv_stats_n &lt;-<span class="st"> </span><span class="kw">as.matrix</span>(<span class="kw">sweep</span>(conv_stats, <span class="dt">MARGIN =</span> <span class="dv">2</span>, svec, <span class="st">&quot;/&quot;</span>))
+conv_stats_n &lt;-<span class="st"> </span><span class="kw">sweep</span>(<span class="kw">as.matrix</span>(conv_stats)[, -<span class="dv">1</span>], <span class="dt">MARGIN =</span> <span class="dv">2</span>, svec, <span class="st">&quot;/&quot;</span>)
 conv_stats_n &lt;-<span class="st"> </span>conv_stats_n[, <span class="kw">c</span>(<span class="dv">1</span>, <span class="dv">4</span>, <span class="dv">2</span>, <span class="dv">6</span>:<span class="kw">ncol</span>(conv_stats_n), <span class="dv">3</span>)]
-
 
 <span class="co"># Plots</span>
 <span class="co"># Panel A</span>
@@ -552,7 +606,7 @@ conv_stats_n &lt;-<span class="st"> </span>conv_stats_n[, <span class="kw">c</sp
 <span class="co"># colsi &lt;- sapply(c(0.5, 0.75, 1), function(x) rgb(1, 1, 0.9, alpha = x))</span>
 cols &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;dodgerblue3&quot;</span>, <span class="st">&quot;deepskyblue1&quot;</span>, <span class="st">&quot;goldenrod2&quot;</span>, <span class="st">&quot;yellow&quot;</span>, <span class="st">&quot;tomato1&quot;</span>,
           <span class="st">&quot;red3&quot;</span>)
-<span class="kw">plot</span>(<span class="dv">1</span>:<span class="dv">6</span>, <span class="dt">pch =</span> <span class="dv">20</span>, <span class="dt">cex =</span> <span class="dv">3</span>, <span class="dt">col =</span> cols)
+<span class="co"># plot(1:6, pch = 20, cex = 3, col = cols)</span>
 
 <span class="kw">tiff</span>(<span class="kw">fp</span>(p_figures, <span class="st">&quot;single_priorities.tif&quot;</span>), <span class="dt">height =</span> <span class="dv">3</span>, <span class="dt">width =</span> <span class="dv">8</span>, 
      <span class="dt">units =</span> <span class="st">&quot;in&quot;</span>, <span class="dt">res =</span> <span class="dv">300</span>)
@@ -577,7 +631,6 @@ bp &lt;-<span class="st"> </span><span class="kw">barplot</span>(pms$hist /<span
 <span class="co">#   y=grconvertY(c(0.6,1), from='npc'),</span>
 <span class="co">#   type='fig', pars=list(mar=c(3,3,0,0) + 0.1))</span>
 
-
 <span class="co"># Panel C</span>
 <span class="co"># barplot(conv_stats_n)</span>
 blabs &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;Area&quot;</span>, <span class="st">&quot;Time&quot;</span>, <span class="st">&quot;Carbon&quot;</span>, <span class="st">&quot;Priority&quot;</span>, <span class="st">&quot;Priority/intactness&quot;</span>, 
@@ -597,10 +650,217 @@ bp &lt;-<span class="st"> </span><span class="kw">barplot</span>(conv_stats_n, <
   
 #### Need to redo pareto to pass in weighted mean function for all average 
 #### costs (DONE)</code></pre>
+<p><a href="#top">Back to top</a></p>
 </div>
+<div id="figures-2-3-probably-supplemental" class="section level3">
+<h3><span class="header-section-number">1.3.2</span> Figures 2 &amp; 3 (probably supplemental)</h3>
+<pre class="sourceCode r"><code class="sourceCode r"><span class="co"># yc_bdc_st &lt;- as.matrix(stack(ycost$both$heat, bdc$both$heat) / 100)</span>
+<span class="co"># yc_bdc_st &lt;- stack(ycost$both$heat, ycost$both$heat * 0, bdc$both$heat) / 100</span>
+<span class="co"># plot(ycost$both$heat &gt; 1)</span>
+<span class="co"># plotRGB(yc_bdc_st, r = 1, g = 2, b = 3, colNA = &quot;transparent&quot;, scale = 1)</span>
+<span class="co"># rgb(red = yc_bdc_st[, 1], rep(0, nrow(yc_bdc_st)), yc_bdc_st[, 2])</span>
+<span class="co"># plot(ycost$both$heat)</span>
+
+<span class="co"># individual maps</span>
+<span class="kw">png</span>(<span class="kw">full_path</span>(p_figures, <span class="st">&quot;all-4-maps.png&quot;</span>), <span class="dt">height =</span> <span class="dv">7</span>, <span class="dt">width =</span> <span class="dv">7</span>, 
+     <span class="dt">units =</span> <span class="st">&quot;in&quot;</span>, <span class="dt">res =</span> <span class="dv">300</span>)
+<span class="kw">par</span>(<span class="dt">mfrow =</span> <span class="kw">c</span>(<span class="dv">2</span>, <span class="dv">2</span>))<span class="co">#, oma = c(0, 0, 0, 2))</span>
+ftitles &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;Yield&quot;</span>, <span class="st">&quot;Carbon&quot;</span>, <span class="st">&quot;Biodiversity&quot;</span>, <span class="st">&quot;Cost&quot;</span>)
+legp &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="ot">TRUE</span>, <span class="kw">rep</span>(<span class="ot">FALSE</span>, <span class="dv">3</span>))
+for(i in <span class="dv">1</span>:<span class="dv">4</span>) {
+  dtr &lt;-<span class="st"> </span><span class="kw">calc</span>(pure_r[[i]][[<span class="dv">1</span>:<span class="dv">2</span>]] *<span class="st"> </span><span class="kw">c</span>(<span class="dv">1</span>, <span class="dv">2</span>), sum)
+  <span class="kw">imp_plot2</span>(dtr, <span class="dt">impacts =</span> i1, <span class="dt">fpath =</span> p_figures, <span class="dt">fnm =</span> <span class="st">&quot;all-4-maps&quot;</span>, 
+            <span class="dt">cexscale =</span> <span class="fl">0.6</span>, <span class="dt">ftitle =</span> ftitles[i], <span class="dt">crops =</span> <span class="kw">c</span>(<span class="st">&quot;maize&quot;</span>, <span class="st">&quot;soy&quot;</span>), 
+            <span class="dt">stats =</span> <span class="ot">FALSE</span>, <span class="dt">hold =</span> <span class="ot">TRUE</span>, <span class="dt">legend =</span> legp[i], <span class="dt">marg =</span> <span class="kw">c</span>(<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">2</span>, <span class="dv">0</span>))
+}
+<span class="kw">dev.off</span>()
+
+<span class="co"># heat maps</span>
+implist &lt;-<span class="st"> </span><span class="kw">list</span>(ycost$both, bdc$both)
+<span class="kw">load</span>(<span class="kw">full_path</span>(<span class="kw">set_base_path</span>(), <span class="kw">paste0</span>(<span class="st">&quot;external/data/ZA/parks_roads.rda&quot;</span>)))
+pacols &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;transparent&quot;</span>, <span class="st">&quot;grey85&quot;</span>, <span class="st">&quot;grey75&quot;</span>)
+<span class="kw">png</span>(<span class="kw">full_path</span>(p_figures, <span class="st">&quot;ycost-bdc-heat.png&quot;</span>), <span class="dt">height =</span> <span class="dv">400</span>, <span class="dt">width =</span> <span class="dv">900</span>)
+<span class="kw">par</span>(<span class="dt">mfrow =</span> <span class="kw">c</span>(<span class="dv">1</span>, <span class="dv">2</span>), <span class="dt">oma =</span> <span class="kw">c</span>(<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">2</span>))
+for(i in <span class="dv">1</span>:<span class="dv">2</span>) {
+  <span class="kw">par</span>(<span class="dt">mar =</span> <span class="kw">c</span>(<span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">4</span>))
+  <span class="kw">plot</span>(zambia, <span class="dt">col =</span> <span class="st">&quot;grey90&quot;</span>, <span class="dt">border =</span> <span class="st">&quot;transparent&quot;</span>)
+  ir &lt;-<span class="st"> </span>implist[[i]]$heat
+  ir[ir ==<span class="st"> </span><span class="dv">0</span>] &lt;-<span class="st"> </span><span class="ot">NA</span>
+  <span class="kw">plot</span>(ir, <span class="dt">col =</span> <span class="kw">rev</span>(<span class="kw">heat.colors</span>(<span class="dv">20</span>)), <span class="dt">add =</span> <span class="ot">TRUE</span>, )
+  <span class="kw">plot</span>(pas[pas@data$type ==<span class="st"> &quot;gma&quot;</span>, ], <span class="dt">add =</span> <span class="ot">TRUE</span>, <span class="dt">col =</span> pacols[<span class="dv">2</span>],
+       <span class="dt">border =</span> <span class="ot">FALSE</span>)
+  <span class="kw">plot</span>(pas[pas@data$type ==<span class="st"> &quot;npark&quot;</span>, ], <span class="dt">add =</span> <span class="ot">TRUE</span>, <span class="dt">col =</span> pacols[<span class="dv">3</span>],
+       <span class="dt">border =</span> <span class="ot">FALSE</span>)
+  <span class="kw">plot</span>(roads, <span class="dt">add =</span> <span class="ot">TRUE</span>, <span class="dt">lwd =</span> <span class="fl">0.1</span>, <span class="dt">col =</span> <span class="st">&quot;grey&quot;</span>)
+}
+<span class="kw">dev.off</span>()</code></pre>
+<p><a href="#top">Back to top</a></p>
 </div>
-<div id="section" class="section level2">
-<h2><span class="header-section-number">1.4</span> </h2>
+<div id="figures-4-main-and-5-probably-supplemental" class="section level3">
+<h3><span class="header-section-number">1.3.3</span> Figures 4 (main) and 5 (probably supplemental)</h3>
+<p>What happens when weight is progressively added</p>
+<pre class="sourceCode r"><code class="sourceCode r">p &lt;-<span class="st"> </span><span class="kw">data.frame</span>(ybdc$both$params)
+p[, <span class="kw">c</span>(<span class="st">&quot;Y&quot;</span>, <span class="st">&quot;C&quot;</span>, <span class="st">&quot;BD&quot;</span> ,<span class="st">&quot;COST&quot;</span>)] &lt;-<span class="st"> </span><span class="kw">round</span>(p[, <span class="kw">c</span>(<span class="st">&quot;Y&quot;</span>, <span class="st">&quot;C&quot;</span>, <span class="st">&quot;BD&quot;</span> ,<span class="st">&quot;COST&quot;</span>)], <span class="dv">2</span>)
+<span class="co"># scens &lt;- list(c(0.9, 0.05, 0.05, 0), </span>
+<span class="co">#               c(0.85, 0.05, 0.05, 0.05), </span>
+<span class="co">#               c(0.1, 0.45, 0.45, 0.0), </span>
+<span class="co">#               c(0.05, 0.45, 0.45, 0.05))</span>
+scens &lt;-<span class="st"> </span><span class="kw">lapply</span>(<span class="kw">c</span>(<span class="dv">0</span>, <span class="fl">0.1</span>, <span class="fl">0.2</span>, <span class="fl">0.3</span>, <span class="fl">0.4</span>, <span class="fl">0.5</span>, <span class="fl">0.6</span>, <span class="fl">0.7</span>, <span class="fl">0.8</span>, <span class="fl">0.9</span>), function(x) {
+  <span class="kw">c</span>(<span class="dv">1</span> -<span class="st"> </span>x, <span class="kw">rep</span>(x /<span class="st"> </span><span class="dv">2</span>, <span class="dv">2</span>), <span class="dv">0</span>)
+})
+<span class="co"># scens &lt;- lapply(c(0, 0.15, 0.3, 0.45, 0.6, 0.75), function(x) {</span>
+<span class="co">#   c(1 - x, rep(x / 3, 3))</span>
+<span class="co"># })</span>
+pind &lt;-<span class="st"> </span><span class="kw">sapply</span>(scens, function(x) {
+  x &lt;-<span class="st"> </span><span class="kw">round</span>(x, <span class="dv">2</span>)
+  <span class="kw">which</span>(p$Y ==<span class="st"> </span>x[<span class="dv">1</span>] &amp;<span class="st"> </span>p$C ==<span class="st"> </span>x[<span class="dv">2</span>] &amp;<span class="st"> </span>p$BD ==<span class="st"> </span>x[<span class="dv">3</span>] &amp;<span class="st"> </span>p$COST ==<span class="st"> </span>x[<span class="dv">4</span>])
+})
+
+<span class="co"># select out impacts corresponding to those runs</span>
+cstats &lt;-<span class="st"> </span><span class="kw">selected_impacts</span>(pind, <span class="kw">fp</span>(p_out, ybdc$both$bcode))
+
+<span class="co"># check on selection</span>
+<span class="co"># il &lt;- input_handler(p_moddat, crops[[1]])</span>
+<span class="co"># chk &lt;- tradeoff_mod(prod_targ = targ, cbetas = ybdc$both$params[pind[5], 7:10], </span>
+<span class="co">#                     currprodmod = g, exist_list = il)</span>
+<span class="co"># DF &lt;- data.frame(chk$impacts)</span>
+<span class="co"># outtab[outtab$iter == pind[5], -2]</span>
+<span class="co"># round(c(colSums(DF[, 1:2]),</span>
+<span class="co">#         sapply(4:ncol(DF), function(z) weighted.mean(DF[, z], DF$conv_area))),2)</span>
+<span class="co"># cstats[5, ]</span>
+<span class="co"># outtab[outtab$iter == pind[5], ]</span>
+<span class="co"># fnames &lt;- dir(bpath, pattern = &quot;csv&quot;)</span>
+<span class="co"># fnames[pind[5]]</span>
+
+<span class="co"># calculate max impacts across both crops, and figure out the impact range, </span>
+<span class="co"># and what percent that is relative to the worst case</span>
+allstats &lt;-<span class="st"> </span><span class="kw">selected_impacts</span>(<span class="dv">1</span>:<span class="kw">nrow</span>(p), <span class="kw">fp</span>(p_out, ybdc$both$bcode))
+minmaxstats &lt;-<span class="st"> </span>allstats[, <span class="kw">lapply</span>(.SD, range)]
+imp_range &lt;-<span class="st"> </span>minmaxstats[, <span class="kw">lapply</span>(.SD, diff)]  <span class="co"># difference between best/worst</span>
+pct_of_tot &lt;-<span class="st"> </span>minmaxstats[, <span class="kw">lapply</span>(.SD, function(x) <span class="kw">diff</span>(x) /<span class="st"> </span><span class="kw">max</span>(x))]
+
+dfunc &lt;-<span class="st"> </span>function(x, y) <span class="dv">100</span> -<span class="st"> </span>y /<span class="st"> </span>x *<span class="st"> </span><span class="dv">100</span>
+stnms &lt;-<span class="st"> </span><span class="kw">names</span>(cstats)[-<span class="dv">1</span>]
+imp_pct &lt;-<span class="st"> </span>cstats[, <span class="kw">lapply</span>(stnms, function(x) {
+  <span class="kw">dfunc</span>(minmaxstats[[x]][<span class="dv">2</span>], <span class="kw">get</span>(x))
+})]
+<span class="kw">setnames</span>(imp_pct, stnms)
+
+<span class="co"># plot(imp_pct$tot_C, imp_pct$conv_area, type = &quot;l&quot;, xlab = &quot;&quot;, ylab = &quot;&quot;, </span>
+<span class="co">#      axes = FALSE)        # xaxs = &quot;r&quot;, yaxs = &quot;r&quot;)</span>
+
+sctab &lt;-<span class="st"> </span><span class="kw">do.call</span>(rbind, scens) *<span class="st"> </span><span class="dv">100</span>
+cx &lt;-<span class="st"> </span><span class="fl">0.7</span>
+lcols &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;black&quot;</span>, <span class="st">&quot;red&quot;</span>, <span class="st">&quot;blue&quot;</span>)
+imp_pct[, {
+  <span class="kw">png</span>(<span class="kw">fp</span>(p_figures, <span class="st">&quot;weight_impact.png&quot;</span>), <span class="dt">height =</span> <span class="dv">4</span>, <span class="dt">width =</span> <span class="dv">4</span>, 
+      <span class="dt">units =</span> <span class="st">&quot;in&quot;</span>, <span class="dt">res =</span> <span class="dv">300</span>)
+  <span class="kw">par</span>(<span class="dt">mgp =</span> <span class="kw">c</span>(<span class="dv">2</span>, <span class="fl">0.75</span>, <span class="dv">0</span>), <span class="dt">mar =</span> <span class="kw">c</span>(<span class="dv">3</span>, <span class="dv">3</span>, <span class="dv">1</span>, <span class="dv">1</span>))
+  <span class="kw">plot</span>(conv_area, tot_C, <span class="dt">type =</span> <span class="st">&quot;l&quot;</span>, <span class="dt">xlab =</span> <span class="st">&quot;&quot;</span>, <span class="dt">ylab =</span> <span class="st">&quot;&quot;</span>, <span class="co">#xaxt = &quot;n&quot;, </span>
+       <span class="dt">axes =</span> <span class="ot">FALSE</span>, <span class="dt">ylim =</span> <span class="kw">c</span>(<span class="dv">0</span>, <span class="dv">65</span>), <span class="dt">xlim =</span> <span class="kw">c</span>(<span class="dv">2</span>, <span class="dv">12</span>))<span class="co">#, xaxs = &quot;r&quot;, yaxs = &quot;r&quot;)</span>
+  <span class="kw">lines</span>(conv_area, int_prior, <span class="dt">col =</span> <span class="st">&quot;red&quot;</span>)
+  <span class="kw">lines</span>(conv_area, mu_cost, <span class="dt">col =</span> <span class="st">&quot;blue&quot;</span>)
+  <span class="kw">axis</span>(<span class="dv">1</span>, <span class="dt">at =</span> <span class="kw">seq</span>(<span class="dv">2</span>, <span class="dv">12</span>, <span class="dv">1</span>), <span class="dt">cex =</span> cx, <span class="dt">cex.axis =</span> cx, <span class="dt">line =</span> -<span class="fl">0.25</span>, 
+       <span class="dt">tcl =</span> -<span class="fl">0.2</span>, <span class="dt">mgp =</span> <span class="kw">c</span>(<span class="dv">1</span>, <span class="fl">0.25</span>, <span class="dv">0</span>))
+  <span class="kw">axis</span>(<span class="dv">2</span>, <span class="dt">at =</span> <span class="kw">seq</span>(<span class="dv">0</span>, <span class="dv">60</span>, <span class="dv">5</span>), <span class="dt">las =</span> <span class="dv">2</span>, <span class="dt">cex =</span> cx, <span class="dt">cex.axis =</span> cx, <span class="dt">line =</span> -<span class="fl">0.25</span>, 
+       <span class="dt">tcl =</span> -<span class="fl">0.15</span>, <span class="dt">mgp =</span> <span class="kw">c</span>(<span class="dv">1</span>, <span class="fl">0.25</span>, <span class="dv">0</span>))
+  <span class="kw">mtext</span>(<span class="st">&quot;% land savings&quot;</span>, <span class="dt">side =</span> <span class="dv">1</span>, <span class="dt">line =</span> <span class="dv">1</span>, <span class="dt">cex =</span> cx)
+  <span class="kw">mtext</span>(<span class="st">&quot;% Carbon/Biodiv/Cost savings&quot;</span>, <span class="dt">side =</span> <span class="dv">2</span>, <span class="dt">line =</span> <span class="dv">1</span>, <span class="dt">cex =</span> cx)
+  inms &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;tot_C&quot;</span>, <span class="st">&quot;int_prior&quot;</span>, <span class="st">&quot;mu_cost&quot;</span>)
+  for(i in <span class="dv">1</span>:<span class="kw">length</span>(inms)) {
+    <span class="kw">text</span>(conv_area[-<span class="dv">1</span>], <span class="kw">get</span>(inms[i])[-<span class="dv">1</span>], <span class="dt">labels =</span> sctab[-<span class="dv">1</span>, i +<span class="st"> </span><span class="dv">1</span>], 
+         <span class="dt">cex =</span> cx *<span class="st"> </span><span class="fl">0.8</span>, <span class="dt">pos =</span> <span class="dv">3</span>, <span class="dt">offset =</span> <span class="fl">0.2</span>, <span class="dt">col =</span> lcols[i])
+    <span class="kw">text</span>(conv_area[<span class="dv">1</span>] +<span class="st"> </span><span class="fl">0.1</span>, i, <span class="dt">labels =</span> <span class="dv">0</span>, <span class="dt">cex =</span> cx *<span class="st"> </span><span class="fl">0.8</span>, <span class="dt">pos =</span> <span class="dv">3</span>, 
+         <span class="dt">offset =</span> i *<span class="st"> </span><span class="fl">0.15</span> -<span class="st"> </span><span class="fl">0.2</span>, <span class="dt">col =</span> lcols[i])
+  }
+  <span class="kw">legend</span>(<span class="st">&quot;bottomleft&quot;</span>, <span class="dt">legend =</span> <span class="kw">c</span>(<span class="st">&quot;Carbon&quot;</span>, <span class="st">&quot;Biodiv&quot;</span>, <span class="st">&quot;Cost&quot;</span>), <span class="dt">cex =</span> cx,
+         <span class="dt">text.col =</span> lcols, <span class="dt">col =</span> lcols, <span class="dt">bty =</span> <span class="st">&quot;n&quot;</span>, <span class="dt">lty =</span> <span class="dv">1</span>)
+  <span class="kw">dev.off</span>()
+}]
+
+fnames &lt;-<span class="st"> </span><span class="kw">fp</span>(bpath, <span class="kw">imp_sorter</span>(bpath, <span class="dt">inds =</span> pind))
+scens_r &lt;-<span class="st"> </span><span class="kw">lapply</span>(fnames, function(x) {  <span class="co"># x &lt;- pind[[1]]</span>
+  <span class="kw">print</span>(x)
+  DT &lt;-<span class="st"> </span><span class="kw">cbind</span>(<span class="kw">fread</span>(x), basedt[, .(x, y, convertible)])
+  DTr &lt;-<span class="st"> </span><span class="kw">dt_to_raster</span>(DT, CRSobj)
+})
+
+scens_rs2 &lt;-<span class="st"> </span><span class="kw">lapply</span>(scens_r, function(x) <span class="kw">calc</span>(<span class="kw">stack</span>(x[[<span class="dv">1</span>:<span class="dv">2</span>]]), sum))
+<span class="co"># plot(scens_rs2[[1]] + scens_rs2[[2]])</span>
+<span class="co"># check</span>
+<span class="co"># round(sapply(scens_rs2, function(x) {</span>
+<span class="co">#   cellStats(x * scens_r[[1]]$convertible * 100, sum)</span>
+<span class="co"># }))</span>
+<span class="co"># cstats$conv_area</span>
+
+<span class="co"># pms &lt;- list(c(1, 2), c(1, 3), c(1, 4), c(1, 5))</span>
+<span class="co"># pms &lt;- expand.grid(rep(list(0:1), 5))[-1, ]  # logic grid</span>
+
+<span class="co"># rasters showing overlap as weight is progressively put on C and BD</span>
+scens_over &lt;-<span class="st"> </span><span class="kw">lapply</span>(<span class="dv">2</span>:<span class="dv">6</span>, function(x) scens_rs2[[<span class="dv">1</span>]] +<span class="st"> </span>scens_rs2[[x]] *<span class="st"> </span><span class="dv">2</span>)
+
+<span class="co"># overlap areas</span>
+scens_over_a &lt;-<span class="st"> </span><span class="kw">sapply</span>(<span class="dv">1</span>:<span class="kw">length</span>(scens_over), function(x) { <span class="co"># x &lt;- 4</span>
+  <span class="kw">sapply</span>(<span class="dv">1</span>:<span class="dv">3</span>, function(y) {  <span class="co"># y &lt;- 3</span>
+    r &lt;-<span class="st"> </span>scens_over[[x]] ==<span class="st"> </span>y
+    <span class="co"># plot(r)</span>
+    <span class="kw">round</span>(<span class="kw">cellStats</span>(r *<span class="st"> </span>scens_r[[<span class="dv">1</span>]]$convertible, sum), <span class="dv">1</span>)
+  })
+})
+<span class="co"># colSums(scens_over_a[c(2, 3), ])</span>
+<span class="co"># over_cols &lt;- sapply(seq(0, 0.4, 0.1), function(x) rgb(1 - x, 0, x))</span>
+<span class="co"># par(mar = c(0, 0, 0, 0))</span>
+<span class="co"># plot(1:3, pch = 20, col = rgb(1, 0, 1))</span>
+<span class="co"># plot(zambia)</span>
+
+<span class="co"># cols &lt;- c(rgb(1, 0, 0), rgb(0, 0, 1), rgb(0.75, 0, 0.75))</span>
+cols &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;red&quot;</span>, <span class="st">&quot;blue&quot;</span>, <span class="st">&quot;gold&quot;</span>)
+<span class="kw">plot</span>(<span class="dv">1</span>:<span class="dv">3</span>, <span class="dt">pch =</span> <span class="dv">20</span>, <span class="dt">col =</span> cols, <span class="dt">cex =</span> <span class="dv">20</span>)
+ftits &lt;-<span class="st"> </span><span class="kw">list</span>(<span class="st">&quot;Y 90% C 5% Biod 5% Cost 0%&quot;</span>,
+              <span class="st">&quot;Y 80% C 10% Biod 10% Cost 0%&quot;</span>,
+              <span class="st">&quot;Y 70% C 15% Biod 15% Cost 0%&quot;</span>,
+              <span class="st">&quot;Y 60% C 20% Biod 20% Cost 0%&quot;</span>)
+leg &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;Y&quot;</span>, <span class="st">&quot;YCBd&quot;</span>, <span class="st">&quot;Y + YCBd&quot;</span>)
+              
+<span class="kw">tiff</span>(<span class="kw">fp</span>(p_figures, <span class="st">&quot;changing_weights.tif&quot;</span>), <span class="dt">height =</span> <span class="dv">4</span>, <span class="dt">width =</span> <span class="dv">7</span>, 
+     <span class="dt">units =</span> <span class="st">&quot;in&quot;</span>, <span class="dt">res =</span> <span class="dv">300</span>)
+<span class="kw">par</span>(<span class="dt">mfrow =</span> <span class="kw">c</span>(<span class="dv">2</span>, <span class="dv">4</span>), <span class="dt">oma =</span> <span class="kw">c</span>(<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">0</span>))
+for(i in <span class="dv">1</span>:<span class="dv">4</span>) { <span class="co"># i &lt;- 1</span>
+  <span class="co"># map</span>
+  <span class="kw">imp_plot2</span>(scens_over[[i]], <span class="dt">impacts =</span> i1, <span class="dt">fpath =</span> p_figures, <span class="dt">fnm =</span> <span class="st">&quot;bob&quot;</span>,
+            <span class="dt">crops =</span> leg[<span class="kw">c</span>(<span class="dv">1</span>, <span class="dv">3</span>, <span class="dv">2</span>)], <span class="dt">ftitle =</span> ftits[[i]], <span class="dt">col =</span> cols, 
+            <span class="dt">legend =</span> <span class="ot">TRUE</span>, <span class="dt">hold =</span> <span class="ot">TRUE</span>, <span class="dt">stats =</span> <span class="ot">FALSE</span>, <span class="dt">cexscale =</span> <span class="fl">0.4</span>, 
+            <span class="dt">marg =</span> <span class="kw">rep</span>(<span class="dv">0</span>, <span class="dv">4</span>))
+  <span class="co"># barplot</span>
+  <span class="kw">par</span>(<span class="dt">mar =</span> <span class="kw">c</span>(<span class="dv">5</span>, <span class="dv">4</span>, <span class="dv">3</span>, <span class="dv">3</span>))
+  overl &lt;-<span class="st"> </span>scens_over_a[<span class="dv">1</span>:<span class="dv">3</span>, i][<span class="kw">c</span>(<span class="dv">1</span>, <span class="dv">3</span>, <span class="dv">2</span>)]
+  bp &lt;-<span class="st"> </span><span class="kw">barplot</span>(overl, <span class="dt">las =</span> <span class="dv">2</span>, <span class="dt">ylim =</span> <span class="kw">c</span>(<span class="dv">0</span>, <span class="dv">12000</span>),  
+                <span class="dt">col =</span> cols[<span class="kw">c</span>(<span class="dv">1</span>, <span class="dv">3</span>, <span class="dv">2</span>)], <span class="dt">mgp =</span> <span class="kw">c</span>(<span class="fl">1.5</span>, <span class="fl">0.25</span>, <span class="dv">0</span>), <span class="dt">tcl =</span> -<span class="fl">0.2</span>, 
+                <span class="dt">ylab =</span> <span class="kw">expression</span>(km^<span class="dv">2</span>), <span class="dt">cex.axis =</span> <span class="fl">0.6</span>, <span class="dt">cex.lab =</span> <span class="fl">0.7</span>)
+  <span class="kw">axis</span>(<span class="dt">side =</span> <span class="dv">1</span>, <span class="dt">at =</span> bp, <span class="dt">labels =</span> leg, <span class="dt">las =</span> <span class="dv">2</span>, 
+       <span class="dt">mgp =</span> <span class="kw">c</span>(<span class="dv">1</span>, <span class="fl">0.25</span>, <span class="dv">0</span>), <span class="dt">tcl =</span> -<span class="fl">0.2</span>, <span class="dt">cex.axis =</span> <span class="fl">0.6</span>)
+}
+<span class="kw">dev.off</span>()
+
+
+
+
+ybdc$both$optimal[, {
+  <span class="kw">par</span>(<span class="dt">mfrow =</span> <span class="kw">c</span>(<span class="dv">2</span>, <span class="dv">2</span>), <span class="dt">mar =</span> <span class="kw">rep</span>(<span class="dv">3</span>, <span class="dv">4</span>))
+  <span class="kw">hist</span>(.SD, <span class="dt">axes =</span> <span class="ot">FALSE</span>, <span class="dt">labels =</span> <span class="ot">FALSE</span>)
+}, .SDcol =<span class="st"> </span><span class="dv">1</span>:<span class="dv">4</span>]
+
+frange &lt;-<span class="st"> </span>function(x) <span class="kw">diff</span>(<span class="kw">range</span>(x)) /<span class="st"> </span><span class="kw">max</span>(x)
+fqtile &lt;-<span class="st"> </span>function(x) <span class="kw">diff</span>(<span class="kw">quantile</span>(x, <span class="dt">probs =</span> <span class="kw">c</span>(<span class="fl">0.025</span>, <span class="fl">0.975</span>))) /<span class="st"> </span><span class="kw">max</span>(x) 
+ybdc$both$optimal[, <span class="kw">lapply</span>(.SD, frange), .SDcol =<span class="st"> </span><span class="dv">1</span>:<span class="dv">4</span>]
+ybdc$both$optimal[, <span class="kw">lapply</span>(.SD, fqtile), .SDcol =<span class="st"> </span><span class="dv">1</span>:<span class="dv">4</span>]
+
+<span class="kw">hist</span>(ybdc$both$optimal$Y)</code></pre>
+<p><a href="#top">Back to top</a></p>
+</div>
+<div id="figure-6" class="section level3">
+<h3><span class="header-section-number">1.3.4</span> Figure 6</h3>
+</div>
 </div>
 </div>
 

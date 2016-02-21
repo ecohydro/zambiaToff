@@ -18,6 +18,10 @@ library(agroEcoTradeoff)
 library(readxl)
 library(gdalUtils)
 library(gisutils)
+# URL <- paste0("https://cran.r-project.org/src/contrib/Archive/spatstat/",
+#               "spatstat_1.42-2.tar.gz")
+# install.packages(URL, repos = NULL, type="source", dependencies = TRUE)
+library(spatstat)
 
 setwd("~/Dropbox/publications/zambiaToff/private/zambiaToff/")
 p_root <- getwd()
@@ -25,6 +29,7 @@ p_demand <- fp(p_root, "external/input_devel/demand/")
 p_mod <- fp(p_root, "agroEcoTradeoff")
 p_moddat <- fp(p_mod, "external/data/ZA")
 p_figures <- full_path(p_root, "paper/figures/")
+p_other <- fp(p_root, "external/input_devel/other/")
 p_roads <- fp(p_root, "external/input_devel/roads")
 p_roads2 <- paste0("/Users/lestes/Dropbox/data/zari/infrastructure/zambia/", 
                    "rda_dump/Final Shape files RDA/")
@@ -41,7 +46,26 @@ roads <- zamroads
 save(pas, roads, zambia, 
      file = full_path(p_mod, "external/data/ZA/parks_roads.rda"))
 
+# farmblocks
+fbp <- "/Users/lestes/Dropbox/data/zari/misc/NEW4GEO/Fblocks.sqlite"
+# fb <- readOGR(fbp, layer = "fblocks")
+# fbalb <- spTransform(fb, mgrid@crs)
+# fbalb$ID <- 1:nrow(fbalb)
+# fbalb@data <- fbalb@data[, "ID", drop = FALSE]
+fnm <- fp(p_other, "fblocks_alb.sqlite")
+# writeOGR(fbalb, dsn = fnm, layer = "fblocks_alb", driver = "SQLite")
+
+# read in farmblocks
+fbalb <- readOGR(fnm, layer = "fblocks_alb")
+fbr <- rasterize(fbalb, mgrid)
+fbr[is.na(fbr)] <- 0
+fbr[fbr > 0] <- 1
+fbr <- raster::mask(fbr, mgrid)
+# plot(fbr)
+
 ```
+
+<a href="#top">Back to top</a>
 
 ## Demand
 Following the example of Gasparri et al (2015), who report demand and area planted trends for soybean in Southern Africa (9 countries) between 2000-2013, we use the production trends for both maize and soybean for the periods for 2000-2014 to calculate scenario for production increases by extrapolating linearly from recent trends in production for each crop between 2014 and 2050. We took an average of both the 2000-2014 as well as the 2005-2014 trends, which show larger rates of gain, which may reflect the more recent agricultural development interests (cite). 
@@ -96,6 +120,8 @@ round(colMeans(allrates[c(1, 3), ]), 1)  ## by area harvested
 round(colMeans(allrates), 1)  ## averaged across production and area harvested
 ```
 
+<a href="#top">Back to top</a>
+
 ### Yield gap closure on existing land
 
 We use the production based target as our potential scenario for Zambia.  Next is to factor in an assumption for how much demand will be met by closing current yield gaps
@@ -123,6 +149,8 @@ targ <- c("maize" = 3, "soy" = 9)
 targs <- targets(targ, cp, g)
 
 ```
+
+<a href="#top">Back to top</a>
 
 ## Tradeoff runs
 
@@ -167,6 +195,7 @@ imp_plot2(mzsoyr, i1, p_figures, "ideal_yield", "", crops, 1, TRUE,
 
 basedt <- soyto$inputs$mask
 ```
+<a href="#top">Back to top</a>
 
 ### Best Areas for Other Three Factors
 
@@ -227,6 +256,8 @@ Switch off for now
 # # cbdc$maize$heat <- cbdcmz
 
 ```
+
+<a href="#top">Back to top</a>
 
 ### Conservation interests versus agricultural interests
 ```{r, eval = FALSE}
@@ -359,6 +390,8 @@ for(i in 1:length(bdc)) bdc[[i]]$heat <- bdcfix[[i]]
 save(ycost, bdc, file = fp(p_out, "mainresults1702.rda"))
 ```
 
+<a href="#top">Back to top</a>
+
 ### All 4 together
 ```{r, eval = FALSE}
 step <- 0.05
@@ -443,8 +476,10 @@ for(i in 1:length(ybdc)) ybdc[[i]]$heat <- ybdcfix[[i]]
 # plot(bdc$both$heat)
 # save(ybdc, cbdc, ycost, bdc, file = fp(p_out, "mainresults1502.rda"))
 save(ybdc, ycost, bdc, file = fp(p_out, "mainresults1702.rda"))
-# load(fp(p_out, "mainresults1402.rda"))
+# load(fp(p_out, "mainresults1702.rda"))
 ```
+
+<a href="#top">Back to top</a>
 
 ## Figures
 
@@ -455,6 +490,7 @@ I am using the two crops combined approach because there is little overlap betwe
 ### Figure 1
 ```{r, eval = FALSE}
 # select out results for "pure" cases (weight = 1)
+cnames <- c("Y", "C", "BD", "COST")
 pure <- sapply(cnames, function(x) which(round(ybdc$both$params[, x], 4) == 1))
 
 fnames <- imp_sorter(fp(p_out, ybdc$both$bcode), inds = pure, fullnames = TRUE)
@@ -508,21 +544,14 @@ rs_over_rc2 <- raster::reclassify(rs_over_rc, rclmat)
 # plot(1:2, pch = 20, cex = 3, col = c("yellow", "yellow2"))
 
 # For Panel B - impact statistics 
-bpath <- fp(p_out, ybdc$both$bcode)
-load(fp(bpath, "impacts_tab.rda"))  # get impacts table
+# bpath <- fp(p_out, ybdc$both$bcode)
+# load(fp(bpath, "impacts_tab.rda"))  # get impacts table
 
 # select out corresponding impact statistics, summarize
-pure2 <- unlist(lapply(pure, function(x) c(x, x+1)))
+pure2 <- unlist(lapply(pure, function(x) c(x, x + 1)))
 vars <- c("iter", "conv_area", "tot_C", "fpa_conv", "mu_cost", "rarity",
           "priority",  "int_prior", "int_mean")
 conv_stats <- selected_impacts(pure, fp(p_out, ybdc$both$bcode))
-# conv_stats <- outtab[outtab$iter %in% pure, vars]
-# conv_stats <- data.frame(t(sapply(pure, function(x) {  # x <- pure[1]
-#   DF <- conv_stats[conv_stats$iter == x, ]
-#   c(colSums(DF[, 2:4]), 
-#     sapply(5:ncol(DF), function(y) weighted.mean(DF[, y], DF$conv_area)))
-# }))) 
-# colnames(conv_stats) <- vars[-1]
 
 # rescale for common plot
 svec <- c(100000, 10000000, 1000, 1, 0.1, 0.1, 0.1, 0.1)  # rescale factor
@@ -536,13 +565,13 @@ conv_stats_n <- conv_stats_n[, c(1, 4, 2, 6:ncol(conv_stats_n), 3)]
 # colsi <- sapply(c(0.5, 0.75, 1), function(x) rgb(1, 1, 0.9, alpha = x))
 cols <- c("dodgerblue3", "deepskyblue1", "goldenrod2", "yellow", "tomato1",
           "red3")
-plot(1:6, pch = 20, cex = 3, col = cols)
+# plot(1:6, pch = 20, cex = 3, col = cols)
 
 tiff(fp(p_figures, "single_priorities.tif"), height = 3, width = 8, 
      units = "in", res = 300)
 par(mfrow = c(1, 3))
 imp_plot2(dtr = rs_over_rc2, impacts = i1, fpath = p_figures, 
-          fnm = "pure_overlap", cexscale = 0.6, ftitle = "", crops = leg2, 
+          fnm = "pure_overlap", cexscale = 0.5, ftitle = "", crops = leg2, 
           stats = FALSE, cols = cols, hold = TRUE, marg = c(0, 0, 0, 0))
 
 # Panel B
@@ -561,7 +590,6 @@ axis(side = 1, at = bp, labels = pms$leg, las = 2, mgp = c(2, 0.25, 0),
 #   y=grconvertY(c(0.6,1), from='npc'),
 #   type='fig', pars=list(mar=c(3,3,0,0) + 0.1))
 
-
 # Panel C
 # barplot(conv_stats_n)
 blabs <- c("Area", "Time", "Carbon", "Priority", "Priority/intactness", 
@@ -578,14 +606,11 @@ text(x = bp[3, ] + 0.4, y = rep(-0.3, length(bp[3, ])), adj = 1,
      labels = tlabs, xpd = NA, srt = 90, cex = 0.8)
 dev.off()
 
-  
-#### Need to redo pareto to pass in weighted mean function for all average 
-#### costs (DONE)
-
-
 ```
 
-## Figure 2 & 3 (probably supplemental)
+<a href="#top">Back to top</a>
+
+### Figures 2 & 3 (probably supplemental)
 ```{r, eval = FALSE}
 # yc_bdc_st <- as.matrix(stack(ycost$both$heat, bdc$both$heat) / 100)
 # yc_bdc_st <- stack(ycost$both$heat, ycost$both$heat * 0, bdc$both$heat) / 100
@@ -628,16 +653,16 @@ for(i in 1:2) {
 }
 dev.off()
 
-
 ```
 
-## Figure 4
+<a href="#top">Back to top</a>
+ 
+### Figures 4 (main) and 5 (probably supplemental)
 
-Value of just a bit of compromise
+What happens when weight is progressively added
 
 ```{r, eval = FALSE}
 p <- data.frame(ybdc$both$params)
-outtab[1, ]
 p[, c("Y", "C", "BD" ,"COST")] <- round(p[, c("Y", "C", "BD" ,"COST")], 2)
 # scens <- list(c(0.9, 0.05, 0.05, 0), 
 #               c(0.85, 0.05, 0.05, 0.05), 
@@ -655,31 +680,27 @@ pind <- sapply(scens, function(x) {
 })
 
 # select out impacts corresponding to those runs
-cstats <- selected_impacts(pind, p_out, ybdc$both$bcode)
+cstats <- selected_impacts(pind, fp(p_out, ybdc$both$bcode))
 
 # check on selection
 # il <- input_handler(p_moddat, crops[[1]])
-# chk <- tradeoff_mod(targ, ybdc$both$params[pind[5], 7:10], 
+# chk <- tradeoff_mod(prod_targ = targ, cbetas = ybdc$both$params[pind[5], 7:10], 
 #                     currprodmod = g, exist_list = il)
 # DF <- data.frame(chk$impacts)
 # outtab[outtab$iter == pind[5], -2]
-# round(c(colSums(DF[, 2:4]),
-#         sapply(5:ncol(DF), function(z) weighted.mean(DF[, z], DF$conv_area))), 
-#       2)
+# round(c(colSums(DF[, 1:2]),
+#         sapply(4:ncol(DF), function(z) weighted.mean(DF[, z], DF$conv_area))),2)
 # cstats[5, ]
-outtab[outtab$iter == pind[5], ]
-outtab[, 1:4][1:100,]
-
-fnames <- dir(bpath, pattern = "csv")
-fnames[pind[5]]
+# outtab[outtab$iter == pind[5], ]
+# fnames <- dir(bpath, pattern = "csv")
+# fnames[pind[5]]
 
 # calculate max impacts across both crops, and figure out the impact range, 
 # and what percent that is relative to the worst case
-allstats <- selected_impacts(1:nrow(p), p_out, ybdc$both$bcode)
+allstats <- selected_impacts(1:nrow(p), fp(p_out, ybdc$both$bcode))
 minmaxstats <- allstats[, lapply(.SD, range)]
 imp_range <- minmaxstats[, lapply(.SD, diff)]  # difference between best/worst
 pct_of_tot <- minmaxstats[, lapply(.SD, function(x) diff(x) / max(x))]
-
 
 dfunc <- function(x, y) 100 - y / x * 100
 stnms <- names(cstats)[-1]
@@ -688,8 +709,8 @@ imp_pct <- cstats[, lapply(stnms, function(x) {
 })]
 setnames(imp_pct, stnms)
 
-plot(imp_pct$tot_C, imp_pct$conv_area, type = "l", xlab = "", ylab = "", 
-     axes = FALSE)        # xaxs = "r", yaxs = "r")
+# plot(imp_pct$tot_C, imp_pct$conv_area, type = "l", xlab = "", ylab = "", 
+#      axes = FALSE)        # xaxs = "r", yaxs = "r")
 
 sctab <- do.call(rbind, scens) * 100
 cx <- 0.7
@@ -720,19 +741,17 @@ imp_pct[, {
   dev.off()
 }]
 
-scens_r <- lapply(pind, function(x) {  # x <- pind[[1]]
+fnames <- fp(fp(p_out, ybdc$both$bcode), 
+             imp_sorter(fp(p_out, ybdc$both$bcode), inds = pind))
+scens_r <- lapply(fnames, function(x) {  # x <- pind[[1]]
   print(x)
-  inm <- paste0(outtab[outtab$iter == x, "rc"][1], ".csv")
-  fpath <- fp(fp(p_out, ybdc$both$bcode), inm)
-  # fname <- dir(bpath, pattern = "csv", full.names = TRUE)[x]
-  DT <- cbind(fread(fpath), basedt[, .(x, y, convertible)])
+  DT <- cbind(fread(x), basedt[, .(x, y, convertible)])
   DTr <- dt_to_raster(DT, CRSobj)
 })
 
 scens_rs2 <- lapply(scens_r, function(x) calc(stack(x[[1:2]]), sum))
-# freq((rs2$Y + scens_rs2[[1]]) * scens_r[[1]]$convertible
 # plot(scens_rs2[[1]] + scens_rs2[[2]])
-
+# check
 # round(sapply(scens_rs2, function(x) {
 #   cellStats(x * scens_r[[1]]$convertible * 100, sum)
 # }))
@@ -752,42 +771,301 @@ scens_over_a <- sapply(1:length(scens_over), function(x) { # x <- 4
     round(cellStats(r * scens_r[[1]]$convertible, sum), 1)
   })
 })
-sum(scens_over_a[c(2, 3), 4])
+# colSums(scens_over_a[c(2, 3), ])
 # over_cols <- sapply(seq(0, 0.4, 0.1), function(x) rgb(1 - x, 0, x))
 # par(mar = c(0, 0, 0, 0))
 # plot(1:3, pch = 20, col = rgb(1, 0, 1))
 # plot(zambia)
 
-cols <- c("grey", c(rgb(0, 1, 0), rgb(0, 0, 1), rgb(1, 0, 1)))
-ftits <- c("Y=0.9")
-par(mfrow = c(1, 4))
-for(i in 1:4) {
-  plot(zambia)
-  imp_plot2(scens_over[[i]], impacts = i1, fpath = p_figures, fnm = "bob", 
-            col = cols, add = TRUE, 
-            legend = FALSE)
+# cols <- c(rgb(1, 0, 0), rgb(0, 0, 1), rgb(0.75, 0, 0.75))
+cols <- c("red", "blue", "gold")
+plot(1:3, pch = 20, col = cols, cex = 20)
+ftits <- list("Y 90% C 5% Biod 5% Cost 0%",
+              "Y 80% C 10% Biod 10% Cost 0%",
+              "Y 70% C 15% Biod 15% Cost 0%",
+              "Y 60% C 20% Biod 20% Cost 0%")
+leg <- c("Y", "YCBd", "Y + YCBd")
+              
+tiff(fp(p_figures, "changing_weights.tif"), height = 4, width = 7, 
+     units = "in", res = 300)
+par(mfrow = c(2, 4), oma = c(0, 0, 1, 0))
+for(i in 1:4) { # i <- 1
+  # map
+  imp_plot2(scens_over[[i]], impacts = i1, fpath = p_figures, fnm = "bob",
+            crops = leg[c(1, 3, 2)], ftitle = ftits[[i]], col = cols, 
+            legend = TRUE, hold = TRUE, stats = FALSE, cexscale = 0.4, 
+            marg = rep(0, 4))
+  # barplot
+  par(mar = c(5, 4, 3, 3))
+  overl <- scens_over_a[1:3, i][c(1, 3, 2)]
+  bp <- barplot(overl, las = 2, ylim = c(0, 12000),  
+                col = cols[c(1, 3, 2)], mgp = c(1.5, 0.25, 0), tcl = -0.2, 
+                ylab = expression(km^2), cex.axis = 0.6, cex.lab = 0.7)
+  axis(side = 1, at = bp, labels = leg, las = 2, 
+       mgp = c(1, 0.25, 0), tcl = -0.2, cex.axis = 0.6)
 }
-plot(scens_over[[1]], col = c("transparent", over_cols[[5]]))
-plot(scens_rs2[[1]])
-plot(scens_over[[4]])
-plot(calc(stack(scens_over), sum))
+dev.off()
 
-plot(calc(stack(scens_rs2[2:4]), sum))
+```
+<a href="#top">Back to top</a>
+
+### Figure 6
+
+Objective weighting of outcomes, based on range of potential impacts
+
+```{r, eval = FALSE}
+# objective weights
+obj_wgts <- round(pct_of_tot[, {
+  c(conv_area, tot_C, int_mean, mu_cost) / 
+    sum(c(conv_area, tot_C, int_mean, mu_cost))
+}], 2)
+# round(obj_wgts, 2)
+names(obj_wgts) <- cnames
+
+# Objective weights
+toobj <- tradeoff_mod(targ, cbetas = obj_wgts, currprodmod = g, it = "OBJ")
+
+# ybdc$both$params[1, ]
+# yp <- ybdc$both$params[, 7:10]
+# which(round(yp[, 1], 2) == 0.05 & round(yp[, 2], 2) == 0.30 & 
+#         round(yp[, 3], 2) == 0.25 & round(yp[, 4], 2) == 0.4)
+
+# objective weights on ag only 
+# considering that these might be two sides of the same coin
+ag_wgts <- round(obj_wgts[c(1, 4)] / sum(obj_wgts[c(1, 4)]), 2)
+ag_wgts <- c(ag_wgts[1], "C" = 0, "BD" = 0, ag_wgts[2])
+ag_wgts2 <- ag_wgts[c(4, 2:3, 1)]
+names(ag_wgts2) <- names(ag_wgts)
+
+toag <- tradeoff_mod(targ, cbetas = ag_wgts, currprodmod = g, it = "AGOBJ")
+toag2 <- tradeoff_mod(targ, cbetas = ag_wgts2, currprodmod = g, it = "AGOBJ2")
+
+# subjective weights, where we want to treat everyone equally
+subj_wgts <- rep(0.25, 4)
+names(subj_wgts) <- cnames  # rename to make sure model runs properly
+tosubj <- tradeoff_mod(targ, cbetas = subj_wgts, currprodmod = g, it = "SUBJ")
+
+# extract impacts of these, and add in BAU case
+tores <- lapply(list(toag, toag2, toobj, tosubj), function(x) {  # x <- toobj
+  DTsum <- data.table(x$conv[, rowSums(.SD), .SDcols = c(crops[[1]])])
+  DTspat <- cbind(basedt[, .(x, y)], DTsum)
+  DTr <- dt_to_raster(DTspat, CRSobj)
+  DTr <- DTr + (fbr * 2)  # overlap with farmblocks, for output
+  list("map" = DTr, "imp" = x$impacts)
+})
+names(tores) <- c("ag", "ag2", "obj", "subj")
+
+Calculate area of overlaps between farmblocks and 
+yfbr <- calc(mzsoytor, sum) + fbr * 2
+plot(yfbr)
+fb_over_a <- sapply(1:length(tores), function(x) { # x <- 4
+  sapply(1:3, function(y) {  # y <- 3
+    r <- tores[[x]]$map == y
+    round(cellStats(r * scens_r[[1]]$convertible, sum), 1)
+  })
+})
+fb_sim <- fb_over_a[3, ] / colSums(fb_over_a)
+
+# grid for calculating overlaps
+pms2a <- expand.grid(rep(list(0:1), 4))[-1, ] 
+pms2b <- pms2a[which(rowSums(pms2a) == 2), ]
+pms2b$cl <- c("AgAg2", "AgObj", "Ag2Obj", "AgSubj", "Ag2Subj", "ObjSubj")
+
+toresr <- lapply(tores, function(x) {
+  r <- x$map
+  r[r == 2] <- 0
+  r[r == 3] <- 1
+  r
+})
+
+# tores_over_r <- lapply(1:nrow(pms2b), function(x) {  # apply logic tests
+#   (toresr[[1]] == pms2b[x, 1]) & (toresr[[2]] == pms2b[x, 2]) & 
+#     (toresr[[3]] == pms2b[x, 3]) & (toresr[[4]] == pms2b[x, 4])
+# })
+# names(tores_over_r) <- pms2b$cl
+# tores_overs <- stack(tores_over)
+tores_over_r <- lapply(1:nrow(pms2b), function(x) {  # apply logic tests
+  calc(stack(toresr[which(pms2b[x, ] == 1)]), sum)
+})
+names(tores_over_r) <- pms2b$cl
+
+# jaccard's similarity, per https://gist.github.com/jlehtoma/3369793
+tores_over_a <- sapply(1:length(tores_over_r), function(x) { # x <- 4
+  sapply(1:2, function(y) {  # y <- 3
+    r <- tores_over_r[[x]] == y
+    round(cellStats(r * scens_r[[1]]$convertible, sum), 1)
+  })
+})
+pms2b$JS <- round(tores_over_a[2, ] / colSums(tores_over_a), 3)
+
+# calculate nearest neighbor distance between each version, using spatstat 
+# nncross
+# plot(zam_owin)
+zam_owin <- owin(xrange = bbox(zambia)[1, ], yrange = bbox(zambia)[2, ],
+                 unitname = "meter")
+which1 <- function(x) x == 1  # selector function for r to xy
+tores_nn <- lapply(1:nrow(pms2b), function(x) {  # apply logic tests; x = 2
+  ind <- which(pms2b[x, 1:4] == 1)
+  rl <- toresr[ind]
+  rxy <- lapply(rl, function(x) rasterToPoints(x, fun = which1))
+  pps <- lapply(rxy, function(x) {
+    ppp(x = x[, 1], y = x[, 2], window = zam_owin)
+  })
+  # reorder to find which has most points, to put that in as X
+  reord <- sort(sapply(pps, function(x) x$n), decreasing = TRUE)
+  ppnn <- nncross(pps[[names(reord)[1]]], pps[[names(reord)[2]]])
+})
+pms2b$NND <- round(sapply(tores_nn, function(x) mean(x$dist))) / 1000
+# with(pms2b, plot(NND, JS))
+
+# tores_over_a <- lapply(1:nrow(pms2a), function(x) {  # apply logic tests
+#   (toresr[[1]] == pms2a[x, 1]) & (toresr[[2]] == pms2a[x, 2]) & 
+#     (toresr[[3]] == pms2a[x, 3]) & (toresr[[4]] == pms2a[x, 4])
+# })
+# names(tores_over_a) <- pms2a$cl
+
+# colst <- c(rgb(1, 0, 0),   # Ag
+#            rgb(1, 0.5, 0),  # Ag 2
+#            rgb(1, 1, 0),   # Ag1 and 2
+#            rgb(0, 0, 1),  # Obj
+#            rgb(1, 0, 1),  # Ag1 and Obj
+#            rgb(1, 0.5, 1),  #  Ag2 and Obj
+#            rgb(1, 1, 0.5),  #  Ag, Ag2 and Obj
+#            rgb(0, 0.5, 1),  # Subj
+#            rgb(0, 1, 1),  # Ag and Subj
+#            rgb(0, 1, 1),  # Ag2 and Subj
+#            rgb(0, 1, 1),  # Ag, Ag2, Subj
+#            rgb(0, 1, 1),  # Obj and Subj
+#            rgb(0, 1, 1),  # Ag,  Obj and Subj
+#            rgb(0, 1, 1),  # Ag2,  Obj and Subj
+#            rgb(0, 1, 1))  # All
+# plot(1:length(colst), pch = 20, cex = 3, col = colst)
+
+# colst <- c(rgb(0, 1, 1), 
+#            rgb(0, 0.5, 1), 
+#            rgb(0, 0, 1))
+# colst <- c(rgb(1, 1, 0), 
+#            rgb(1, 0.5, 0), 
+#            rgb(1, 0, 0))
+
+# do sum factoring in overlaps 
+
+# sapply(tores_over_r, function(x) {
+#   round(cellStats(x * scens_r[[1]]$convertible, sum), 1)
+# })
+
+# toressr <- calc(stack(toresr), sum)
+# plot(toressr)
+# freq(toressr)
 
 
 
+# plot(toresr$ag2)
+# plot(tores$obj$map - tores$subj$map)
 
-ybdc$both$optimal[, {
-  par(mfrow = c(2, 2), mar = rep(3, 4))
-  hist(.SD, axes = FALSE, labels = FALSE)
-}, .SDcol = 1:4]
+# cols_tr <- c(rgb(1, 0.5, 0, alpha = 0.5), rgb(1, 0, 0, alpha = 0.5), 
+#              rgb(0, 0.5, 1, alpha = 0.5), rgb(0, 0, 1, alpha = 0.5))
+cols_tr <- c(rgb(1, 0, 0), rgb(1, 0.75, 0), rgb(0, 0, 1), rgb(0, 0.75, 1))
+plot(1:4, cex = 3, pch = 20, col = cols_tr)
 
-frange <- function(x) diff(range(x)) / max(x)
-fqtile <- function(x) diff(quantile(x, probs = c(0.025, 0.975))) / max(x) 
-ybdc$both$optimal[, lapply(.SD, frange), .SDcol = 1:4]
-ybdc$both$optimal[, lapply(.SD, fqtile), .SDcol = 1:4]
+# par(mfrow = c(2, 2), mar = rep(0, 4))
+# # plot(tores$ag$map, col = c("grey", cols_tr[1]), axes = FALSE, legend = FALSE)
+# for(i in 1:4) {
+#   plot(zambia, col = "grey")
+#   plot(toresr[[i]], col = c("transparent", cols_tr[i]), add = TRUE) 
+# }
+                   # add = TRUE, legend = FALSE)
+# plot(toresr[[4]])
 
-hist(ybdc$both$optimal$Y)
+# impact table
+imp_list <- list(toag$impacts, toag2$impacts, toobj$impacts, tosubj$impacts)
+imps <- rbindlist(lapply(imp_list, function(x) selected_impacts2(x)))
+impsr <- lapply(c(1, 4, 2, 6:8, 3), function(x) imps[[x]])
+
+# layout matrix
+m1 <- do.call(cbind, lapply(1:4, function(x) matrix(rep(x, 35), 5, 7)))
+m2 <- matrix(rep(5, 20), 4, 5)
+m3 <- do.call(cbind, lapply(6:12, function(x) matrix(rep(x, 12), 4, 3)))
+lmat <- rbind(m1, cbind(rep(5, 4), m2, m3, rep(13, 4)))
+
+# plot(1:10, ylab = ylabs[2])
+# ylabs <- c("Jaccard Index", 
+ylabs <- c(expression(paste("Converted area (", 10^5, " ", km^2, ")")), 
+           "Hours", "C loss (Mt)", "Priority", "Intactness/priority",
+           "Intactness", expression(paste("FR converted (ha"^2, ")")))
+# yscale <- c(1, 10^5, 1, 100000, 1, 1, 1, 1)
+yscale <- c(10^5, 1, 100000, 1, 1, 1, 1)
+ftits <- list("Y 11% C 0% Biod 0% Cost 89%",
+              "Y 89% C 0% Biod 0% Cost 11%",
+              "Y 5% C 29% Biod 25% Cost 41%",
+              "Y 25% C 25% Biod 25% Cost 25%")
+leg <- c("Converted")
+
+
+# yaxes <- list(seq(0, 0.8, 0.1), seq(0, 14, 2), seq(0, 2.5, 0.5), 
+yaxes <- list(seq(0, 14, 2), seq(0, 2.5, 0.5),               
+              seq(0, 1000, 200), seq(0, 0.2, 0.05), seq(0, 0.5, 0.1), 
+              seq(0, 0.8, 0.2), seq(0, 3500, 500))
+# bcols <- c(list(c(cols_tr[1], cols_tr[1], cols_tr[2], cols_tr[1], cols_tr[2],
+bcols <- c(list(c(cols_tr[1], cols_tr[2], cols_tr[1], cols_tr[2], 
+                cols_tr[3])), lapply(1:7, function(x) rep("black", 4)))
+# lcols <- c(list(c(cols_tr[2], cols_tr[3], cols_tr[3], cols_tr[4], cols_tr[4] 
+# lcols <- lapply(1:7, function(x) cols_tr)
+
+tiff(fp(p_figures, "objective_weights.tif"), height = 3.5, width = 7, 
+     units = "in", res = 300)
+l <- layout(mat = lmat)
+# layout.show(l)
+
+# map plots
+for(i in 1:4) { # i <- 1
+  # map
+  # plot(zambia)
+  imp_plot2(toresr[[i]], impacts = i1, fpath = p_figures, fnm = "bob",
+            crops = leg, ftitle = ftits[[i]], col = cols_tr[[i]], 
+            legend = TRUE, hold = TRUE, stats = FALSE, cexscale = 0.4, 
+            marg = rep(0, 4))
+}  
+
+# impact plots
+mgp <- c(1, 0.25, 0)
+par(mar = c(4, 3, 0, 0))
+with(pms2b, {
+     plot(NND, JS, col = cols_tr[c(2, 3, 3, 4, 4, 4)], pch = 16, cex = 1.5, 
+          axes = FALSE, xlab = "", ylab = "", ylim = c(0, 1))
+     points(NND, JS, col = cols_tr[c(1, 1, 2, 1, 2, 3)], pch = 20, cex = 1)
+     axis(1, at = seq(0, 130, 10), cex.axis = 0.6, las = 2, mgp = mgp, 
+          tcl = -0.2)
+     axis(2, at = seq(0, 1, 0.1), cex.axis = 0.6, las = 2, mgp = mgp, 
+          tcl = -0.2)
+     mtext(text = "NN Distance (km)", side = 1, line = 1, cex = 0.45)
+     mtext(text = "Jaccard Index", side = 2, line = 1, cex = 0.45)
+})
+for(i in 1:7) {
+  v <- impsr[[i]] / yscale[i]
+  b <- barplot(impsr[[i]] / yscale[i], las = 2,  col = cols_tr, 
+               mgp = c(1.5, 0.25, 0), tcl = -0.2, yaxt = "n", 
+               ylim = range(yaxes[[i]]), ylab = ylabs[i], cex.axis = 0.5,
+               cex.lab = 0.7)
+  axis(2, at = yaxes[[i]], cex.axis = 0.6, las = 2, mgp = mgp, 
+       tcl = -0.2)
+}
+dev.off()
+
+
+# ybdc$both$optitab[, {
+#   par(mfrow = c(2, 2), mar = rep(3, 4))
+#   hist(.SD, axes = FALSE, labels = FALSE)
+# }, .SDcol = 1:4]
+# 
+# frange <- function(x) diff(range(x)) / max(x)
+# fqtile <- function(x) diff(quantile(x, probs = c(0.025, 0.975))) / max(x) 
+# ybdc$both$optimal[, lapply(.SD, frange), .SDcol = 1:4]
+# ybdc$both$optimal[, lapply(.SD, fqtile), .SDcol = 1:4]
+# 
+# hist(ybdc$both$optimal$Y)
+
+
 
 ```
 
