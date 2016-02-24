@@ -310,6 +310,7 @@ What happens when weight is progressively added
 
 ```{r, eval = FALSE}
 p <- data.frame(ybdc$both$params)
+pare <- ybdc$both$optitab
 p[, c("Y", "C", "BD" ,"COST")] <- round(p[, c("Y", "C", "BD" ,"COST")], 2)
 scens <- lapply(c(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9), function(x) {
   c(1 - x, rep(x / 2, 2), 0)
@@ -335,7 +336,7 @@ cstats <- selected_impacts(pind, fp(p_out, ybdc$both$bcode))
 
 # calculate max impacts across both crops, and figure out the impact range, 
 # and what percent that is relative to the worst case
-allstats <- selected_impacts(1:nrow(p), fp(p_out, ybdc$both$bcode))
+allstats <- selected_impacts(pare$ind, fp(p_out, ybdc$both$bcode))
 minmaxstats <- allstats[, lapply(.SD, range)]
 imp_range <- minmaxstats[, lapply(.SD, diff)]  # difference between best/worst
 pct_of_tot <- minmaxstats[, lapply(.SD, function(x) diff(x) / max(x))]
@@ -354,7 +355,7 @@ sctab <- do.call(rbind, scens) * 100
 cx <- 0.7
 lcols <- c("black", "red", "blue")
 imp_pct[, {
-  png(fp(p_figures, "weight_impact2.png"), height = 4, width = 4, 
+  png(fp(p_figures, "weight_impact.png"), height = 4, width = 4, 
       units = "in", res = 300)
   par(mgp = c(2, 0.75, 0), mar = c(3, 3, 1, 1))
   plot(conv_area, tot_C, type = "l", xlab = "", ylab = "", #xaxt = "n", 
@@ -521,7 +522,226 @@ dev.off()
 
 ### Figure 6
 
-Objective weighting of outcomes, based on range of potential impacts
+"Objective" subjective weighting of outcomes, based on different preferences. The examples here are intended to understand the impacts that will happen when different actors with different land use interests are willing to make some compromise, e.g. they are willing to give up 5-10% of the value of their best case cost, whereas the other parties must be willing to pay more. Do that for each of the 4, and then compare to the case where each gets equal weight. 
+
+```{r, eval = FALSE}
+# use minmax stats from optimal solution set
+# pare <- ybdc$both$optitab
+optirange <- pare[, lapply(.SD, range), .SDcols = 1:4]
+# optirange[1, lapply(.SD, function(x) x * 1.05)]
+
+# y_comp <- sweep(as.matrix(pare)[, 1:4], MARGIN = 2, swvec, `<=`)
+cvar <- "C"
+compromise <- function(pare, optirange, cvar, cost1 = 1.05, cost2) {  
+  sval <- optirange[1, (eval(parse(text = cvar))) * cost1]
+  pare_ss <- as.matrix(pare[(eval(parse(text = cvar))) <= sval])
+  vars <- names(pare)[!names(pare) %in% c(cvar, "ind")]
+  swvec <- as.matrix(optirange[1, vars, with = FALSE])[1, ]
+  ocosts <- sweep(pare_ss[, vars], MARGIN = 2, swvec, "/")
+  # cost2 <- seq(1, 2, 0.05)
+  # pare_ss[2, vars][3] / swvec[3]
+  # ocosts[2, ]
+  
+  chks <- sapply(cost2, function(x) {  # x <- cost2[13]
+    chkvals <- ifelse(ocosts < x, 1, 0)
+    chkvec <- which(rowSums(chkvals) == 3)
+    if(length(chkvec) == 1) {
+      ochks <- chkvec
+    } else if(length(chkvec) > 1) {
+      ochks <- chkvec[which.min(rowSums(ocosts[chkvec, ]))]  # select minimum
+    } else {
+      ochks <- 0
+    }
+    ochks
+  })
+  # pare_ss[269, ]
+  # ocosts[269, ]
+  # pare_ss[269, "COST"] / optirange[1, COST]
+  # optirange[1, Y] * 1.05
+  c("cost" = cost2[chks > 0][1], pare_ss[chks[chks > 0][1], "ind"])
+}
+
+# indices of costs in other three variables
+cost2 <- seq(1, 5, 0.05)
+y_comp <- compromise(pare, optirange, cvar = "Y", cost1 = 1.05, cost2 = cost2)
+c_comp <- compromise(pare, optirange, cvar = "C", cost1 = 1.05, cost2 = cost2)
+bd_comp <- compromise(pare, optirange, cvar = "BD", cost1 = 1.05, cost2 = cost2)
+ct_comp <- compromise(pare, optirange, cvar = "COST", cost1 = 1.05, cost2=cost2)
+# pare[ind == y_comp["ind"], .(Y, C, BD, COST)] / optirange[1, ]
+# pare[ind == c_comp["ind"], .(Y, C, BD, COST)] / optirange[1, ]
+# pare[ind == bd_comp["ind"], .(Y, C, BD, COST)] / optirange[1, ]
+# pare[ind == ct_comp["ind"], .(Y, C, BD, COST)] / optirange[1, ]
+
+# select out those values from the results tables and grab conversion areas
+parms <- round(ybdc$both$params[, 7:10], 2)
+eqind <- which(apply(parms, 1, function(x) all(x == 0.25))) # iter of eq wt run
+# pare[ind == eqind]
+
+pind <- c(y_comp["ind"], c_comp["ind"], bd_comp["ind"], ct_comp["ind"], eqind)
+# round(ybdc$both$params[pind, 7:10], 2)
+fnames <- fp(fp(p_out, ybdc$both$bcode), 
+             imp_sorter(fp(p_out, ybdc$both$bcode), inds = pind))
+objsubj_r <- lapply(fnames, function(x) {  # x <- pind[[1]]
+  print(x)
+  DT <- cbind(fread(x), basedt[, .(x, y, convertible)])
+  DTr <- dt_to_raster(DT, CRSobj)
+})
+names(objsubj_r) <- c("ycomp", "ccomp", "bdcomp", "ctcomp", "eqwt")
+
+# run for subjective weights (could have pull this out also) as check
+# run for subjective weights, where we want to treat everyone equally
+# eq_wgts <- rep(0.25, 4)
+# names(eq_wgts) <- cnames  # rename to make sure model runs properly
+# tosubj <- tradeoff_mod(targ, cbetas = eq_wgts, currprodmod = g, it = "SUBJ")
+# tosubj_imp <- selected_impacts2(tosubj$impacts)
+
+# tosubj_imp <- lapply(c(1, 4, 2, 6:8, 3), function(x) tosubj_imp[[x]])
+
+# pull out the impact tables (brief check shows they are the same values)
+all_stats <- selected_impacts(unname(pind), fp(p_out, ybdc$both$bcode))
+impsr <- lapply(c(2, 5, 3, 7:9, 4), function(x) all_stats[[x]])
+# pare[ind == y_comp["ind"],]; pare[ind == c_comp["ind"],]; 
+# pare[ind == bd_comp["ind"],]; pare[ind == ct_comp["ind"],]
+# tosubj_imp
+
+# grid for calculating overlaps
+pms2a <- expand.grid(rep(list(0:1), 5))[-1, ] 
+pms2b <- pms2a[which(rowSums(pms2a) == 2), ]
+pms2b$cl <- c("YC", "YBD", "CBd", "YCt", "CCt", "BDCt", "YEq", "CEq", 
+              "BdEq", "CtEq")
+
+toresr <- lapply(objsubj_r, function(x) calc(x[[1:2]], sum))
+tores_over_r <- lapply(1:nrow(pms2b), function(x) {  # apply logic tests
+  calc(stack(toresr[which(pms2b[x, ] == 1)]), sum)
+})
+names(tores_over_r) <- pms2b$cl
+
+# jaccard's similarity, per https://gist.github.com/jlehtoma/3369793
+tores_over_a <- sapply(1:length(tores_over_r), function(x) { # x <- 4
+  sapply(1:2, function(y) {  # y <- 3
+    r <- tores_over_r[[x]] == y
+    round(cellStats(r * scens_r[[1]]$convertible, sum), 1)
+  })
+})
+pms2b$JS <- round(tores_over_a[2, ] / colSums(tores_over_a), 3)
+
+# calculate nearest neighbor distance between each version, using spatstat 
+# nncross
+# plot(zam_owin)
+zam_owin <- owin(xrange = bbox(zambia)[1, ], yrange = bbox(zambia)[2, ],
+                 unitname = "meter")
+which1 <- function(x) x == 1  # selector function for r to xy
+tores_nn <- lapply(1:nrow(pms2b), function(x) {  # apply logic tests; x = 2
+  ind <- which(pms2b[x, 1:5] == 1)  ### check col number
+  rl <- toresr[ind]
+  rxy <- lapply(rl, function(x) rasterToPoints(x, fun = which1))
+  pps <- lapply(rxy, function(x) {
+    ppp(x = x[, 1], y = x[, 2], window = zam_owin)
+  })
+  # reorder to find which has most points, to put that in as X
+  reord <- sort(sapply(pps, function(x) x$n), decreasing = TRUE)
+  ppnn <- nncross(pps[[names(reord)[1]]], pps[[names(reord)[2]]])
+})
+pms2b$NND <- round(sapply(tores_nn, function(x) mean(x$dist))) / 1000
+# with(pms2b, plot(NND, JS))
+
+# do sum factoring in overlaps 
+# sapply(tores_over_r, function(x) {
+#   round(cellStats(x * scens_r[[1]]$convertible, sum), 1)
+# })
+
+# cols_tr <- c(rgb(1, 0, 0), rgb(1, 0.75, 0), rgb(0, 0, 1), rgb(0, 0.75, 1))
+cols_tr <- c(rgb(1, 0, 0), rgb(0, 0, 1), rgb(0, 0.75, 1), rgb(1, 0.5, 0), 
+             "gold")#rgb(1, 1, 0))
+plot(1:length(cols_tr), cex = 3, pch = 20, col = cols_tr)
+
+# layout matrix
+m1 <- do.call(cbind, lapply(1:5, function(x) matrix(rep(x, 45), 6, 9)))
+m2 <- matrix(rep(6, 36), 4, 9)
+m3 <- do.call(cbind, lapply(7:13, function(x) matrix(rep(x, 20), 4, 5)))
+f1 <- lapply(14:15, function(x) cbind(rep(x, 4), rep(x, 4)))
+lmat <- rbind(m1, cbind(m2, m3, rep(14, 4)))
+# lmat <- rbind(m1, m3)
+# cbind(m2, m3)
+
+# plot(1:10, ylab = ylabs[2])
+# ylabs <- c("Jaccard Index", 
+ylabs <- c(expression(paste("Conv. area (", 10^5, " ", km^2, ")")), 
+           "Hours", "C loss (Mt)", "Priority", "Intactness/priority",
+           "Intactness", expression(paste("FR converted (ha"^2, ")")))
+# yscale <- c(1, 10^5, 1, 100000, 1, 1, 1, 1)
+yscale <- c(10^5, 1, 100000, 1, 1, 1, 1)
+
+# figure titles
+ftits <- lapply(pind, function(x) {
+  paste(sapply(1:4, function(y) {
+    paste(paste(cnames[y], paste0(parms[x, y] * 100, "%")))
+  }), collapse = " ")
+})
+leg <- c("Converted")
+
+# yaxes <- list(seq(0, 0.8, 0.1), seq(0, 14, 2), seq(0, 2.5, 0.5), 
+maxes <- sapply(c(2, 5, 3, 7:9, 4), function(j) minmaxstats[[j]][2])
+mins <- sapply(c(2, 5, 3, 7:9, 4), function(j) minmaxstats[[j]][1])
+ymaxes <- maxes / yscale
+ymins <- mins / yscale
+yaxes <- list(seq(0, 15, 3), 0:7, seq(0, 1100, 100), seq(0, 0.15, 0.05), 
+              seq(0, 0.6, 0.1), seq(0, 1, 0.1), seq(0, 7000, 1000))
+
+# bcols <- c(list(c(cols_tr[1], cols_tr[1], cols_tr[2], cols_tr[1], cols_tr[2],
+pms2b$icol <- cols_tr[c(1, 1, 2, 1, 2, 3, 1, 2, 3, 4)]  # circle inner
+pms2b$ocol <- cols_tr[c(2, 3, 3, 4, 4, 4, 5, 5, 5, 5)]  # circle outer
+
+tiff(fp(p_figures, "objective-subjective_weights.tif"), height = 2.5, width = 7, 
+     units = "in", res = 300)
+l <- layout(mat = lmat)
+# layout.show(l)
+
+# map plots
+for(i in 1:length(toresr)) { # i <- 1
+  # map
+#   par(mar = rep(0, 4))
+#   plot(zambia, col = cols_tr[i])
+  imp_plot2(toresr[[i]], impacts = i1, fpath = p_figures, fnm = "bob",
+            crops = leg, ftitle = ftits[[i]], col = cols_tr[[i]], 
+            legend = TRUE, hold = TRUE, stats = FALSE, cexscale = 0.3, 
+            marg = rep(0, 4), inset = c(0.1, 0.1, 0, 0))
+}  
+
+# impact plots
+mgp <- c(0.9, 0.25, 0)
+par(mar = c(3, 3, 0, 3))
+with(pms2b, {
+     plot(NND, JS, col = pms2b$icol, pch = 16, cex = 0.8, 
+          axes = FALSE, xlab = "", ylab = "", ylim = c(0, 0.6), 
+          xlim = c(0, 25))
+     points(NND, JS, col = pms2b$ocol, pch = 20, cex = 0.5)
+     axis(1, at = seq(0, 25, 5), cex.axis = 0.5, las = 2, mgp = mgp, 
+          tcl = -0.2)
+     axis(2, at = seq(0, 0.6, 0.1), cex.axis = 0.5, las = 2, mgp = mgp, 
+          tcl = -0.2)
+     mtext(text = "NN Distance (km)", side = 1, line = 0.5, cex = 0.4)
+     mtext(text = "Jaccard Index", side = 2, line = 1, cex = 0.4)
+})
+par(mar = c(3, 3, 0, 0))
+mgp <- c(1.3, 0.25, 0)
+for(i in 1:7) { # i <- 1
+  v <- impsr[[i]] / yscale[i]
+  b <- barplot(impsr[[i]] / yscale[i], las = 2,  col = cols_tr, 
+               mgp = mgp, tcl = -0.2, yaxt = "n", 
+               ylim = range(yaxes[[i]]), ylab = ylabs[i], cex.axis = 0.4,
+               cex.lab = 0.55)
+  lines(c(-1, 7), rep(ymins[i], 2), lwd = 1, col = "grey50")
+  lines(c(-1, 7), rep(ymaxes[i], 2), lwd = 1)
+  axis(2, at = yaxes[[i]], cex.axis = 0.5, las = 2, mgp = mgp, 
+       tcl = -0.2)
+}
+dev.off()
+
+```
+
+
+# Earlier version of figure 3
 
 ```{r, eval = FALSE}
 # objective weights
