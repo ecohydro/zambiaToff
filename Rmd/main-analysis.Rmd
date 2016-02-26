@@ -119,10 +119,10 @@ mzgap <- 4.43 / 2.3
 soygap <- 3.4 / 2
 
 # assume 50% closed on current land
-g <- gapper(cp, c(mzgap, soygap), 0.25)
+g <- gapper(cp, c(mzgap, soygap), 1)
 
 # targets given g
-targ <- c("maize" = 3, "soy" = 9)
+targ <- c("maize" = 4, "soy" = 10)
 # targ <- c("maize" = 3.2, "soy" = 8.7)
 targs <- targets(targ, cp, g)
 
@@ -145,33 +145,17 @@ Running the model individually for each crop. This currently entails updating an
 
 # Separate soy and maize impacts
 cb <- c("Y" = 1, "C" = 0, "BD" = 0, "COST" = 0)
-mzto <- tradeoff_mod(prod_targ = targ["maize"], cbetas = cb, currprodmod = g[1])
-soyto <- tradeoff_mod(prod_targ = targ["soy"], cbetas = cb, currprodmod = g[2])
 mzsoyto <- tradeoff_mod(prod_targ = targ, cbetas = cb, currprodmod = g)
 
 # mzto$conv[, sum(maize)]
 # soyto$conv[, sum(soy)]
 
 CRSobj <- CRS(mzto$inputs$sp$crs)
-mztor <- dt_to_raster(mzto$conv, CRSobj)
-soytor <- dt_to_raster(soyto$conv, CRSobj)
 mzsoytor <- dt_to_raster(mzsoyto$conv, CRSobj)  # converges on same results
-
-# rasters
-mzsoyr <- stack(list(mztor, soytor * 2))
-mzsoyr <- calc(mzsoyr, sum)
-# plot(mzsoyr)
-# plot(roads)
 
 # Plot
 i1 <- rbind(mzto$impacts, soyto$impacts)
-crops <- c("maize", "soy", "maize/soy")
-# plot(1:10, pch = 20, cex = 4, col = "gold2")
-# plot(mzsoyr, col = c("grey", "goldenrod", "green4", "orange"))
-imp_plot2(mzsoyr, i1, p_figures, "ideal_yield", "", crops, 1, TRUE, 
-         c("gold2", "green3", "orange"))
-
-basedt <- soyto$inputs$mask
+basedt <- mzsoyto$inputs$mask
 ```
 <a href="#top">Back to top</a>
 
@@ -190,6 +174,7 @@ Switch off for now
 # }
 # # Yst = sum; Cst = sum; BDst = mean; COSTst = mean
 # Yst = sum; Cst = sum; BDst = wmu; COSTst = wmu
+
 # 
 # # crops <- list("maize", "soy", c("maize", "soy"))
 # crops <- list(c("maize", "soy"))
@@ -238,49 +223,51 @@ Switch off for now
 <a href="#top">Back to top</a>
 
 ### Conservation interests versus agricultural interests
+
+Switched off for now
 ```{r, eval = FALSE}
-ybl <- list(yb1 <- c(1, 1))
-step <- 0.02
-cnames <- c("Y", "COST")
-ps <- round(do.call(rbind, pareto_steps(cnames, step)), 2)
-# ps[which(rowSums(ps[, c(1, 3)]) == 0), ]
-Yv = "conv_area"; Cv = "tot_C"
-BDv = c(Yv, "int_prior"); COSTv = c(Yv, "mu_cost")
-wmu <- function(x, na.rm = na.rm) {
-  weighted.mean(x = x[, 2], w = x[, 1], na.rm = na.rm)
-}
-Yst = sum; Cst = sum; BDst = wmu; COSTst = wmu
-
-crops <- list(c("maize", "soy"))
-croplnms <- list("both")
-
-ycost <- lapply(crops, function(x) {
-  a <- Sys.time()
-  print(paste("Starting run for", x, "at", a))
-  otab <- pareto(cnames, step = step, prod_targ = targ[x], 
-                  yblist = ybl, currprodmod = g[x], input_key = "ZA", 
-                  Yv = Yv, Cv = Cv, BDv = BDv, COSTv = COSTv, Yst = Yst, 
-                  Cst = Cst, BDst = BDst, COSTst = COSTst, todisk = TRUE, 
-                  silent = FALSE, ncl = 7)
-  load(fp(p_out, "bcode.rda"))
-  heatr <- heat2(fp(p_out, bcode), basedt, todisk = TRUE) 
-  print(Sys.time() - a)
-  c("bcode" = bcode, otab, "heat" = heatr)
-})
-names(ycost) <- croplnms
-# plot(ycost$both$optitab$Y, ycost$both$optitab$COST)
-
-# fix because ran with heat2 not yet adjusted for improperly ordered csv files
-ycostfix <- lapply(ycost, function(x) {  # x <- ycost$both
-  if(nrow(x$params) > nrow(x$optitab)) {
-    print(paste("fixing heat map for", x$bcode))
-    heatfix <- heat2(fp(p_out, x$bcode), basedt, TRUE, TRUE)
-  } else {
-    heatfix <- NULL
-  }
-  heatfix
-})
-for(i in 1:length(ycost)) ycost[[i]]$heat <- ycostfix[[i]]
+# ybl <- list(yb1 <- c(1, 1))
+# step <- 0.02
+# cnames <- c("Y", "COST")
+# ps <- round(do.call(rbind, pareto_steps(cnames, step)), 2)
+# # ps[which(rowSums(ps[, c(1, 3)]) == 0), ]
+# Yv = "conv_area"; Cv = "tot_C"
+# BDv = c(Yv, "int_prior"); COSTv = c(Yv, "mu_cost")
+# wmu <- function(x, na.rm = na.rm) {
+#   weighted.mean(x = x[, 2], w = x[, 1], na.rm = na.rm)
+# }
+# Yst = sum; Cst = sum; BDst = wmu; COSTst = wmu
+# 
+# crops <- list(c("maize", "soy"))
+# croplnms <- list("both")
+# 
+# ycost <- lapply(crops, function(x) {
+#   a <- Sys.time()
+#   print(paste("Starting run for", x, "at", a))
+#   otab <- pareto(cnames, step = step, prod_targ = targ[x], 
+#                   yblist = ybl, currprodmod = g[x], input_key = "ZA", 
+#                   Yv = Yv, Cv = Cv, BDv = BDv, COSTv = COSTv, Yst = Yst, 
+#                   Cst = Cst, BDst = BDst, COSTst = COSTst, todisk = TRUE, 
+#                   silent = FALSE, ncl = 7)
+#   load(fp(p_out, "bcode.rda"))
+#   heatr <- heat2(fp(p_out, bcode), basedt, todisk = TRUE) 
+#   print(Sys.time() - a)
+#   c("bcode" = bcode, otab, "heat" = heatr)
+# })
+# names(ycost) <- croplnms
+# # plot(ycost$both$optitab$Y, ycost$both$optitab$COST)
+# 
+# # fix because ran with heat2 not yet adjusted for improperly ordered csv files
+# ycostfix <- lapply(ycost, function(x) {  # x <- ycost$both
+#   if(nrow(x$params) > nrow(x$optitab)) {
+#     print(paste("fixing heat map for", x$bcode))
+#     heatfix <- heat2(fp(p_out, x$bcode), basedt, TRUE, TRUE)
+#   } else {
+#     heatfix <- NULL
+#   }
+#   heatfix
+# })
+# for(i in 1:length(ycost)) ycost[[i]]$heat <- ycostfix[[i]]
 
 
 # ycost <- lapply("ZA_20160215_072118_1558_04246", function(x) {
@@ -372,6 +359,19 @@ save(ycost, bdc, file = fp(p_out, "mainresults1702.rda"))
 
 ### All 4 together
 ```{r, eval = FALSE}
+ybl <- list(yb1 <- c(1, 1))
+step <- 0.05
+cnames <- c("C", "BD", "COST")
+ps <- round(do.call(rbind, pareto_steps(cnames, step)), 2); head(ps)
+Yv = "conv_area"; Cv = "tot_C"; #BDv = "int_prior"; COSTv = "mu_cost"
+BDv = c(Yv, "int_prior"); COSTv = c(Yv, "mu_cost")
+wmu <- function(x, na.rm = na.rm) {
+  weighted.mean(x = x[, 2], w = x[, 1], na.rm = na.rm)
+}
+Yst = sum; Cst = sum; BDst = wmu; COSTst = wmu
+crops <- list(c("maize", "soy"))
+croplnms <- list("both")
+
 step <- 0.05
 cnames <- c("Y", "C", "BD", "COST")
 ps <- round(do.call(rbind, pareto_steps(cnames, step)), 2)
@@ -391,16 +391,16 @@ ybdc <- lapply(crops, function(x) {
 names(ybdc) <- croplnms
 
 # fix because ran with heat2 not yet adjusted for improperly ordered csv files
-ybdcfix <- lapply(ybdc, function(x) {  # x <- ycost$both
-  if(nrow(x$params) > nrow(x$optitab)) {
-    print(paste("fixing heat map for", x$bcode))
-    heatfix <- heat2(fp(p_out, x$bcode), basedt, TRUE, TRUE)
-  } else {
-    heatfix <- NULL
-  }
-  heatfix
-})
-for(i in 1:length(ybdc)) ybdc[[i]]$heat <- ybdcfix[[i]]
+# ybdcfix <- lapply(ybdc, function(x) {  # x <- ycost$both
+#   if(nrow(x$params) > nrow(x$optitab)) {
+#     print(paste("fixing heat map for", x$bcode))
+#     heatfix <- heat2(fp(p_out, x$bcode), basedt, TRUE, TRUE)
+#   } else {
+#     heatfix <- NULL
+#   }
+#   heatfix
+# })
+# for(i in 1:length(ybdc)) ybdc[[i]]$heat <- ybdcfix[[i]]
 
 # ran because of fail on iteration for both (croplnms not properly compiled)
 # bnames <- c("ZA_20160213_231906_17404_28678", "ZA_20160213_234959_17404_39818")
@@ -453,7 +453,8 @@ for(i in 1:length(ybdc)) ybdc[[i]]$heat <- ybdcfix[[i]]
 # plot(ycost$both$heat)
 # plot(bdc$both$heat)
 # save(ybdc, cbdc, ycost, bdc, file = fp(p_out, "mainresults1502.rda"))
-save(ybdc, ycost, bdc, file = fp(p_out, "mainresults1702.rda"))
+# save(ybdc, ycost, bdc, file = fp(p_out, "mainresults1702.rda"))
+save(ybdc, file = fp(p_out, "mainresults2502.rda"))
 # load(fp(p_out, "mainresults1702.rda"))
 ```
 <a href="#top">Back to top</a>

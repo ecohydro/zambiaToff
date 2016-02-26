@@ -1,0 +1,35 @@
+\documentclass[a4paper]{article}
+\usepackage[affil-it]{authblk}  
+%\newcommand{\citetapos}[1]{\citeauthor{#1}'s \citeyearpar{#1}}  % apostrophe's in cites
+\def\linenumberfont{\normalfont\small\sffamily}
+\usepackage{graphicx}
+\usepackage{epstopdf}
+% From link below: next two lines allow caption to fill the full figure box, and caption formats to be changed (e.g. font)
+% http://tex.stackexchange.com/questions/107350/caption-below-the-figure-and-aligned-with-left-side-of-figure
+% http://ctan.mackichan.com/macros/latex/contrib/caption/caption-eng.pdf
+\usepackage[left=2.5cm, right=2.5cm, bottom=2cm, top=2cm]{geometry}
+\usepackage{caption}
+\captionsetup[figure]{slc=off, font=footnotesize}
+\captionsetup[table]{margin={4cm, 4cm}, slc=off, font=footnotesize}
+\usepackage[numbers,sort,compress]{natbib}
+
+\begin{document}
+\section*{\Large SI Results}
+
+\section*{\large Crop yields}
+
+\begin{figure}[!ht]
+       \begin{center}
+       \makebox[\textwidth][c]{\includegraphics[width=0.8\textwidth]{figures/ideal_yield2.png}}
+        \end{center}
+      \caption{The distribution of converted areas when the model is run separately for maize and soybean when 100\% is placed on yield maximization. The map is color-coded according to which crop was allocated to each location (red for maize, blue for soybean, and yellow for the places where both crops were allocated).}
+      \label{fig:default}
+\end{figure}
+
+
+\section*{\large References}
+\bibliographystyle{prsb} 
+\bibliography{/Users/lestes/Dropbox/publications/full}
+
+\end{document}  
+

@@ -1,0 +1,43 @@
+\documentclass[a4paper]{article}
+\usepackage[affil-it]{authblk}  
+%\newcommand{\citetapos}[1]{\citeauthor{#1}'s \citeyearpar{#1}}  % apostrophe's in cites
+\def\linenumberfont{\normalfont\small\sffamily}
+\usepackage{graphicx}
+\usepackage{epstopdf}
+% From link below: next two lines allow caption to fill the full figure box, and caption formats to be changed (e.g. font)
+% http://tex.stackexchange.com/questions/107350/caption-below-the-figure-and-aligned-with-left-side-of-figure
+% http://ctan.mackichan.com/macros/latex/contrib/caption/caption-eng.pdf
+\usepackage[left=2.5cm, right=2.5cm, bottom=2cm, top=2cm]{geometry}
+\usepackage{caption}
+\captionsetup[figure]{slc=off, font=footnotesize}
+\captionsetup[table]{margin={4cm, 4cm}, slc=off, font=footnotesize}
+\usepackage[numbers,sort,compress]{natbib}
+
+\begin{document}
+\section*{\Large SI Methods}
+
+\section*{\large Model overview}
+
+The agroEcoTradeoff model was designed to identify optimal land use configurations that allow a certain level of agricultural production to be achieved while minimizing associated ecological and economic costs. The model is based on that developed by Koh and Ghazoul \citep{koh_spatially_2010}, which was designed to select areas with promising potential for oil palm production but whose conversion would result in less loss of carbon, avian diversity, and land with high rice production potential. In this case, each unit of land was ranked based on its relative value within each measure, which was potential productivity for oil palm and the inverse of its potential rice productivity, carbon density, or bird diversity. Normalizing these values converted each into an oil palm conversion probability \emph{c} that was conditioned on the individual land value, such that the highest ranking areas were converted until a specified oil palm production target was reached. For example, in the case of carbon conservation being the priority, lands were sequentially selected from the least carbon dense to the most carbon dense, without concern for any other objective. By multiplying the four \emph{c} values together into a joint conversion probability \emph{C}, each land value was given equal weight, achieving a satisfactory tradeoff between the four different land use objectives. 
+
+We retained the basic rationale underlying this model in developing our own, wherein tradeoffs between yield maximizing and ecological cost minimizing objectives can be made in achieving a crop production target, with several amendments.  First, the model has the capacity to simulate more than one crop. Second, the ranking of land units is based on the cost/benefit ratio of converting it to meet the target, thus areathat maximize benefits while minimizing costs along a particular cost dimension.   
+
+
+We adapt this approach by recasting the model in terms of efficiency, where land units are ranked in terms of its potential productivity relative to the cost that will be incurred from its conversion.  
+ 
+
+
+%\begin{figure}[!ht]
+%       \begin{center}
+%      \includegraphics[scale=1]{figures/figS1.pdf} 
+%        \end{center}
+%     %\vspace{-1cm}
+%      \caption{The cumulative number of workers seeking qualification during the South Africa cropland mapping trial period. Successful qualification seekers are indicated by blue circles, unsuccessful by open circles.}
+%      \label{fig:default}
+%\end{figure}
+%\section*{\large References}
+\bibliographystyle{prsb} 
+\bibliography{/Users/lestes/Dropbox/publications/full}
+
+\end{document}  
+
