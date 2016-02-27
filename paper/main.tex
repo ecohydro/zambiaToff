@@ -6,6 +6,7 @@
 
 
 \usepackage{graphicx}
+\usepackage{tabularx}
 \usepackage{epstopdf}
 \usepackage{amsmath}
 \usepackage{amssymb}
@@ -49,7 +50,8 @@
 \usepackage{float}
 \usepackage[anythingbreaks]{breakurl}
 
-\title{Reconciling agriculture, carbon, and biodiversity in a savanna transformation frontier}\author[1,2]{Estes, L.D.}
+\title{Reconciling agriculture, carbon, and biodiversity in a savanna transformation frontier}
+\author[1,2]{Estes, L.D.}
 \author[2]{Searchinger, T.}
 \author[2]{Spiegel, M.}
 \author[2]{Tian, D.}
@@ -77,7 +79,7 @@ Blah blah
 %\end{frontmatter}
 
 
-%\linenumbers
+\linenumbers
 
 %% main text
 \section*{\large Introduction}
@@ -92,13 +94,9 @@ At the same time, two thirds of Zambia’s 75 milloin hectares is dominated by Mio
  
 The biodiversity of these woody savannas is also high.  Overall, the wetter woodland-savannas and shrublands of Africa have a similar average richness for birds and mammals as the world’s wetter tropical forests, and 75\% of these habitats have higher overall vertebrate diversity than 75\% of the rest of the world.   (Searchiner et al. 2015).   Most of Zambia is covered by what the World Wildlife Fund has categorized as Central Zambian Miombo Woodland.  It contains mature miombo woodland trees typically 15 to 20 meters tall, around a quarter of which are evergreen, with a broadleaf shrub and grass understory beneath.[2]  It is also interspersed with a large quantity of wetlands, up to 30\% of many areas.   Its large expanse of habitat make it a center of large mammals, including elephant, black rhino and African buffalo.  Although endemism is low, birdlife is rich with X species, and reptile and amphibian endemism is high, with 19 endemic reptile species 13 endemic amphibians.  LYNDON, CAN WE ADD SOME NUMBERS OF PLANT SPECIES, AND VERTEBRATE SPECIES.   Zambia contains eight other ecoregions according to WWF classifications.[3]   Its extensive wetlands are particular centers of bird and animal life and under extensive pressures.  The value of this habitat is based in part on its remaining relative abundance, which makes it possible for wide-ranging mammals, including many predator species, to survive. 
  
-These multiple trends imply challenging trade-offs between agricultural development and environmental concerns.  They raise the question how could decision-makers best target agricultural expansion so that it balances economic, carbon and biodiversity concerns.  A related question is how could a system for targeting well illuminate the trade-offs to support decision-making and a proper role for influence by stakeholders.  And an important question is whether if so what benefits could be achieved by targeting land expansion in certain areas from the standpoint of achieving areas with a desirable mix of objectives.
+These multiple trends imply challenging trade-offs between agricultural development and environmental concerns, and raise questions about what modeling approaches might best enable a society of multiple stakeholders to find optimal solutions.  There is a long history of conservation planning that attempts to target conservation areas or objectives while minimizing economic costs or fitting a specific land use budgets for conservation \cite[e.g.][]{koh_spatially_2010, naidoo_integrating_2006,margules_systematic_2000}. Koh and Ghazoul \citep{koh_spatially_2010} provide one example of an effort to examine trade-offs among production, carbon and biodiversity for oil palm development in Indonesia by giving each land use priority equal weighting.  
 
-[We need a somewhat clearer phrasing of our objectives here, or we need to state the objective below the next paragraph. What is that objective: two-fold I would say. 1) Is this sort of modeling approach useful and/or does it have realistic potential for finding compromises in a more general sense (i.e. can it be applied beyond just Zambia), 2) how much potential does Zambia appear to have for reducing the impacts of its expansion. Something along these lines.]
- 
-There is a long history of conservation planning that attempts to target conservation areas or objectives while minimizing economic costs subject or while limited land use budget for conservation \cite[e.g.][]{koh_spatially_2010, naidoo_integrating_2006,margules_systematic_2000}. Koh and Ghazoul \citep{koh_spatially_2010} provide one example of an effort to examine trade-offs among production, carbon and biodiversity for oil palm development in Indonesia by giving each land use priority equal weighting.  We adopt a similar approach here, using a newly developed model in which varying weights can be placed on the different objectives, thereby allowing optimal spatial allocations to be found that reflect different degrees of compromise between competing land use interests. To enable this functionality, the model is structured to evaluate each objective in terms of efficiency, or the ratio of cost to yield benefit that results from converting land to agriculture in order to achieve a production target. 
-
-We apply this model to answer a basic but important question: can agricultural expansion in Zambia be achieved for substantially lower environmental cost than a business as usual approach, where expansion occurs without consideration of its ecological consequences? This question is particularly important for tropical savanna shrubland, and grassland biomes, which are commonly assumed to provide a low environmental cost reserve for agricultural development \cite{searchinger_high_2015}. 
+Focusing on the same categories of objectives, we here present a new model a new model in which varying weights can be placed on the different objectives in an iterative approach to allow decisionmakers and stakeholders to find optimal allocations of new cropland.  This kind of approach can enable different stakeholders to find compromises between competing land use interests while still meeting production targets. We apply this model to Zambia to answer a basic but important question: is it possible to achieve a reasonable balance of different interests, and to reduce the carbon and biodiversity costs of expansion with limited impact on agricultural potential? This question is particularly important for tropical savanna shrubland, and grassland biomes, which are commonly assumed to provide a low environmental cost reserve for agricultural development \cite{searchinger_high_2015}. 
 
 \section*{\large Materials and Methods}
 The model we developed, called \emph{AgroEcoTradeoff}, is designed to find the best land use configuration to satisfy the production targets for multiple crops while minimizing four costs: the total land area required, which is inversely related to productivity; the potential losses of carbon and biodiversity; and transportation costs, which are closely correlated with agricultural production costs (ref).  The model takes the basic form:
@@ -155,11 +153,11 @@ To identify the minimum possible costs for each individual objective, and the de
   \end{center}
 \end{figure}
  
-One of the goals of this analysis is to determine whether opportunities exist to achieve a reasonable accommodation between different objectives, and here the results are also interesting. While the best case scenario for maximizing yield would convert  million hectares, the worst case scenario (which would minimize carbon costs) would convert Y million hectares, only a Z\% increase, which is far lower than the variability in potential crop yields (3.7-6.1 t ha$^{-1}$ for maize and 0.8 to 5.1 ha$^{-1}$ for soybean). This result reflects our model's use, and the value, of an efficiency approach. Because yield is in the denominator of each objective (e.g. carbon loss per ton of yield, or biodiversity value per ton of yield), land with better yield potential tend to be selected--even when the yield maximization priority is given no weight--so that the crop production can be achieved with the least cost.
+One of the goals of this analysis is to determine whether opportunities exist to achieve a reasonable accommodation between different objectives, and here the results are also interesting. While the best case scenario for maximizing yield would convert 13,668 km$^2$, the worst case scenario (which would minimize carbon costs) would convert 15,302 km$^2$, only an 12\% increase, a range in outcomes that is substantially lower than range in potential crop yields (3.7-6.1 t ha$^{-1}$ for maize and 0.8 to 5.1 ha$^{-1}$ for soybean). This result reflects our model's use, and the value, of an efficiency approach; because yield is in the denominator of each objective (e.g. carbon loss per ton of yield), land with better yield potential tends to be selected--even when the yield maximization priority is given no weight.
  
-By contrast to the limited differences for yields, the differences in transportation costs using existing transportation networks range from an average of 0.6 hours for each hectare to 6.9 hours, an increase of 1050\%.  Carbon costs from minimum to maximum vary by 188\%, and average biodiversity impacts vary by 100\%.  These differences suggest that there is high potential to reduce transportation, carbon and biodiversity costs for relatively sacrifice of yield potential. 
+In contrast to the limited range in total converted area, the differences in travel times range from an average of 0.8 hours for each hectare to 6.7 hours, an increase of 710\%.  Carbon costs increased by 156\% (462 to 1184 Mt), while the worst case for biodiversity was 93\% higher, with the mean biodiversity index of converted areas increasing from 0.26 to 0.5.  These differences suggest that there is high potential to reduce transportation, carbon and biodiversity costs for relatively sacrifice of yield potential. 
 
-This potential is illustrated in Figure 2, which shows how much cost is avoided in each objective when weights are transferred between them. Here avoided cost is calculated as the percent difference between the cost paid under a given weight combination and the largest cost that is incurred in all combinations (the worst case). For carbon, biodiversity, and travel time, the maximum cost occurs when yield is given 100\% weight, which is where the yield objective has the lowest possible cost, as measured by the percent of land saved relative to the largest area converted, because the cropland that is converted is the highest yielding. However, by sequentially adding weights in 5\% increments to both biodiversity and carbon conservation objectives, large reductions in not only those costs but also in average travel time (because of the correlations between these three measures). Weighting carbon and biodiversity by 15\% each reduces the average area of new lands (i.e. new crop area is increased) by just 3\%, in exchange for avoided costs of 34\% for biodiversity, 48\% for carbon, and 44\% for travel time, which respectively represent 68\%, 77\%, and 50\% of the maximum possible avoided cost for each objective.
+This potential is illustrated in Figure 2, which shows how much cost can be avoided within different objective by transferring increasing amounts of weight to them from the yield maximizing objective. Avoided cost is the percent difference between the cost paid under a given weight combination and the most expensive case. For carbon, biodiversity, and travel time, the maximum cost occurs when yield is given 100\% weight, which is where the yield objective has the lowest possible cost, as measured by the percent of land saved relative to the largest area converted (because the cropland that is selected is the highest yielding). However, by sequentially adding weights in 5\% increments to both biodiversity and carbon conservation objectives, large reductions in these costs as well as travel time are rapidly realized (because of the correlations between these three measures), but for little cost to the yield objective. For example, adding just 15\% weight each to carbon and biodiversity increases the average area of new lands (i.e. the average yield is decreased) by just 2.7\% (avoided area costs drop to 8\% from 10.7\%), in exchange for avoided costs of 33\% for biodiversity, 47\% for carbon, and 43\% for travel time, which respectively represent 75\%, 78\%, and 49\% of the maximum avoided cost for each objective.
  
 \begin{figure}[!ht]
   \begin{center}
@@ -172,21 +170,42 @@ This potential is illustrated in Figure 2, which shows how much cost is avoided 
  
 %These substantial cost savings suggest that a user  achieved for relatively little transfer of weight between objectives indicates that a user primarily concerned with acquiring the highest-yielding land for agriculture would have to make relatively little sacrifice to give enormous gains to conservation interests, or to substantially reduce the potential costs of their farming operation. value of compromise in terms that users might be more likely 
 
-These results show that transferring relatively little weight between objectives can have large savings. However, people involved in making land use decisions are more likely to evaluate their willingness to compromise in actual cost units, and from the perspective of how much more they might be willing to pay to compromise with other interests. We therefore evaluated four further scenarios, in which a hypothetical land user with interests in a single objective willingly pays up to 5\% more than the lowest cost case (i.e. the 100\% weight outcome) in order to compromise with other interests. The yield maximizing user is thus willing to ``pay'' for an extra 68,400 km$^2$ of new cropland, the carbon and biodiversity conservationists would respectively sacrifice an additional 2,312,000 tons of carbon and 0.013 biodiversity index units, and the production cost-minded agricultural developer would pay just 4.1 minutes of travel time. Given these sacrifices, we identified how much more the other three interests would have to pay relative to their lowest cost (100\% weight) scenarios, treating each of the three equally, i.e. the amount each has to pay extra is the same percentage of their lowest cost case. 
+Transferring relatively little weight between objectives can therefore result in large savings. However, people involved in making land use decisions are more likely to evaluate actual cost units with respect to how much more they would be willing to pay to compromise with other interests. We therefore evaluated four further scenarios, in which a hypothetical land user with interests in a single objective willingly pays up to 5\% more than the lowest cost case (i.e. the 100\% weight outcome) in order to compromise with other interests. The yield maximizing user is thus willing to ``pay'' for an extra 68,400 km$^2$ of new cropland, the carbon and biodiversity conservationists would respectively sacrifice an additional 2,312,000 tons of carbon and 0.013 biodiversity index units, and the production cost-minded agricultural developer would pay just 4.1 minutes of travel time. Given these sacrifices, we identified how much more the other three interests would have to pay relative to their lowest cost (100\% weight) scenarios, treating each of the three equally, i.e. the amount each has to pay extra is the same percentage of their lowest cost case. 
 
-The impacts of this assessment show that in for all four cases, the carbon, biodiversity, and travel time objectives typically pay less than 50\% more than their lowest cost when another party is willing to pay 5\% more cost (Figure 3), and all four associated conversion maps show substantial convergence around road networks and population and agricultural centers. 
+The impacts of this assessment show that in for all four cases, the carbon and biodiversity, and travel time objectives typically avoid more than 50\% of potential cost when any of the other objectives is willing to pay 5\% more cost (Figure 3), while the travel time objective avoids slightly less than 50\% of potential cost. Because of the small range in converted areas, a willingness to pay 5\% by the yield objective translates to just 50\% cost avoidance, while the 5\% compromise by carbon and biodiversity results in nearly the maximum potential cost in land area. The same compromise by the cost objective results in a bit less than 50\% cost avoidance by the yield objective. 
+
+The location of the conversions associated with each of these compromises show substantial convergence along roads and population and agricultural centers, with overlap between each of the resulting cropland allocations exceeding 30\% between the yield and biodiversity and cost compromises, and 25\% between the biodiversity and carbon compromises. The carbon and cost compromises showed the lowest overlaps ($<$10\%) followed by carbon and yield ($\sim$15\%). The adjacency of each map was high, with all compromise allocations having an average nearest neighbor distance of $<$20km.  
 
 \begin{figure}[!ht]
   \begin{center}
        \makebox[\textwidth][c]{\includegraphics[width=1.2\textwidth]{figures/compromise_5pct.png}}
     %\includegraphics[scale=0.5]{fig2.eps}
-    \caption{The impact of transferring weights from the yield maximization objective to the carbon and biodiversity objectives in 5\% increments, measured in terms of the percent cost that is avoided in each objective relative to the highest cost paid across all weight combinations.}
+    \caption{The impact of a willingness to pay 5\% more cost to compromise with other land use interests by each of the individual interests.}
     \label{default}
   \end{center}
 \end{figure}
 
- 
-Figure 3 also maps and shows the results for the equal weighting option and how it contrasts with the minimum costs for each factor.  It shows increased savings for each factor of X to X for transportation costs, carbon and biodiversity compared to their maximum costs.  It also holds these costs to no more than X above their minimum costs.  
+These weighting scenarios that corresponded to these selected compromises are shown in Table 1. The weight on the objective subject to the 5\% compromise is proportional to the size of its potential avoided cost, which is why yield requires a weight of only 40\% to pay 5\% or less of its lowest cost, whereas cost and carbon, which have the largest range of costs, require 85\% weight. 
+
+\begin{table}[h]
+\begin{center}
+\caption{Weights corresponding to the scenarios in which each objective was a) willing to pay 5\% more than its lowest possible cost, and b) the costs for the other three objectives were minimized equitably.}
+\begin{tabular}{ccccc}
+\hline
+& \multicolumn{4}{c}{Weights}\\
+Objective making 5\% compromise & Yield & Carbon & Biodiversity & Travel time \\
+\hline\hline
+Yield & 40 & 10 & 5 & 45 \\
+Carbon & 0 & 85 & 5 & 10 \\
+Biodiversity & 0 & 10 & 55 & 35 \\
+Travel time & 15 & 0 & 0 & 85 \\
+\hline
+\end{tabular}
+\end{center}
+\label{default}
+\end{table}
+
+We also compared the degree to which these relatively small compromises by individual objectives differed from a situation in which all compromised equally (Figure 4). Equal compromise avoids over 80\% of the potential cost in the carbon, biodiversity, and travel time objectives, and 41\% of the cost in the yield objective. This is lower than, but compares favorably to, the $\sim$95\% savings achieved by the first three objectives within their individual cost categories, under their smaller levels of compromise, and to the 58\% savings by the yield objective. 
 
 \begin{figure}[!ht]
   \begin{center}
@@ -196,16 +215,30 @@ Figure 3 also maps and shows the results for the equal weighting option and how 
   \end{center}
 \end{figure}
 
-
-Another interesting feature of these results is that there is little overlap between any targeting areas selected by any of the criteria we have calculated and designated farm development blocks.  In 2005, the Zambian Ministry of Agriculture designated nine farm blocks with roughly one million hectares for assisted agricultural development and spread around the country.  (Zambia Ministry of Agriculture. 2005. Farm Block Development Plan 2005-07).  Although these areas have in fact as a whole attracted little development, they remain “on the books,” and there are at least some reports of continued intent to develop them.  Undeveloped farm blocks worry Agriculture Minister, Zambia Daily Mall: https://www.daily-mail.co.zm/?p=29505
-
-
+Another interesting feature of these results is that there is little overlap between the land allocated by the model under these scenarios and areas that are designated farm development blocks (<2\% overlap compared to the yield maximization and equal compromise scenarios; online electronic supplement). Zambia has a large number of these area, and as recently as 2005 the Ministry of Agriculture designated a further nine farm blocks with roughly one million hectares for assisted agricultural development.  (Zambia Ministry of Agriculture. 2005. Farm Block Development Plan 2005-07).  Although these areas have in fact as a whole attracted little development, they remain ``on the books'', and there are at least some reports of continued intent to develop them.  Undeveloped farm blocks worry Agriculture Minister, Zambia Daily Mall: https://www.daily-mail.co.zm/?p=29505
 
 %\begin{equation}
 %  \textrm{I} = \left(\frac{\textrm{A}}{\textrm{A + C}} + \frac{\textrm{D}}{\textrm{B + D}}\right)0.5
 %\end{equation}
 
 \section*{\large Discussion}
+
+Our results for Zambia suggest at least the potential to plan agricultural expansion such that it limits carbon and biodiversity costs with limited sacrifice of yield potential and with general consistency with existing transportation corridors. 
+ 
+The fact that this potential mostly tracks existing transportation corridors would also appear to have several  advantages.  Road construction has been a primary driver of the location of agricultural expansion.  Laurance, Gossam \& Laurance 2009.  Zambia is already engaged in a program to improve existing major roads, but there is evidence that agriculture responds in particular to improvements in the quality of smaller, feeder rural roads to these paved roadways.  Focusing on these expansion areas would therefore appear to be one means of  focusing Zambia’s agriculture development.  Because agricultural development tends to build on the private and public infrastructure that accompanies initial development, the focus on existing areas would also seem likely to be a more robust, long-term strategy for directing agricultural development \cite{laurance_estimating_2015}. Kassali, Rabirou, Ayanwale, Adeolu, Idowu, Ezekiel, \& Williams, Stella. “Effect of rural transportation system on agricultural productivity in Oyo State, Nigeria”. 2012. Vol 113. Journal of Agricultural and Rural Development in the Tropics and Subtropics.
+ 
+This model appears to be the right kind of tool for assisting the planning of agricultural development. Optimization models that require ex ante specification of preferences in mathematical terms work less well for decision-making that must weigh very different objectives.  Our model makes possible an iterative optimization process that allows people to realize their preferences in the face of real information about options.  It is particularly suitable to decisions that will inevitably have strong political elements, and to consensus-building among stakeholders  with different preferences.  
+
+For the tool to be truly legitimate and useful on a practical level, we believe several elements are required. First, it must be further developed and applied in an iterative way with the government and other stakeholders.  Optimization decisions have many degrees of freedom, and closing them requires informed decision-making.
+Second, development planning must reflect and incorporate other real world factors beyond these simple four factors.  For example, many factors beyond those incorporated into our biodiversity analysis have importance for biodiversity. For example, large, multi-lane roads can lead to high rates of mortality and serve as effective barriers to migration for large mammals and others regardless of other land uses (Dobson modeling paper about Serengeti highway).  Special areas may be entitled to high protection regardless of our criteria, as our ranking system already excludes protected areas from potential development.  Other infrastructure development will also influence the practicalities of agricultural development. 
+ 
+Third, data quality is critical. This kind of tool focuses on particular hectares, not broad averages, so errors in data have little or no chance to ``balance out''.  Crop modeling predictions and most of our other scores are highly sensitive to a range of data parameters. These facts mean that long-term use of the tool should be accompanied by steady data improvement.  It also means that the tool should mostly be used as a guide to likely values. Before governments will make important decisions ``for keeps'', there should be site-specific analyses of soil properties, tests of soil fertility and validation of potential yield predictions, as well as confirmation of biodiversity and carbon characteristics. 
+ 
+We also believe some elements of the model should be further developed although all depend on significant additional data gathering. Yield potential, and existing transportation costs, are only two indicators of the economic and practical prospects of agricultural development.  Different areas of land development will require different quantities of inputs, including labor. An agricultural potential indicator based on a spatially differentiable economic model that better estimates both likely net returns to agriculture and agricultural labor would improve the model.
+
+Because the input use and therefore economics of commercial and small-scale agricultural development greatly differ, it would be useful to develop the model to differentiate their different potentials. The carbon calculations would benefit from site-specific root-shoot ratios. The biodiversity measures would benefit from incorporation of data on endemism, other wildlife use and contiguity needs of important animals.
+
+The model does not now incorporate analysis of areas with significant irrigation potential but should.
 
 \section*{\large Data accessibility}
 \section*{\large Authors' contributions}
@@ -232,17 +265,6 @@ This work was supported by funds from: the Norwegian Aid Agency (NORAD) under th
 \bibliographystyle{prsb} 
 \bibliography{/Users/lestes/Dropbox/publications/full}
 
-%% else use the following coding to input the bibitems directly in the
-%% TeX file.
-
-%\begin{thebibliography}{00}
-%
-%%% \bibitem[Author(year)]{label}
-%%% Text of bibliographic item
-%
-%\bibitem[ ()]{}
-%
-%\end{thebibliography}
 \end{document}
 
 \endinput

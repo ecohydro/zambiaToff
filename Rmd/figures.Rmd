@@ -407,6 +407,10 @@ ywgts <- do.call(rbind, scens)[, 1]
 xwgts <- rowSums(do.call(rbind, scens)[, 2:3])
 imp_pct <- cbind(cbind(ywgts, xwgts), cstats, imp_pct)
 
+((minmaxstats[2, c(2:3, 8, 5), with = FALSE]) - 
+  (imp_pct[4, c(4:5, 7, 6), with = FALSE])) /
+  imp_range[, c(2:3, 8, 5), with = FALSE]
+
 cols_tr <- c(rgb(1, 0, 0), rgb(0, 0, 1), rgb(0, 0.75, 1), rgb(1, 0.75, 0))
 # sctab <- do.call(rbind, scens) * 100
 cx <- 0.7
@@ -752,11 +756,11 @@ pms2bb <- pms2b[pms2b$Var5 != 1, -5]
 # yscale <- c(10^5, 1, 100000, 1, 1, 1, 1)
 
 # # figure titles
-# ftits <- lapply(pind, function(x) {
-#   paste(sapply(1:4, function(y) {
-#     paste(paste(cnames[y], paste0(parms[x, y] * 100, "%")))
-#   }), collapse = " ")
-# })
+ftits <- lapply(pind, function(x) {
+  paste(sapply(1:4, function(y) {
+    paste(paste(cnames[y], paste0(parms[x, y] * 100, "%")))
+  }), collapse = " ")
+})
 # leg <- c("Converted")
 
 # # yaxes <- list(seq(0, 0.8, 0.1), seq(0, 14, 2), seq(0, 2.5, 0.5), 
@@ -827,6 +831,15 @@ pctlines <- rbind(ymins,
 # dev.off()
 
 # Plot setup
+# Plot setup
+m1 <- do.call(cbind, lapply(1:4, function(x) matrix(rep(x, 35), 5, 7)))
+m2 <- do.call(cbind, lapply(c(5, 8, 11, 14), function(x) {
+  a <- matrix(rep(x, 16), 4, 4)
+  b <- matrix(rep(x + 1, 6), 2, 3)
+  cbind(a, rbind(b, b + 1))
+}))
+lmat <- rbind(m1, m2)
+
 ftits <- list("Compromise 5% on Yield", "Compromise 5% on Carbon", 
               "Compromise 5% on Biodiversity", "Compromise 5% on Travel Time")
 yaxes <- list(seq(0, 16, 4), seq(0, 1200, 100), seq(0, 0.6, 0.1), 
@@ -863,6 +876,7 @@ for(i in 1:4) {
          col = "grey50", xpd = NA, pos = 4, cex = cx * 0.9)
   }
   axis(2, at = yaxes[[i]], cex.axis = cx, las = 2, mgp = mgp, tcl = -0.2)
+  ind <- which(pms2bb[, paste0("Var", i)] == 1)
   with(pms2bb[ind, ], {
     par(mar = c(0.5, 3, 2, 1), mgp = mgp)
     barplot(JS, col = cols_tr[-i], ylim = c(0, 70), yaxt = "n", 
@@ -921,6 +935,18 @@ for(i in 1:4) {
   axis(2, at = yaxes[[i]], cex.axis = cx, las = 2, mgp = mgp, tcl = -0.2)
 }
 dev.off()
+
+for(i in 1:4) {
+  1 - print(all_stats[5, c(2:3, 8, 5), with = FALSE] / 
+              all_stats[i, c(2:3, 8, 5), with = FALSE])
+}
+
+for(i in 1:5) {
+  print(((minmaxstats[2, c(2:3, 8, 5), with = FALSE]) - 
+     (all_stats[i, c(2:3, 8, 5), with = FALSE])) /
+    imp_range[, c(2:3, 8, 5), with = FALSE])
+}
+
 
 ```
 
