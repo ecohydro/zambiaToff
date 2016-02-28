@@ -30,6 +30,7 @@ p_mod <- fp(p_root, "agroEcoTradeoff")
 p_moddat <- fp(p_mod, "external/data/ZA")
 p_figures <- full_path(p_root, "paper/figures/")
 p_other <- fp(p_root, "external/input_devel/other/")
+p_bd <- fp(p_root, "external/input_devel/biodiversity")
 # p_roads <- fp(p_root, "external/input_devel/roads")
 # p_roads2 <- paste0("/Users/lestes/Dropbox/data/zari/infrastructure/zambia/", 
 #                    "rda_dump/Final Shape files RDA/")
@@ -438,7 +439,7 @@ cx <- 0.7
 #   legend("bottomleft", legend = c("Carbon", "Biodiv", "Cost"), cex = cx,
 #          text.col = lcols, col = lcols, bty = "n", lty = 1)
 imp_pct[, {
-  png(fp(p_figures, "weight_impact3.png"), height = 4, width = 4, 
+  png(fp(p_figures, "weight_impact4.png"), height = 4, width = 4, 
       units = "in", res = 300)
   plot(xwgts, conv_areap, type = "l", xlab = "", ylab = "", axes = FALSE, 
        ylim = c(0, 55), col = cols_tr[1])
@@ -606,7 +607,7 @@ imp_pct[, {
 
 ```{r, eval = FALSE}
 # use minmax stats from optimal solution set
-# pare <- ybdc$both$optitab
+pare <- ybdc$both$optitab
 optirange <- pare[, lapply(.SD, range), .SDcols = 1:4]
 optirange[1, lapply(.SD, function(x) x * 1.05)] - optirange[1, ]
 
@@ -655,6 +656,7 @@ ct_comp <- compromise(pare, optirange, cvar = "COST", cost1 = 1.05, cost2=cost2)
 # select out those values from the results tables and grab conversion areas
 parms <- round(ybdc$both$params[, 7:10], 2)
 eqind <- which(apply(parms, 1, function(x) all(x == 0.25))) # iter of eq wt run
+parms[1031, ]
 # pare[ind == eqind]
 
 pind <- c(y_comp["ind"], c_comp["ind"], bd_comp["ind"], ct_comp["ind"], eqind)
@@ -847,7 +849,7 @@ yaxes <- list(seq(0, 16, 4), seq(0, 1200, 100), seq(0, 0.6, 0.1),
 pcttxt <- c("best", "50%", "worst")
 
 # plot
-png(fp(p_figures, "compromise_5pct.png"), height = 3.5, 
+png(fp(p_figures, "compromise_5pct2.png"), height = 3.5, 
     width = 7, units = "in", res = 300)
 l <- layout(mat = lmat)
 # layout.show(l)
@@ -911,7 +913,7 @@ l <- layout(mat = lmat)
 
 par(oma = c(0, 0, 0, 1))
 # plot(zambia)
-imp_plot2(toresr[[i]], impacts = i1, fpath = p_figures, fnm = "bob",
+imp_plot2(toresr$eqwt, impacts = i1, fpath = p_figures, fnm = "bob",
           crops = "", ftitle = "Compromise equally", col = "purple", 
           legend = FALSE, hold = TRUE, stats = FALSE, cexscale = 0.4, 
           marg = c(0, 0, 1, 0), titline = 0)
@@ -1079,6 +1081,25 @@ legend("bottomright", legend = c("GMAs", "NatParks"),
        pch = 15, col = c(pacols[2:3]), bty = "n",
        pt.cex = 2, cex = 1, inset = c(0.1, 0.1, 0, 0))
 dev.off()
+
+# vegetation types
+load(fp(p_bd, "vegstats.rda"))
+vegstats <- round(vegstats * 100, 2)
+nms <- c("Afromontane rain forest", "Zambezian dry evergreen forest", 
+         "Zambezian dry deciduous forest", "Palm wooded grassland",
+         "Riverine wooded vegetation", "Zambezian Kalahari woodland",
+         "Drier miombo woodland", "Miombo woodland on hills/outcrops",
+         "Wetter mimbo woodland", "N. Zambezian undifferentiated woodland",
+         "Catena of N. Zambezian undifferentiated woodland/edaphic grassland", 
+         "Mopane woodland/scrub woodland", "Zambezian chipya woodland",
+         "Itigi thicket", "Swamp forest",
+         "Edaphic grassland on drainage impeded/seasonally flooded soils", 
+         "Bush groups, typically around termitaria",
+         "Edaphic grassland w/Zambezian Kalahari woodland",
+         "Edaphic grassland w/freshwater swamp", 
+         "Edaphic woodland on drainage impeded/seasonally flooded soils")
+print(xtable::xtable(cbind(c("", nms), unname(t(vegstats)[, c(1:2, 4, 3, 5)])), 
+                           digits = c(2, 2, 2, 1, 1, 1, 1), ))
 
 ```
 

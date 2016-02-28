@@ -21,7 +21,6 @@ library(doMC)
 library(mgcv)
 library(rworldxtra)
 
-
 setwd("~/Dropbox/publications/zambiaToff/private/zambiaToff/")
 p_root <- lmisc::set_base_path()
 p_clim <- fp(p_root, "external/input_devel/climate")
@@ -569,9 +568,6 @@ lines(c(0, 8000), c(0, 8000), col = "red")
 save(gam13, gam14, gam20, gam21, gam23, sgam7, sgam14, sgam15, sgam16, 
      file = fp(p_yield, "empirical/gams1.rda"))
 # load(fp(p_yield, "empirical/gams1.rda"))
-summary(gam13)
-summary(sgam14)
-
 ```
 
 ## Load in grid predictors
@@ -640,6 +636,9 @@ plot(soyred2)
 plot(soyfull)
 plot(soyfull2)
 plot(prov, add = TRUE)
+
+summary(gam20)
+summary(sgam7)
 
 # prov@proj4string <- soyfull@crs
 # soymsk <- crop(soyfull, prov)

@@ -59,29 +59,31 @@ vnms <- dir(full_path(p_bd, "act_veg"), pattern = ".tif$")
 vnms <- vnms[vnms != "veg88.tif"]  # drop water bodies
 fnms <- full_path(full_path(p_bd, "act_veg"), vnms)
 s <- stack(lapply(fnms, function(x) raster(x)))
-sm <- raster::mask(s, mgrid)
+# sm <- raster::mask(s, mgrid)
 
 # keep for assessing impacts
-writeRaster(sm, filename = full_path(p_bd, "ZA-vegremain.tif"), 
-            overwrite = TRUE)
+# writeRaster(sm, filename = full_path(p_bd, "ZA-vegremain.tif"), 
+#             overwrite = TRUE)
+sm <- brick(full_path(p_bd, "ZA-vegremain.tif"))
 vegnames <- gsub("\\.tif", "", gsub("veg", "v", vnms))
 save(vegnames, file = full_path(p_bd, "ZA-vegremain.rda"))
-
+names(sm) <- vegnames
 
 # Sum for total - the inverse of this will be the farmable areas
-remfrac <- calc(s, sum)
-remfrac <- mask(remfrac, mgrid)
-writeRaster(remfrac, filename = full_path(p_bd, "ZA-remfrac.tif"), 
-            overwrite = TRUE)
+# remfrac <- calc(s, sum)
+# remfrac <- mask(remfrac, mgrid)
+# writeRaster(remfrac, filename = full_path(p_bd, "ZA-remfrac.tif"), 
+#             overwrite = TRUE)
+remfrac <- raster(full_path(p_bd, "ZA-remfrac.tif"))
 
 # Calculate intactness
-w <- matrix(nrow = 11, ncol = 11)
-w[] <- 1
-intact <- focal(remfrac, w = w, fun = mean, na.rm = TRUE)
-writeRaster(intact, filename = full_path(p_bd, "intactness.tif"), 
-            overwrite = TRUE)
-
-# intact <- mask(intact, mgrid)
+# w <- matrix(nrow = 11, ncol = 11)
+# w[] <- 1
+# intact <- focal(remfrac, w = w, fun = mean, na.rm = TRUE)
+# writeRaster(intact, filename = full_path(p_bd, "intactness.tif"), 
+#             overwrite = TRUE)
+intact <- raster(full_path(p_bd, "intactness.tif"))
+intact <- raster::mask(intact, mgrid)
 # plot(intact)
 
 # Calculate a veg type weight based on relative remaining area
@@ -91,7 +93,7 @@ vnms <- names(veg_dt)[-c(1:2)]
 vtots <- veg_dt[, lapply(.SD, function(x) sum(x * 100)), 
                 .SDcols = vnms]  
 wgti <- round(1 / (vtots / nrow(veg_dt)), 2)  # bd weights (1 = rarest)
-# wgt <- round(vtots / nrow(veg_dt), 4)  # biodiversity weights (1 = most common)
+wgts <- round((vtots / 100) / nrow(veg_dt), 4)  # veg prop (1 = most common)
 # plot(unlist(wgti), unlist(wgt))
 
 # Check the relative areas against histograms from 30 m layer
@@ -114,26 +116,28 @@ Will be intactness, PAs, and rarity weights combined
 ### Weighting in relation to rarity and protectedness
 ```{r, eval = FALSE}
 # Combine protected areas (NPs and GMAs, forest reserves)
-nps$code <- ifelse(nps$TYPE == "gma", 2, 1) 
-npsr <- rasterize(nps, mgrid, field = "code")  # rasterize NPs/GMAs
-npsr[is.na(npsr)] <- 0  
-freserves$code <- 3  
-freservesr <- rasterize(freserves, mgrid, field = "code")  # forest reserves
-freservesr[is.na(freservesr)] <- 0
-pas <- npsr + freservesr  # sum them
-reclmat <- cbind(0:5, c(0:3, 1, 2))
-pas <- reclassify(pas, reclmat)
-pas <- mask(pas, mgrid)
-writeRaster(pas, filename = full_path(p_bd, "ZA-pas.tif"))
+# nps$code <- ifelse(nps$TYPE == "gma", 2, 1) 
+# npsr <- rasterize(nps, mgrid, field = "code")  # rasterize NPs/GMAs
+# npsr[is.na(npsr)] <- 0  
+# freserves$code <- 3  
+# freservesr <- rasterize(freserves, mgrid, field = "code")  # forest reserves
+# freservesr[is.na(freservesr)] <- 0
+# pas <- npsr + freservesr  # sum them
+# reclmat <- cbind(0:5, c(0:3, 1, 2))
+# pas <- reclassify(pas, reclmat)
+# pas <- mask(pas, mgrid)
+# writeRaster(pas, filename = full_path(p_bd, "ZA-pas.tif"))
+pas <- raster(full_path(p_bd, "ZA-pas.tif"))
 # plot(pas)
 # plot(freservesr)
 
-# Let's look at how much veg is protected, and maybe use that as basis for 
+# Let's look at how much veg is protected, and use that as basis for 
 # weights - rarity + proportion protected
-smpa <- mask(stack(s, pas), mgrid)
+names(s) <- vnms
+smpa <- raster::mask(stack(s, pas), mgrid)
 vegpa_dt <- as.data.table(smpa)
 vegpa_dt <- na.omit(vegpa_dt)
-setnames(vegpa_dt, "layer", "PA")
+setnames(vegpa_dt, "ZA.pas", "PA")
 protected <- vegpa_dt[, lapply(.SD, sum(x * 100)), by = PA, .SDcols = vnms]
 protected <- cbind("PA" = protected[, PA], 
                    protected[, lapply(.SD, function(x) {
@@ -144,10 +148,10 @@ prop_prot2 <- protected[PA %in% c(1:2), lapply(.SD, sum), .SDcols = vnms]
 prop_prot1 <- protected[PA == 1, lapply(.SD, sum), .SDcols = vnms]  # nps only
 
 # stack PAS with intact area
-pasconvs <- mask(stack(pas, remfrac), mgrid)
+pasconvs <- raster::mask(stack(pas, remfrac), mgrid)
 pa_dt <- as.data.table(pasconvs)
 pa_dt <- na.omit(pa_dt)
-setnames(pa_dt, c("layer.1", "layer.2"), c("pas", "nveg"))
+setnames(pa_dt, c("ZA.pas", "ZA.remfrac"), c("pas", "nveg"))
 pa_dt[, (1 - sum(nveg) / .N) * 100 , by = "pas"]
 pa_dt[, .N, by = "pas"]
 
@@ -165,8 +169,12 @@ wgts_prop <- normalize(unlist(wgtsn + (1 - prop_prot2)))
 wgts_propl <- normalize(log(unlist(wgtsn + (1 - prop_prot2))))
 wgts_prop_np <- normalize(unlist(wgtsn + (1 - prop_prot1)))
 
+# save vegetation stats
+vegstats <- rbind(cbind("PA" = NA, wgts), protected)
+save(vegstats, file = fp(p_bd, "vegstats.rda"))
+
 # plots to examine them
-labs <- gsub("veg", "", names(wgtsn))
+labs <- gsub("v", "", names(wgtsn))
 # par(mfrow = c(2, 1), mar = c(2, 2, 2, 2))
 # weights against protected proportion (NPs + GMAs)
 plot(wgtsn, prop_prot2, pch = "", ylab = "")
@@ -262,7 +270,8 @@ bdprops <- cbind("var" = c("area", "rarity", "priority"),
 names(bdprops) <- gsub("veg", "v", names(bdprops))
 save(bdprops, file = full_path(p_bd, "ZA-bdprops.rda"))
 # load(full_path(p_bd, "ZA-bdprops.rda"))
-
+# bdprops
+# bdprops[var == "area", rowSums(.SD), .SDcols = 2:ncol(bdprops)]
 ```
 
 ## Resulting model inputs

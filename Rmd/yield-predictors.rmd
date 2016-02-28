@@ -78,6 +78,10 @@ ylds <- lapply(crops, function(X) {  # X <- crops[2]
   cr2
 })
 names(ylds) <- crops
+# ylds$maize[, mean(YLDS)]
+# ylds$soy[, mean(YLDS)]
+# ylds$maize[, unique(WTH)]
+# ylds$maize[, unique(SOL)]
 
 ```
 
