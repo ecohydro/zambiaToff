@@ -364,11 +364,11 @@ step <- 0.05
 cnames <- c("C", "BD", "COST")
 ps <- round(do.call(rbind, pareto_steps(cnames, step)), 2); head(ps)
 Yv = "conv_area"; Cv = "tot_C"; #BDv = "int_prior"; COSTv = "mu_cost"
-BDv = c(Yv, "int_prior"); COSTv = c(Yv, "mu_cost")
-wmu <- function(x, na.rm = na.rm) {
-  weighted.mean(x = x[, 2], w = x[, 1], na.rm = na.rm)
-}
-Yst = sum; Cst = sum; BDst = wmu; COSTst = wmu
+# BDv = c(Yv, "int_prior"); COSTv = c(Yv, "mu_cost")
+# wmu <- function(x, na.rm = na.rm) {
+#   weighted.mean(x = x[, 2], w = x[, 1], na.rm = na.rm)
+# }
+Yst = sum; Cst = sum; # BDst = wmu; COSTst = wmu
 crops <- list(c("maize", "soy"))
 croplnms <- list("both")
 
@@ -456,6 +456,38 @@ names(ybdc) <- croplnms
 # save(ybdc, ycost, bdc, file = fp(p_out, "mainresults1702.rda"))
 save(ybdc, file = fp(p_out, "mainresults2502.rda"))
 # load(fp(p_out, "mainresults1702.rda"))
+
+
+# 28/2 Rebuilding impacts with new travel time and bd cost metrics (totals)
+load(fp(p_out, "mainresults2502.rda"))
+crops <- list(c("maize", "soy"))
+fnames <- imp_sorter(fp(p_out, ybdc$both$bcode), inds = 1:nrow(ybdc$both$params),                      fullnames = TRUE)
+il <- input_handler("agroEcoTradeoff/external/data/ZA", crops = crops[[1]])
+registerDoMC(7)
+imptab <- foreach(i = 1:length(fnames)) %dopar% {  # x <- fnames[1]
+  conv <- fread(fnames[i])
+  impact(conv, il)
+}
+outtab <- do.call(rbind, lapply(1:length(imptab), function(x) {
+  cbind.data.frame("iter" = x, imptab[[x]])
+}))
+head(outtab)
+
+Yv = "conv_area"; Cv = "tot_C"; BDv = "cons_tot"; COSTv = "tot_cost"
+Yst = sum; Cst = sum; BDst = sum; COSTst = sum
+impacts <- batch_stat(outtab, Yv, Cv, BDv, COSTv, Yst, Cst, BDst, COSTst)
+optitab <- non_dominator(impacts, cnames, ybdc$both$bcode)
+optimal <- optitab
+bpath <- "agroEcoTradeoff/external/output"
+save(optimal, file = fp(bpath, paste0(ybdc$both$bcode, "/optitab2.rda")))
+save(outtab, file = fp(bpath, paste0(ybdc$both$bcode, "/impacts_tab2.rda")))
+# impacts[, lapply(.SD, range)]
+# impacts[1765:1771, ]
+# round(ybdc$both$params[1765:1771, 7:10], 2)
+
+ybdc$both$optitab <- optimal
+save(ybdc, outtab, impacts, file = fp(bpath, "mainresults2802.rda"))  
+
 ```
 <a href="#top">Back to top</a>
 

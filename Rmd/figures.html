@@ -93,7 +93,8 @@ img {
 <li><a href="#overlap-with-farm-blocks"><span class="toc-section-number">1.2.5</span> Overlap with Farm Blocks</a></li>
 <li><a href="#impact-of-closing-yield-gaps"><span class="toc-section-number">1.2.6</span> Impact of closing yield gaps</a></li>
 <li><a href="#additional-supplementals"><span class="toc-section-number">1.2.7</span> Additional supplementals</a></li>
-<li><a href="#deprecated-version-of-figure-3"><span class="toc-section-number">1.2.8</span> Deprecated version of Figure 3</a></li>
+<li><a href="#carbon-stocks"><span class="toc-section-number">1.2.8</span> Carbon stocks</a></li>
+<li><a href="#deprecated-version-of-figure-3"><span class="toc-section-number">1.2.9</span> Deprecated version of Figure 3</a></li>
 </ul></li>
 </ul></li>
 </ul>
@@ -117,6 +118,7 @@ p_mod &lt;-<span class="st"> </span><span class="kw">fp</span>(p_root, <span cla
 p_moddat &lt;-<span class="st"> </span><span class="kw">fp</span>(p_mod, <span class="st">&quot;external/data/ZA&quot;</span>)
 p_figures &lt;-<span class="st"> </span><span class="kw">full_path</span>(p_root, <span class="st">&quot;paper/figures/&quot;</span>)
 p_other &lt;-<span class="st"> </span><span class="kw">fp</span>(p_root, <span class="st">&quot;external/input_devel/other/&quot;</span>)
+p_bd &lt;-<span class="st"> </span><span class="kw">fp</span>(p_root, <span class="st">&quot;external/input_devel/biodiversity&quot;</span>)
 <span class="co"># p_roads &lt;- fp(p_root, &quot;external/input_devel/roads&quot;)</span>
 <span class="co"># p_roads2 &lt;- paste0(&quot;/Users/lestes/Dropbox/data/zari/infrastructure/zambia/&quot;, </span>
 <span class="co">#                    &quot;rda_dump/Final Shape files RDA/&quot;)</span>
@@ -182,7 +184,7 @@ i1 &lt;-<span class="st"> </span><span class="kw">rbind</span>(mzto$impacts, soy
 crops &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;maize&quot;</span>, <span class="st">&quot;soy&quot;</span>, <span class="st">&quot;maize/soy&quot;</span>)
 <span class="co"># plot(1:10, pch = 20, cex = 4, col = &quot;gold2&quot;)</span>
 <span class="co"># plot(mzsoyr, col = c(&quot;grey&quot;, &quot;goldenrod&quot;, &quot;green4&quot;, &quot;orange&quot;))</span>
-<span class="kw">imp_plot2</span>(mzsoyr, i1, p_figures, <span class="st">&quot;ideal_yield2&quot;</span>, <span class="st">&quot;&quot;</span>, crops, <span class="fl">1.2</span>, <span class="ot">TRUE</span>, 
+<span class="kw">imp_plot2</span>(mzsoyr, i1, p_figures, <span class="st">&quot;ideal_yield3&quot;</span>, <span class="st">&quot;&quot;</span>, crops, <span class="fl">1.2</span>, <span class="ot">TRUE</span>, 
          <span class="kw">c</span>(<span class="st">&quot;red&quot;</span>, <span class="st">&quot;blue1&quot;</span>, <span class="st">&quot;gold&quot;</span>))
 
 basedt &lt;-<span class="st"> </span>soyto$inputs$mask
@@ -197,7 +199,7 @@ crops &lt;-<span class="st"> </span><span class="kw">list</span>(<span class="kw
 <p>I am using the two crops combined approach because there is little overlap between the two.</p>
 <div id="figure-1" class="section level3">
 <h3><span class="header-section-number">1.2.1</span> Figure 1</h3>
-<pre class="sourceCode r"><code class="sourceCode r"><span class="kw">load</span>(<span class="kw">fp</span>(p_out, <span class="st">&quot;mainresults2502.rda&quot;</span>))
+<pre class="sourceCode r"><code class="sourceCode r"><span class="kw">load</span>(<span class="kw">fp</span>(p_out, <span class="st">&quot;mainresults2802.rda&quot;</span>))
 
 <span class="co"># select out results for &quot;pure&quot; cases (weight = 1)</span>
 cnames &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;Y&quot;</span>, <span class="st">&quot;C&quot;</span>, <span class="st">&quot;BD&quot;</span>, <span class="st">&quot;COST&quot;</span>)
@@ -279,9 +281,13 @@ cols_tr &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="kw"
 <span class="co"># load(fp(bpath, &quot;impacts_tab.rda&quot;))  # get impacts table</span>
 
 <span class="co"># select out corresponding impact statistics, summarize</span>
-conv_stats &lt;-<span class="st"> </span><span class="kw">selected_impacts</span>(pure, <span class="kw">fp</span>(p_out, ybdc$both$bcode))
+conv_stats &lt;-<span class="st"> </span><span class="kw">selected_impacts</span>(pure, <span class="kw">fp</span>(p_out, ybdc$both$bcode)) 
+<span class="co"># selected_impacts(pure, fp(p_out, ybdc$both$bcode)) / 100000</span>
+conv_stats[<span class="dv">1</span>, ] /<span class="st"> </span>conv_stats[<span class="dv">3</span>, ]
+
 <span class="co"># impsr &lt;- lapply(c(2, 5, 3, 7:9, 4), function(x) conv_stats[[x]])</span>
-impsr &lt;-<span class="st"> </span><span class="kw">lapply</span>(<span class="kw">c</span>(<span class="dv">2</span>, <span class="dv">3</span>, <span class="dv">8</span>, <span class="dv">5</span>), function(x) conv_stats[[x]])
+impsr &lt;-<span class="st"> </span><span class="kw">lapply</span>(<span class="kw">c</span>(<span class="dv">2</span>, <span class="dv">3</span>, <span class="dv">5</span>, <span class="dv">4</span>), function(x) conv_stats[[x]])
+<span class="co"># impacts[ind %in% pure]</span>
 
 <span class="co"># Plot setup</span>
 m1 &lt;-<span class="st"> </span><span class="kw">do.call</span>(cbind, <span class="kw">lapply</span>(<span class="dv">1</span>:<span class="dv">4</span>, function(x) <span class="kw">matrix</span>(<span class="kw">rep</span>(x, <span class="dv">35</span>), <span class="dv">5</span>, <span class="dv">7</span>)))
@@ -291,26 +297,24 @@ m2 &lt;-<span class="st"> </span><span class="kw">do.call</span>(cbind, <span cl
   <span class="kw">cbind</span>(a, <span class="kw">rbind</span>(b, b +<span class="st"> </span><span class="dv">1</span>))
 }))
 
+
 <span class="co"># m2 &lt;- matrix(rep(5, 20), 4, 5)</span>
 <span class="co"># m3 &lt;- do.call(cbind, lapply(6:12, function(x) matrix(rep(x, 12), 4, 3)))</span>
 <span class="co"># lmat &lt;- rbind(m1, cbind(rep(5, 4), m2, m3, rep(13, 4)))</span>
 lmat &lt;-<span class="st"> </span><span class="kw">rbind</span>(m1, m2)
 
-<span class="co"># plot(1:10, ylab = ylabs[2])</span>
-<span class="co"># ylabs &lt;- c(&quot;Jaccard Index&quot;, </span>
-ylabs &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="kw">expression</span>(<span class="kw">paste</span>(<span class="st">&quot;Converted area (&quot;</span>, <span class="dv">10</span>^<span class="dv">5</span>, <span class="st">&quot; &quot;</span>, km^<span class="dv">2</span>, <span class="st">&quot;)&quot;</span>)), 
+ylabs &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="kw">expression</span>(<span class="kw">paste</span>(<span class="st">&quot;Converted area (&quot;</span>, km^<span class="dv">2</span>, <span class="st">&quot; X &quot;</span>, <span class="dv">10</span>^-<span class="dv">5</span>, <span class="st">&quot;)&quot;</span>)), 
            <span class="st">&quot;Carbon loss (Mt)&quot;</span>, <span class="co">#&quot;Priority&quot;, </span>
-           <span class="st">&quot;Biodiversity Index&quot;</span>, <span class="st">&quot;Travel time (hours)&quot;</span>)<span class="co">#,</span>
+           <span class="kw">expression</span>(<span class="kw">paste</span>(<span class="st">&quot;Biodiversity Index X &quot;</span>, <span class="dv">10</span>^-<span class="dv">5</span>)),
+           <span class="kw">expression</span>(<span class="kw">paste</span>(<span class="st">&quot;Truck hours X &quot;</span>, <span class="dv">10</span>^-<span class="dv">5</span>)))<span class="co">#,</span>
            <span class="co"># &quot;Intactness&quot;, expression(paste(&quot;FR converted (ha&quot;^2, &quot;)&quot;)))</span>
 <span class="co"># yscale &lt;- c(1, 10^5, 1, 100000, 1, 1, 1, 1)</span>
-yscale &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="dv">10</span>^<span class="dv">5</span>, <span class="dv">100000</span>, <span class="dv">1</span>, <span class="dv">1</span>)<span class="co">#, 1, 1, 1)</span>
-<span class="co"># ftits &lt;- list(&quot;Y 100%&quot;, &quot;C 100%&quot;, &quot;Biod 100%&quot;, &quot;Cost 100%&quot;)</span>
+yscale &lt;-<span class="st"> </span><span class="kw">rep</span>(<span class="dv">100000</span>, <span class="dv">4</span>)<span class="co">#, 10000, 10000)#, 1, 1, 1)</span>
 ftits &lt;-<span class="st"> </span><span class="kw">list</span>(<span class="st">&quot;Maximize Yields&quot;</span>, <span class="st">&quot;Minimize Carbon Loss&quot;</span>, 
-              <span class="st">&quot;Minimize Biodiversity Loss&quot;</span>, <span class="st">&quot;Minimize Travel Time&quot;</span>)
+              <span class="st">&quot;Minimize Biodiversity Loss&quot;</span>, <span class="st">&quot;Minimize Travel Cost&quot;</span>)
 <span class="co"># leg &lt;- c(&quot;Converted&quot;)</span>
-
-yaxes &lt;-<span class="st"> </span><span class="kw">list</span>(<span class="kw">seq</span>(<span class="dv">0</span>, <span class="dv">16</span>, <span class="dv">2</span>), <span class="kw">seq</span>(<span class="dv">0</span>, <span class="dv">1200</span>, <span class="dv">100</span>), <span class="kw">seq</span>(<span class="dv">0</span>, <span class="fl">0.6</span>, <span class="fl">0.1</span>), 
-              <span class="kw">seq</span>(<span class="dv">0</span>, <span class="dv">7</span>, <span class="dv">1</span>))<span class="co">#,               </span>
+yaxes &lt;-<span class="st"> </span><span class="kw">list</span>(<span class="kw">seq</span>(<span class="dv">0</span>, <span class="dv">16</span>, <span class="dv">2</span>), <span class="kw">seq</span>(<span class="dv">0</span>, <span class="dv">1200</span>, <span class="dv">100</span>), <span class="kw">seq</span>(<span class="dv">0</span>, <span class="dv">9</span>, <span class="dv">1</span>), 
+              <span class="kw">seq</span>(<span class="dv">0</span>, <span class="dv">35</span>, <span class="dv">5</span>))<span class="co">#,               </span>
               <span class="co"># seq(0, 1200, 100), #seq(0, 0.12, 0.02)), </span>
               <span class="co">#seq(0, 1, 0.1), seq(0, 6500, 500))</span>
 <span class="co"># bcols &lt;- c(list(c(cols_tr[1], cols_tr[2], cols_tr[1], cols_tr[2], </span>
@@ -318,7 +322,7 @@ yaxes &lt;-<span class="st"> </span><span class="kw">list</span>(<span class="kw
 
 <span class="co"># plot</span>
 <span class="co"># tiff(fp(p_figures, &quot;single_priorities2.tif&quot;), height = 3.5, width = 7, </span>
-<span class="kw">png</span>(<span class="kw">fp</span>(p_figures, <span class="st">&quot;single_priorities2.png&quot;</span>), <span class="dt">height =</span> <span class="fl">3.5</span>, <span class="dt">width =</span> <span class="dv">7</span>, 
+<span class="kw">png</span>(<span class="kw">fp</span>(p_figures, <span class="st">&quot;single_priorities3.png&quot;</span>), <span class="dt">height =</span> <span class="fl">3.5</span>, <span class="dt">width =</span> <span class="dv">7</span>, 
     <span class="dt">units =</span> <span class="st">&quot;in&quot;</span>, <span class="dt">res =</span> <span class="dv">300</span>)
 <span class="co"># postscript(fp(p_figures, &quot;single_priorities2.eps&quot;), horizontal = FALSE, </span>
 <span class="co">#            height = 3.5, width = 7)</span>
@@ -335,24 +339,11 @@ for(i in <span class="dv">1</span>:<span class="dv">4</span>) { <span class="co"
             <span class="dt">legend =</span> legtf[i], <span class="dt">hold =</span> <span class="ot">TRUE</span>, <span class="dt">stats =</span> <span class="ot">FALSE</span>, <span class="dt">cexscale =</span> <span class="fl">0.4</span>, 
             <span class="dt">marg =</span> <span class="kw">rep</span>(<span class="dv">0</span>, <span class="dv">4</span>))
 }  
-<span class="co"># impact plots</span>
-<span class="co"># mgp &lt;- c(1.6, 0.25, 0)</span>
-<span class="co"># par(mar = c(4, 3, 0, 0))</span>
-<span class="co"># with(pms2b, {</span>
-<span class="co">#   plot(NND, JS, col = cols_tr[c(2, 3, 3, 4, 4, 4)], pch = 16, cex = 1.5, </span>
-<span class="co">#        axes = FALSE, xlab = &quot;&quot;, ylab = &quot;&quot;, ylim = c(0, 0.3))</span>
-<span class="co">#   points(NND, JS, col = cols_tr[c(1, 1, 2, 1, 2, 3)], pch = 20, cex = 1)</span>
-<span class="co">#   axis(1, at = seq(0, 230, 20), cex.axis = 0.6, las = 2, mgp = mgp, </span>
-<span class="co">#        tcl = -0.2)</span>
-<span class="co">#   axis(2, at = seq(0, 0.3, 0.05), cex.axis = 0.6, las = 2, mgp = mgp, </span>
-<span class="co">#        tcl = -0.2)</span>
-<span class="co">#   mtext(text = &quot;NN Distance (km)&quot;, side = 1, line = 1, cex = 0.45)</span>
-<span class="co">#   mtext(text = &quot;Jaccard Index&quot;, side = 2, line = 1.25, cex = 0.45)</span>
-<span class="co"># })</span>
+<span class="co"># overlap/NND impact plots (recover from commit before 28/2 if needed)</span>
 mgp &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="dv">1</span>, <span class="fl">0.25</span>, <span class="dv">0</span>)
 <span class="co"># for(i in 1:7) {</span>
 cx &lt;-<span class="st"> </span><span class="fl">0.6</span>
-for(i in <span class="dv">1</span>:<span class="dv">4</span>) {
+for(i in <span class="dv">1</span>:<span class="dv">4</span>) { <span class="co"># i &lt;- 3</span>
   v &lt;-<span class="st"> </span>impsr[[i]] /<span class="st"> </span>yscale[i]
   <span class="kw">par</span>(<span class="dt">mar =</span> <span class="kw">c</span>(<span class="dv">2</span>, <span class="fl">3.5</span>, <span class="dv">2</span>, <span class="dv">0</span>))
   b &lt;-<span class="st"> </span><span class="kw">barplot</span>(impsr[[i]] /<span class="st"> </span>yscale[i], <span class="dt">las =</span> <span class="dv">2</span>, <span class="dt">col =</span> cols_tr, 
@@ -373,7 +364,7 @@ for(i in <span class="dv">1</span>:<span class="dv">4</span>) {
             <span class="dt">ylab =</span> <span class="st">&quot;&quot;</span>, <span class="dt">cex.lab =</span> cx)
     <span class="kw">axis</span>(<span class="dv">2</span>, <span class="dt">at=</span><span class="kw">seq</span>(<span class="dv">0</span>, <span class="dv">250</span>, <span class="dv">50</span>), <span class="dt">cex.axis =</span> cx, <span class="dt">las =</span> <span class="dv">2</span>, <span class="dt">mgp =</span> mgp, <span class="dt">tcl =</span> -<span class="fl">0.2</span>)
     <span class="kw">mtext</span>(<span class="st">&quot;Average distance&quot;</span>, <span class="dt">side =</span> <span class="dv">2</span>, <span class="dt">line =</span> <span class="fl">1.72</span>, <span class="dt">cex =</span> <span class="fl">0.4</span>)
-    <span class="kw">mtext</span>(<span class="st">&quot;to neighbor (km)&quot;</span>, <span class="dt">side =</span> <span class="dv">2</span>, <span class="dt">line =</span> <span class="fl">1.2</span>, <span class="dt">cex =</span> <span class="fl">0.4</span>)
+    <span class="kw">mtext</span>(<span class="st">&quot;to neighbour (km)&quot;</span>, <span class="dt">side =</span> <span class="dv">2</span>, <span class="dt">line =</span> <span class="fl">1.2</span>, <span class="dt">cex =</span> <span class="fl">0.4</span>)
   })
 }
 <span class="kw">par</span>(<span class="dt">xpd =</span> <span class="ot">NA</span>)
@@ -386,19 +377,20 @@ legy &lt;-<span class="st"> </span><span class="kw">grconvertY</span>(<span clas
 </div>
 <div id="figures-2-3-probably-supplemental" class="section level3">
 <h3><span class="header-section-number">1.2.2</span> Figures 2 &amp; 3 (probably supplemental)</h3>
+<p>Deprecated</p>
 <pre class="sourceCode r"><code class="sourceCode r"><span class="co"># individual maps</span>
-<span class="kw">png</span>(<span class="kw">full_path</span>(p_figures, <span class="st">&quot;all-4-maps.png&quot;</span>), <span class="dt">height =</span> <span class="dv">7</span>, <span class="dt">width =</span> <span class="dv">7</span>, 
-     <span class="dt">units =</span> <span class="st">&quot;in&quot;</span>, <span class="dt">res =</span> <span class="dv">300</span>)
-<span class="kw">par</span>(<span class="dt">mfrow =</span> <span class="kw">c</span>(<span class="dv">2</span>, <span class="dv">2</span>))<span class="co">#, oma = c(0, 0, 0, 2))</span>
-ftitles &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;Yield&quot;</span>, <span class="st">&quot;Carbon&quot;</span>, <span class="st">&quot;Biodiversity&quot;</span>, <span class="st">&quot;Cost&quot;</span>)
-legp &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="ot">TRUE</span>, <span class="kw">rep</span>(<span class="ot">FALSE</span>, <span class="dv">3</span>))
-for(i in <span class="dv">1</span>:<span class="dv">4</span>) {
-  dtr &lt;-<span class="st"> </span><span class="kw">calc</span>(pure_r[[i]][[<span class="dv">1</span>:<span class="dv">2</span>]] *<span class="st"> </span><span class="kw">c</span>(<span class="dv">1</span>, <span class="dv">2</span>), sum)
-  <span class="kw">imp_plot2</span>(dtr, <span class="dt">impacts =</span> i1, <span class="dt">fpath =</span> p_figures, <span class="dt">fnm =</span> <span class="st">&quot;all-4-maps&quot;</span>, 
-            <span class="dt">cexscale =</span> <span class="fl">0.6</span>, <span class="dt">ftitle =</span> ftitles[i], <span class="dt">crops =</span> <span class="kw">c</span>(<span class="st">&quot;maize&quot;</span>, <span class="st">&quot;soy&quot;</span>), 
-            <span class="dt">stats =</span> <span class="ot">FALSE</span>, <span class="dt">hold =</span> <span class="ot">TRUE</span>, <span class="dt">legend =</span> legp[i], <span class="dt">marg =</span> <span class="kw">c</span>(<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">2</span>, <span class="dv">0</span>))
-}
-<span class="kw">dev.off</span>()
+<span class="co"># png(full_path(p_figures, &quot;all-4-maps.png&quot;), height = 7, width = 7, </span>
+<span class="co">#      units = &quot;in&quot;, res = 300)</span>
+<span class="co"># par(mfrow = c(2, 2))#, oma = c(0, 0, 0, 2))</span>
+<span class="co"># ftitles &lt;- c(&quot;Yield&quot;, &quot;Carbon&quot;, &quot;Biodiversity&quot;, &quot;Cost&quot;)</span>
+<span class="co"># legp &lt;- c(TRUE, rep(FALSE, 3))</span>
+<span class="co"># for(i in 1:4) {</span>
+<span class="co">#   dtr &lt;- calc(pure_r[[i]][[1:2]] * c(1, 2), sum)</span>
+<span class="co">#   imp_plot2(dtr, impacts = i1, fpath = p_figures, fnm = &quot;all-4-maps&quot;, </span>
+<span class="co">#             cexscale = 0.6, ftitle = ftitles[i], crops = c(&quot;maize&quot;, &quot;soy&quot;), </span>
+<span class="co">#             stats = FALSE, hold = TRUE, legend = legp[i], marg = c(0, 0, 2, 0))</span>
+<span class="co"># }</span>
+<span class="co"># dev.off()</span>
 
 <span class="co"># heat maps</span>
 <span class="co"># implist &lt;- list(ycost$both, bdc$both)</span>
@@ -437,7 +429,9 @@ pind &lt;-<span class="st"> </span><span class="kw">sapply</span>(scens, functio
 
 <span class="co"># select out impacts corresponding to those runs</span>
 cstats &lt;-<span class="st"> </span><span class="kw">selected_impacts</span>(pind, <span class="kw">fp</span>(p_out, ybdc$both$bcode))
-cstats &lt;-<span class="st"> </span>cstats[, .(iter, conv_area, tot_C, mu_cost, int_prior)]
+cstats &lt;-<span class="st"> </span>cstats[, .(iter, conv_area, tot_C, tot_cost, cons_tot)]
+<span class="co"># colSums(outtab[1:2, c(&quot;conv_area&quot;, &quot;tot_C&quot;, &quot;tot_cost&quot;, &quot;cons_tot&quot;)])</span>
+<span class="co"># pare[ind %in% pind]</span>
 
 <span class="co"># check on selection</span>
 <span class="co"># il &lt;- input_handler(p_moddat, crops[[1]])</span>
@@ -474,9 +468,10 @@ ywgts &lt;-<span class="st"> </span><span class="kw">do.call</span>(rbind, scens
 xwgts &lt;-<span class="st"> </span><span class="kw">rowSums</span>(<span class="kw">do.call</span>(rbind, scens)[, <span class="dv">2</span>:<span class="dv">3</span>])
 imp_pct &lt;-<span class="st"> </span><span class="kw">cbind</span>(<span class="kw">cbind</span>(ywgts, xwgts), cstats, imp_pct)
 
-((minmaxstats[<span class="dv">2</span>, <span class="kw">c</span>(<span class="dv">2</span>:<span class="dv">3</span>, <span class="dv">8</span>, <span class="dv">5</span>), <span class="dt">with =</span> <span class="ot">FALSE</span>]) -<span class="st"> </span>
-<span class="st">  </span>(imp_pct[<span class="dv">4</span>, <span class="kw">c</span>(<span class="dv">4</span>:<span class="dv">5</span>, <span class="dv">7</span>, <span class="dv">6</span>), <span class="dt">with =</span> <span class="ot">FALSE</span>])) /
-<span class="st">  </span>imp_range[, <span class="kw">c</span>(<span class="dv">2</span>:<span class="dv">3</span>, <span class="dv">8</span>, <span class="dv">5</span>), with =<span class="st"> </span><span class="ot">FALSE</span>]
+<span class="co"># percent of total possible savings by the 15\% weight to both C and BD</span>
+((minmaxstats[<span class="dv">2</span>, .(conv_area, tot_C, cons_tot, tot_cost)]) -<span class="st"> </span>
+<span class="st">  </span>(imp_pct[<span class="dv">4</span>, .(conv_area, tot_C, cons_tot, tot_cost)])) /
+<span class="st">  </span>imp_range[, .(conv_area, tot_C, cons_tot, tot_cost)]
 
 cols_tr &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="kw">rgb</span>(<span class="dv">1</span>, <span class="dv">0</span>, <span class="dv">0</span>), <span class="kw">rgb</span>(<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">1</span>), <span class="kw">rgb</span>(<span class="dv">0</span>, <span class="fl">0.75</span>, <span class="dv">1</span>), <span class="kw">rgb</span>(<span class="dv">1</span>, <span class="fl">0.75</span>, <span class="dv">0</span>))
 <span class="co"># sctab &lt;- do.call(rbind, scens) * 100</span>
@@ -505,13 +500,13 @@ cx &lt;-<span class="st"> </span><span class="fl">0.7</span>
 <span class="co">#   legend(&quot;bottomleft&quot;, legend = c(&quot;Carbon&quot;, &quot;Biodiv&quot;, &quot;Cost&quot;), cex = cx,</span>
 <span class="co">#          text.col = lcols, col = lcols, bty = &quot;n&quot;, lty = 1)</span>
 imp_pct[, {
-  <span class="kw">png</span>(<span class="kw">fp</span>(p_figures, <span class="st">&quot;weight_impact3.png&quot;</span>), <span class="dt">height =</span> <span class="dv">4</span>, <span class="dt">width =</span> <span class="dv">4</span>, 
+  <span class="kw">png</span>(<span class="kw">fp</span>(p_figures, <span class="st">&quot;weight_impact5.png&quot;</span>), <span class="dt">height =</span> <span class="dv">4</span>, <span class="dt">width =</span> <span class="dv">4</span>, 
       <span class="dt">units =</span> <span class="st">&quot;in&quot;</span>, <span class="dt">res =</span> <span class="dv">300</span>)
   <span class="kw">plot</span>(xwgts, conv_areap, <span class="dt">type =</span> <span class="st">&quot;l&quot;</span>, <span class="dt">xlab =</span> <span class="st">&quot;&quot;</span>, <span class="dt">ylab =</span> <span class="st">&quot;&quot;</span>, <span class="dt">axes =</span> <span class="ot">FALSE</span>, 
        <span class="dt">ylim =</span> <span class="kw">c</span>(<span class="dv">0</span>, <span class="dv">55</span>), <span class="dt">col =</span> cols_tr[<span class="dv">1</span>])
   <span class="kw">lines</span>(xwgts, tot_Cp, <span class="dt">col =</span> cols_tr[<span class="dv">2</span>])
-  <span class="kw">lines</span>(xwgts, int_priorp, <span class="dt">col =</span> cols_tr[<span class="dv">3</span>])
-  <span class="kw">lines</span>(xwgts, mu_costp, <span class="dt">col =</span> cols_tr[<span class="dv">4</span>])
+  <span class="kw">lines</span>(xwgts, cons_totp, <span class="dt">col =</span> cols_tr[<span class="dv">3</span>])
+  <span class="kw">lines</span>(xwgts, tot_costp, <span class="dt">col =</span> cols_tr[<span class="dv">4</span>])
   <span class="kw">axis</span>(<span class="dv">1</span>, <span class="dt">at =</span> xwgts, <span class="dt">labels =</span> <span class="kw">seq</span>(<span class="dv">0</span>, <span class="dv">90</span>, <span class="dv">10</span>), <span class="dt">cex =</span> cx, <span class="dt">cex.axis =</span> cx, 
        <span class="dt">line =</span> -<span class="fl">0.25</span>, <span class="dt">tcl =</span> -<span class="fl">0.2</span>, <span class="dt">mgp =</span> <span class="kw">c</span>(<span class="dv">1</span>, <span class="fl">0.25</span>, <span class="dv">0</span>))
   <span class="kw">axis</span>(<span class="dv">2</span>, <span class="dt">at =</span> <span class="kw">seq</span>(<span class="dv">0</span>, <span class="dv">55</span>, <span class="dv">5</span>), <span class="dt">las =</span> <span class="dv">2</span>, <span class="dt">cex =</span> cx, <span class="dt">cex.axis =</span> cx, <span class="dt">line =</span> -<span class="fl">0.25</span>, 
@@ -521,7 +516,7 @@ imp_pct[, {
         <span class="dt">cex =</span> cx)
   <span class="kw">mtext</span>(<span class="st">&quot;% Avoided Cost&quot;</span>, <span class="dt">side =</span> <span class="dv">2</span>, <span class="dt">line =</span> <span class="dv">1</span>, <span class="dt">cex =</span> cx)
   <span class="kw">legend</span>(<span class="st">&quot;bottomright&quot;</span>, 
-         <span class="dt">legend =</span> <span class="kw">c</span>(<span class="st">&quot;Yield&quot;</span>, <span class="st">&quot;Carbon&quot;</span>, <span class="st">&quot;Biodiversity&quot;</span>, <span class="st">&quot;Travel time&quot;</span>), 
+         <span class="dt">legend =</span> <span class="kw">c</span>(<span class="st">&quot;Yield&quot;</span>, <span class="st">&quot;Carbon&quot;</span>, <span class="st">&quot;Biodiversity&quot;</span>, <span class="st">&quot;Travel cost&quot;</span>), 
          <span class="dt">cex =</span> cx, <span class="dt">text.col =</span> cols_tr, <span class="dt">col =</span> cols_tr, <span class="dt">bty =</span> <span class="st">&quot;n&quot;</span>, <span class="dt">lty =</span> <span class="dv">1</span>, 
          <span class="dt">inset =</span> <span class="kw">c</span>(<span class="dv">0</span>, <span class="fl">0.25</span>, <span class="dv">0</span>, <span class="dv">0</span>))
   <span class="kw">dev.off</span>()
@@ -668,7 +663,7 @@ imp_pct[, {
 <h3><span class="header-section-number">1.2.4</span> Figure 6</h3>
 <p>“Objective” subjective weighting of outcomes, based on different preferences. The examples here are intended to understand the impacts that will happen when different actors with different land use interests are willing to make some compromise, e.g. they are willing to give up 5-10% of the value of their best case cost, whereas the other parties must be willing to pay more. Do that for each of the 4, and then compare to the case where each gets equal weight.</p>
 <pre class="sourceCode r"><code class="sourceCode r"><span class="co"># use minmax stats from optimal solution set</span>
-<span class="co"># pare &lt;- ybdc$both$optitab</span>
+pare &lt;-<span class="st"> </span>ybdc$both$optitab
 optirange &lt;-<span class="st"> </span>pare[, <span class="kw">lapply</span>(.SD, range), .SDcols =<span class="st"> </span><span class="dv">1</span>:<span class="dv">4</span>]
 optirange[<span class="dv">1</span>, <span class="kw">lapply</span>(.SD, function(x) x *<span class="st"> </span><span class="fl">1.05</span>)] -<span class="st"> </span>optirange[<span class="dv">1</span>, ]
 
@@ -703,8 +698,10 @@ compromise &lt;-<span class="st"> </span>function(pare, optirange, cvar, <span c
   <span class="kw">c</span>(<span class="st">&quot;cost&quot;</span> =<span class="st"> </span>cost2[chks &gt;<span class="st"> </span><span class="dv">0</span>][<span class="dv">1</span>], pare_ss[chks[chks &gt;<span class="st"> </span><span class="dv">0</span>][<span class="dv">1</span>], <span class="st">&quot;ind&quot;</span>])
 }
 
+minmaxstats[<span class="dv">1</span>, ] /<span class="st"> </span><span class="dv">10000</span> *<span class="st"> </span><span class="fl">1.05</span> -<span class="st"> </span>minmaxstats[<span class="dv">1</span>, ] /<span class="st"> </span><span class="dv">10000</span>
+
 <span class="co"># indices of costs in other three variables</span>
-cost2 &lt;-<span class="st"> </span><span class="kw">seq</span>(<span class="dv">1</span>, <span class="dv">5</span>, <span class="fl">0.05</span>)
+cost2 &lt;-<span class="st"> </span><span class="kw">seq</span>(<span class="dv">1</span>, <span class="dv">6</span>, <span class="fl">0.05</span>)
 y_comp &lt;-<span class="st"> </span><span class="kw">compromise</span>(pare, optirange, <span class="dt">cvar =</span> <span class="st">&quot;Y&quot;</span>, <span class="dt">cost1 =</span> <span class="fl">1.05</span>, <span class="dt">cost2 =</span> cost2)
 c_comp &lt;-<span class="st"> </span><span class="kw">compromise</span>(pare, optirange, <span class="dt">cvar =</span> <span class="st">&quot;C&quot;</span>, <span class="dt">cost1 =</span> <span class="fl">1.05</span>, <span class="dt">cost2 =</span> cost2)
 bd_comp &lt;-<span class="st"> </span><span class="kw">compromise</span>(pare, optirange, <span class="dt">cvar =</span> <span class="st">&quot;BD&quot;</span>, <span class="dt">cost1 =</span> <span class="fl">1.05</span>, <span class="dt">cost2 =</span> cost2)
@@ -717,6 +714,7 @@ ct_comp &lt;-<span class="st"> </span><span class="kw">compromise</span>(pare, o
 <span class="co"># select out those values from the results tables and grab conversion areas</span>
 parms &lt;-<span class="st"> </span><span class="kw">round</span>(ybdc$both$params[, <span class="dv">7</span>:<span class="dv">10</span>], <span class="dv">2</span>)
 eqind &lt;-<span class="st"> </span><span class="kw">which</span>(<span class="kw">apply</span>(parms, <span class="dv">1</span>, function(x) <span class="kw">all</span>(x ==<span class="st"> </span><span class="fl">0.25</span>))) <span class="co"># iter of eq wt run</span>
+parms[<span class="dv">1031</span>, ]
 <span class="co"># pare[ind == eqind]</span>
 
 pind &lt;-<span class="st"> </span><span class="kw">c</span>(y_comp[<span class="st">&quot;ind&quot;</span>], c_comp[<span class="st">&quot;ind&quot;</span>], bd_comp[<span class="st">&quot;ind&quot;</span>], ct_comp[<span class="st">&quot;ind&quot;</span>], eqind)
@@ -742,7 +740,7 @@ objsubj_r &lt;-<span class="st"> </span><span class="kw">lapply</span>(fnames, f
 <span class="co"># pull out the impact tables (brief check shows they are the same values)</span>
 all_stats &lt;-<span class="st"> </span><span class="kw">selected_impacts</span>(<span class="kw">unname</span>(pind), <span class="kw">fp</span>(p_out, ybdc$both$bcode))
 <span class="co"># impsr &lt;- lapply(c(2, 5, 3, 7:9, 4), function(x) all_stats[[x]])</span>
-impsr &lt;-<span class="st"> </span><span class="kw">lapply</span>(<span class="kw">c</span>(<span class="dv">2</span>, <span class="dv">3</span>, <span class="dv">8</span>, <span class="dv">5</span>), function(x) all_stats[[x]])
+impsr &lt;-<span class="st"> </span><span class="kw">lapply</span>(<span class="kw">c</span>(<span class="dv">2</span>, <span class="dv">3</span>, <span class="dv">5</span>, <span class="dv">4</span>), function(x) all_stats[[x]])
 
 <span class="co"># pare[ind == y_comp[&quot;ind&quot;],]; pare[ind == c_comp[&quot;ind&quot;],]; </span>
 <span class="co"># pare[ind == bd_comp[&quot;ind&quot;],]; pare[ind == ct_comp[&quot;ind&quot;],]</span>
@@ -834,8 +832,8 @@ ftits &lt;-<span class="st"> </span><span class="kw">lapply</span>(pind, functio
 <span class="co">#               seq(0, 0.6, 0.1), seq(0, 1, 0.1), seq(0, 7000, 1000))</span>
 <span class="co"># </span>
 
-maxes &lt;-<span class="st"> </span><span class="kw">sapply</span>(<span class="kw">c</span>(<span class="dv">2</span>:<span class="dv">3</span>, <span class="dv">8</span>, <span class="dv">5</span>), function(j) minmaxstats[[j]][<span class="dv">2</span>])
-mins &lt;-<span class="st"> </span><span class="kw">sapply</span>(<span class="kw">c</span>(<span class="dv">2</span>:<span class="dv">3</span>, <span class="dv">8</span>, <span class="dv">5</span>), function(j) minmaxstats[[j]][<span class="dv">1</span>])
+maxes &lt;-<span class="st"> </span><span class="kw">sapply</span>(<span class="kw">c</span>(<span class="dv">2</span>:<span class="dv">3</span>, <span class="dv">5</span>, <span class="dv">4</span>), function(j) minmaxstats[[j]][<span class="dv">2</span>])
+mins &lt;-<span class="st"> </span><span class="kw">sapply</span>(<span class="kw">c</span>(<span class="dv">2</span>:<span class="dv">3</span>, <span class="dv">5</span>, <span class="dv">4</span>), function(j) minmaxstats[[j]][<span class="dv">1</span>])
 ymaxes &lt;-<span class="st"> </span>maxes /<span class="st"> </span>yscale
 ymins &lt;-<span class="st"> </span>mins /<span class="st"> </span>yscale
 pctlines &lt;-<span class="st"> </span><span class="kw">rbind</span>(ymins, 
@@ -903,13 +901,14 @@ m2 &lt;-<span class="st"> </span><span class="kw">do.call</span>(cbind, <span cl
 lmat &lt;-<span class="st"> </span><span class="kw">rbind</span>(m1, m2)
 
 ftits &lt;-<span class="st"> </span><span class="kw">list</span>(<span class="st">&quot;Compromise 5% on Yield&quot;</span>, <span class="st">&quot;Compromise 5% on Carbon&quot;</span>, 
-              <span class="st">&quot;Compromise 5% on Biodiversity&quot;</span>, <span class="st">&quot;Compromise 5% on Travel Time&quot;</span>)
-yaxes &lt;-<span class="st"> </span><span class="kw">list</span>(<span class="kw">seq</span>(<span class="dv">0</span>, <span class="dv">16</span>, <span class="dv">4</span>), <span class="kw">seq</span>(<span class="dv">0</span>, <span class="dv">1200</span>, <span class="dv">100</span>), <span class="kw">seq</span>(<span class="dv">0</span>, <span class="fl">0.6</span>, <span class="fl">0.1</span>), 
-              <span class="kw">seq</span>(<span class="dv">0</span>, <span class="dv">7</span>, <span class="dv">1</span>))
+              <span class="st">&quot;Compromise 5% on Biodiversity&quot;</span>, <span class="st">&quot;Compromise 5% on Travel Cost&quot;</span>)
+yaxes &lt;-<span class="st"> </span><span class="kw">list</span>(<span class="kw">seq</span>(<span class="dv">0</span>, <span class="dv">16</span>, <span class="dv">4</span>), <span class="kw">seq</span>(<span class="dv">0</span>, <span class="dv">1200</span>, <span class="dv">100</span>), <span class="kw">seq</span>(<span class="dv">0</span>, <span class="dv">9</span>, <span class="dv">1</span>), 
+              <span class="kw">seq</span>(<span class="dv">0</span>, <span class="dv">35</span>, <span class="dv">5</span>))
 pcttxt &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;best&quot;</span>, <span class="st">&quot;50%&quot;</span>, <span class="st">&quot;worst&quot;</span>)
+impsr
 
 <span class="co"># plot</span>
-<span class="kw">png</span>(<span class="kw">fp</span>(p_figures, <span class="st">&quot;compromise_5pct.png&quot;</span>), <span class="dt">height =</span> <span class="fl">3.5</span>, 
+<span class="kw">png</span>(<span class="kw">fp</span>(p_figures, <span class="st">&quot;compromise_5pct3.png&quot;</span>), <span class="dt">height =</span> <span class="fl">3.5</span>, 
     <span class="dt">width =</span> <span class="dv">7</span>, <span class="dt">units =</span> <span class="st">&quot;in&quot;</span>, <span class="dt">res =</span> <span class="dv">300</span>)
 l &lt;-<span class="st"> </span><span class="kw">layout</span>(<span class="dt">mat =</span> lmat)
 <span class="co"># layout.show(l)</span>
@@ -949,7 +948,7 @@ for(i in <span class="dv">1</span>:<span class="dv">4</span>) {
             <span class="dt">ylab =</span> <span class="st">&quot;&quot;</span>, <span class="dt">cex.lab =</span> cx)
     <span class="kw">axis</span>(<span class="dv">2</span>, <span class="dt">at=</span><span class="kw">seq</span>(<span class="dv">0</span>, <span class="dv">30</span>, <span class="dv">10</span>), <span class="dt">cex.axis =</span> cx, <span class="dt">las =</span> <span class="dv">2</span>, <span class="dt">mgp =</span> mgp, <span class="dt">tcl =</span> -<span class="fl">0.2</span>)
     <span class="kw">mtext</span>(<span class="st">&quot;Average distance&quot;</span>, <span class="dt">side =</span> <span class="dv">2</span>, <span class="dt">line =</span> <span class="fl">1.3</span>, <span class="dt">cex =</span> <span class="fl">0.4</span>)
-    <span class="kw">mtext</span>(<span class="st">&quot;to neighbor (km)&quot;</span>, <span class="dt">side =</span> <span class="dv">2</span>, <span class="dt">line =</span> <span class="fl">0.8</span>, <span class="dt">cex =</span> <span class="fl">0.4</span>)
+    <span class="kw">mtext</span>(<span class="st">&quot;to neighbour (km)&quot;</span>, <span class="dt">side =</span> <span class="dv">2</span>, <span class="dt">line =</span> <span class="fl">0.8</span>, <span class="dt">cex =</span> <span class="fl">0.4</span>)
   })
 }
 <span class="kw">par</span>(<span class="dt">xpd =</span> <span class="ot">NA</span>)
@@ -966,14 +965,14 @@ m3 &lt;-<span class="st"> </span><span class="kw">do.call</span>(cbind, <span cl
 lmat &lt;-<span class="st"> </span><span class="kw">cbind</span>(m1, <span class="kw">rbind</span>(m2, m3))
 
 
-<span class="kw">png</span>(<span class="kw">fp</span>(p_figures, <span class="st">&quot;compromise_25pct.png&quot;</span>), <span class="dt">height =</span> <span class="dv">2</span>, <span class="dt">width =</span> <span class="dv">4</span>, 
+<span class="kw">png</span>(<span class="kw">fp</span>(p_figures, <span class="st">&quot;compromise_25pct2.png&quot;</span>), <span class="dt">height =</span> <span class="dv">2</span>, <span class="dt">width =</span> <span class="dv">4</span>, 
     <span class="dt">units =</span> <span class="st">&quot;in&quot;</span>, <span class="dt">res =</span> <span class="dv">300</span>)
 l &lt;-<span class="st"> </span><span class="kw">layout</span>(<span class="dt">mat =</span> lmat)
 <span class="co"># layout.show(l)</span>
 
 <span class="kw">par</span>(<span class="dt">oma =</span> <span class="kw">c</span>(<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">1</span>))
 <span class="co"># plot(zambia)</span>
-<span class="kw">imp_plot2</span>(toresr[[i]], <span class="dt">impacts =</span> i1, <span class="dt">fpath =</span> p_figures, <span class="dt">fnm =</span> <span class="st">&quot;bob&quot;</span>,
+<span class="kw">imp_plot2</span>(toresr$eqwt, <span class="dt">impacts =</span> i1, <span class="dt">fpath =</span> p_figures, <span class="dt">fnm =</span> <span class="st">&quot;bob&quot;</span>,
           <span class="dt">crops =</span> <span class="st">&quot;&quot;</span>, <span class="dt">ftitle =</span> <span class="st">&quot;Compromise equally&quot;</span>, <span class="dt">col =</span> <span class="st">&quot;purple&quot;</span>, 
           <span class="dt">legend =</span> <span class="ot">FALSE</span>, <span class="dt">hold =</span> <span class="ot">TRUE</span>, <span class="dt">stats =</span> <span class="ot">FALSE</span>, <span class="dt">cexscale =</span> <span class="fl">0.4</span>, 
           <span class="dt">marg =</span> <span class="kw">c</span>(<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">0</span>), <span class="dt">titline =</span> <span class="dv">0</span>)
@@ -999,8 +998,22 @@ for(i in <span class="dv">1</span>:<span class="dv">4</span>) {
 <span class="kw">dev.off</span>()
 
 for(i in <span class="dv">1</span>:<span class="dv">4</span>) {
-  <span class="dv">1</span> -<span class="st"> </span><span class="kw">print</span>(all_stats[<span class="dv">5</span>, <span class="kw">c</span>(<span class="dv">2</span>:<span class="dv">3</span>, <span class="dv">8</span>, <span class="dv">5</span>), <span class="dt">with =</span> <span class="ot">FALSE</span>] /<span class="st"> </span>
-<span class="st">              </span>all_stats[i, <span class="kw">c</span>(<span class="dv">2</span>:<span class="dv">3</span>, <span class="dv">8</span>, <span class="dv">5</span>), <span class="dt">with =</span> <span class="ot">FALSE</span>])
+  <span class="dv">1</span> -<span class="st"> </span><span class="kw">print</span>(all_stats[<span class="dv">5</span>, <span class="kw">c</span>(<span class="dv">2</span>:<span class="dv">3</span>, <span class="dv">5</span>, <span class="dv">4</span>), <span class="dt">with =</span> <span class="ot">FALSE</span>] /<span class="st"> </span>
+<span class="st">              </span>all_stats[i, <span class="kw">c</span>(<span class="dv">2</span>:<span class="dv">3</span>, <span class="dv">5</span>, <span class="dv">4</span>), <span class="dt">with =</span> <span class="ot">FALSE</span>])
+}
+
+<span class="co"># equal compromise avoided cost</span>
+for(i in <span class="dv">1</span>:<span class="dv">5</span>) {
+  <span class="kw">print</span>(((minmaxstats[<span class="dv">2</span>, <span class="kw">c</span>(<span class="dv">2</span>:<span class="dv">3</span>, <span class="dv">5</span>, <span class="dv">4</span>), <span class="dt">with =</span> <span class="ot">FALSE</span>]) -<span class="st"> </span>
+<span class="st">     </span>(all_stats[i, <span class="kw">c</span>(<span class="dv">2</span>:<span class="dv">3</span>, <span class="dv">5</span>, <span class="dv">4</span>), <span class="dt">with =</span> <span class="ot">FALSE</span>])) /
+<span class="st">    </span>imp_range[, <span class="kw">c</span>(<span class="dv">2</span>:<span class="dv">3</span>, <span class="dv">5</span>, <span class="dv">4</span>), <span class="dt">with =</span> <span class="ot">FALSE</span>])
+}
+
+<span class="co"># equal cost difference relative to best case</span>
+for(i in <span class="dv">1</span>:<span class="dv">5</span>) {
+  <span class="kw">print</span>(((all_stats[i, <span class="kw">c</span>(<span class="dv">2</span>:<span class="dv">3</span>, <span class="dv">5</span>, <span class="dv">4</span>), <span class="dt">with =</span> <span class="ot">FALSE</span>]) -<span class="st"> </span>
+<span class="st">     </span>(minmaxstats[<span class="dv">1</span>, <span class="kw">c</span>(<span class="dv">2</span>:<span class="dv">3</span>, <span class="dv">5</span>, <span class="dv">4</span>), <span class="dt">with =</span> <span class="ot">FALSE</span>])) /
+<span class="st">    </span>imp_range[, <span class="kw">c</span>(<span class="dv">2</span>:<span class="dv">3</span>, <span class="dv">5</span>, <span class="dv">4</span>), <span class="dt">with =</span> <span class="ot">FALSE</span>])
 }</code></pre>
 <p><a href="#top">Back to top</a></p>
 </div>
@@ -1050,10 +1063,10 @@ for(i in <span class="dv">1</span>:<span class="dv">2</span>) {
             <span class="dt">col =</span> <span class="kw">c</span>(<span class="st">&quot;red&quot;</span>, <span class="st">&quot;orange&quot;</span>, <span class="kw">rgb</span>(<span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">1</span>)),
             <span class="dt">legend =</span> <span class="ot">TRUE</span>, <span class="dt">hold =</span> <span class="ot">TRUE</span>, <span class="dt">stats =</span> <span class="ot">FALSE</span>, <span class="dt">cexscale =</span> <span class="fl">0.3</span>, 
             <span class="dt">marg =</span> <span class="kw">c</span>(<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">0</span>), <span class="dt">inset =</span> <span class="kw">c</span>(<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>), <span class="dt">titline =</span> <span class="dv">0</span>)
-  <span class="kw">mtext</span>(<span class="kw">paste</span>(<span class="st">&quot;Jaccard Index =&quot;</span>, <span class="kw">round</span>(fb_sim[i], <span class="dv">2</span>)), <span class="dt">side =</span> <span class="dv">3</span>, <span class="dt">line =</span> -<span class="dv">2</span>, 
+  <span class="kw">mtext</span>(<span class="kw">paste</span>(<span class="st">&quot;% Overlap =&quot;</span>, <span class="kw">round</span>(fb_sim[i], <span class="dv">2</span>)), <span class="dt">side =</span> <span class="dv">3</span>, <span class="dt">line =</span> -<span class="dv">2</span>, 
         <span class="dt">cex =</span> <span class="fl">0.4</span>, <span class="dt">adj =</span> <span class="fl">0.2</span>)
-  <span class="kw">mtext</span>(<span class="kw">paste</span>(<span class="st">&quot;NN Distance =&quot;</span>, <span class="kw">round</span>(fb_nnd[i]), <span class="st">&quot;km&quot;</span>), <span class="dt">side =</span> <span class="dv">3</span>, <span class="dt">line =</span> -<span class="fl">2.5</span>, 
-        <span class="dt">cex =</span> <span class="fl">0.4</span>, <span class="dt">adj =</span> <span class="fl">0.2</span>)
+  <span class="kw">mtext</span>(<span class="kw">paste</span>(<span class="st">&quot;Mean dist. to neighbour =&quot;</span>, <span class="kw">round</span>(fb_nnd[i]), <span class="st">&quot;km&quot;</span>), <span class="dt">side =</span> <span class="dv">3</span>,
+        <span class="dt">line =</span> -<span class="fl">2.5</span>, <span class="dt">cex =</span> <span class="fl">0.4</span>, <span class="dt">adj =</span> <span class="fl">0.2</span>)
 }
 <span class="kw">dev.off</span>()</code></pre>
 </div>
@@ -1069,7 +1082,8 @@ highgap &lt;-<span class="st"> </span><span class="kw">tradeoff_mod</span>(<span
 lowi &lt;-<span class="st"> </span><span class="kw">selected_impacts2</span>(lowgap$impacts)
 highi &lt;-<span class="st"> </span><span class="kw">selected_impacts2</span>(highgap$impacts)
 gaptab &lt;-<span class="st"> </span><span class="kw">rbind</span>(lowi, all_stats[<span class="dv">5</span>, <span class="kw">names</span>(all_stats)[-<span class="dv">1</span>], <span class="dt">with =</span> <span class="ot">FALSE</span>], highi)
-gaptab[<span class="dv">1</span>, ] /<span class="st"> </span>gaptab[<span class="dv">2</span>, ]
+gaptab[<span class="dv">1</span>, ] /<span class="st"> </span>gaptab[<span class="dv">2</span>, ] -<span class="st"> </span><span class="dv">1</span>
+gaptab[<span class="dv">3</span>, ] /<span class="st"> </span>gaptab[<span class="dv">2</span>, ] -<span class="st"> </span><span class="dv">1</span>
 gaptab[, tot_C /<span class="st"> </span><span class="dv">100000</span>]</code></pre>
 </div>
 <div id="additional-supplementals" class="section level3">
@@ -1078,6 +1092,7 @@ gaptab[, tot_C /<span class="st"> </span><span class="dv">100000</span>]</code><
 ylds &lt;-<span class="st"> </span><span class="kw">dt_to_raster</span>(<span class="kw">cbind</span>(basedt[, .(x, y)], il$p_yield), CRSobj)
 carb &lt;-<span class="st"> </span><span class="kw">dt_to_raster</span>(<span class="kw">cbind</span>(basedt[, .(x, y)], il$carbon), CRSobj)
 cost &lt;-<span class="st"> </span><span class="kw">dt_to_raster</span>(<span class="kw">cbind</span>(basedt[, .(x, y)], il$cost), CRSobj)
+bd &lt;-<span class="st"> </span><span class="kw">dt_to_raster</span>(<span class="kw">cbind</span>(basedt[, .(x, y)], il$cons), CRSobj)
 closs &lt;-<span class="st"> </span>carb[[<span class="dv">1</span>]] +<span class="st"> </span>carb[[<span class="dv">2</span>]] *<span class="st"> </span><span class="fl">0.25</span>
 pacols &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;transparent&quot;</span>, <span class="st">&quot;grey85&quot;</span>, <span class="st">&quot;grey75&quot;</span>)
 
@@ -1086,23 +1101,50 @@ pacols &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">
 <span class="kw">par</span>(<span class="dt">mar =</span> <span class="kw">c</span>(<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">4</span>), <span class="dt">mfrow =</span> <span class="kw">c</span>(<span class="dv">1</span>, <span class="dv">2</span>))
 for(i in <span class="dv">1</span>:<span class="dv">2</span>) {
   <span class="kw">plot</span>(zambia, <span class="dt">col =</span> <span class="st">&quot;white&quot;</span>, <span class="dt">border =</span> <span class="st">&quot;transparent&quot;</span>)
-  <span class="kw">plot</span>(ylds[[i]], <span class="dt">legend =</span> <span class="ot">TRUE</span>, <span class="dt">add =</span> <span class="ot">TRUE</span>)
-  <span class="kw">plot</span>(pas[pas@data$type ==<span class="st"> &quot;gma&quot;</span>, ], <span class="dt">add =</span> <span class="ot">TRUE</span>, <span class="dt">col =</span> pacols[<span class="dv">2</span>],
-       <span class="dt">border =</span> pacols[<span class="dv">2</span>])
-  <span class="kw">plot</span>(pas[pas@data$type ==<span class="st"> &quot;npark&quot;</span>, ], <span class="dt">add =</span> <span class="ot">TRUE</span>, <span class="dt">col =</span> pacols[<span class="dv">3</span>],
+  <span class="kw">plot</span>(ylds[[i]], <span class="dt">legend =</span> <span class="ot">TRUE</span>, <span class="dt">add =</span> <span class="ot">TRUE</span>, <span class="dt">axis.args =</span> <span class="kw">list</span>(<span class="dt">cex.axis =</span> <span class="fl">0.7</span>),
+       <span class="dt">legend.args =</span> <span class="kw">list</span>(<span class="dt">text =</span> <span class="kw">expression</span>(<span class="st">&quot;tons ha&quot;</span>^-<span class="dv">1</span>), <span class="dt">cex =</span> <span class="fl">0.8</span>))
+  <span class="kw">plot</span>(pas[pas@data$type %in%<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;gma&quot;</span>, <span class="st">&quot;npark&quot;</span>), ], <span class="dt">add =</span> <span class="ot">TRUE</span>, <span class="dt">col =</span> pacols[<span class="dv">3</span>],
        <span class="dt">border =</span> pacols[<span class="dv">3</span>])
-  <span class="kw">legend</span>(<span class="st">&quot;bottomright&quot;</span>, <span class="dt">legend =</span> <span class="kw">c</span>(<span class="st">&quot;GMAs&quot;</span>, <span class="st">&quot;NatParks&quot;</span>),
-         <span class="dt">pch =</span> <span class="dv">15</span>, <span class="dt">col =</span> <span class="kw">c</span>(pacols[<span class="dv">2</span>:<span class="dv">3</span>]), <span class="dt">bty =</span> <span class="st">&quot;n&quot;</span>,
-         <span class="dt">pt.cex =</span> <span class="dv">2</span>, <span class="dt">cex =</span> <span class="dv">1</span>, <span class="dt">inset =</span> <span class="kw">c</span>(<span class="fl">0.1</span>, <span class="fl">0.1</span>, <span class="dv">0</span>, <span class="dv">0</span>))
-
-}  
+  if(i ==<span class="st"> </span><span class="dv">1</span>) {
+    <span class="kw">legend</span>(<span class="st">&quot;bottomright&quot;</span>, <span class="dt">legend =</span> <span class="kw">c</span>(<span class="st">&quot;Protected Areas&quot;</span>),
+           <span class="dt">pch =</span> <span class="dv">15</span>, <span class="dt">col =</span> <span class="kw">c</span>(pacols[<span class="dv">2</span>]), <span class="dt">bty =</span> <span class="st">&quot;n&quot;</span>,
+           <span class="dt">pt.cex =</span> <span class="dv">2</span>, <span class="dt">cex =</span> <span class="fl">0.8</span>, <span class="dt">inset =</span> <span class="kw">c</span>(<span class="dv">0</span>, <span class="fl">0.1</span>, <span class="dv">0</span>, <span class="dv">0</span>))
+  }  
+}
 <span class="kw">dev.off</span>()
 
 <span class="kw">png</span>(<span class="kw">fp</span>(p_figures, <span class="st">&quot;carbon.png&quot;</span>), <span class="dt">height =</span> <span class="fl">3.5</span>, <span class="dt">width =</span> <span class="fl">4.5</span>, <span class="dt">unit =</span> <span class="st">&quot;in&quot;</span>, 
      <span class="dt">res =</span> <span class="dv">300</span>)
-<span class="kw">par</span>(<span class="dt">mar =</span> <span class="kw">c</span>(<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">4</span>))
+<span class="kw">par</span>(<span class="dt">mar =</span> <span class="kw">c</span>(<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">5</span>))
 <span class="kw">plot</span>(zambia, <span class="dt">col =</span> <span class="st">&quot;white&quot;</span>, <span class="dt">border =</span> <span class="st">&quot;transparent&quot;</span>)
-<span class="kw">plot</span>(closs, <span class="dt">legend =</span> <span class="ot">TRUE</span>, <span class="dt">add =</span> <span class="ot">TRUE</span>)
+<span class="kw">plot</span>(closs, <span class="dt">legend =</span> <span class="ot">TRUE</span>, <span class="dt">add =</span> <span class="ot">TRUE</span>, <span class="dt">axis.args =</span> <span class="kw">list</span>(<span class="dt">cex.axis =</span> <span class="fl">0.7</span>),
+       <span class="dt">legend.args =</span> <span class="kw">list</span>(<span class="dt">text =</span> <span class="kw">expression</span>(<span class="st">&quot;tons ha&quot;</span>^-<span class="dv">1</span>), <span class="dt">cex =</span> <span class="fl">0.8</span>))
+<span class="kw">plot</span>(pas[pas@data$type %in%<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;gma&quot;</span>, <span class="st">&quot;npark&quot;</span>), ], <span class="dt">add =</span> <span class="ot">TRUE</span>, <span class="dt">col =</span> pacols[<span class="dv">2</span>],
+     <span class="dt">border =</span> pacols[<span class="dv">2</span>])
+<span class="kw">legend</span>(<span class="st">&quot;bottomright&quot;</span>, <span class="dt">legend =</span> <span class="kw">c</span>(<span class="st">&quot;Protected Areas&quot;</span>),
+       <span class="dt">pch =</span> <span class="dv">15</span>, <span class="dt">col =</span> <span class="kw">c</span>(pacols[<span class="dv">2</span>]), <span class="dt">bty =</span> <span class="st">&quot;n&quot;</span>,
+       <span class="dt">pt.cex =</span> <span class="dv">2</span>, <span class="dt">cex =</span> <span class="fl">0.8</span>, <span class="dt">inset =</span> <span class="kw">c</span>(<span class="dv">0</span>, <span class="fl">0.1</span>, <span class="dv">0</span>, <span class="dv">0</span>))
+<span class="kw">dev.off</span>()
+
+<span class="kw">png</span>(<span class="kw">fp</span>(p_figures, <span class="st">&quot;cost.png&quot;</span>), <span class="dt">height =</span> <span class="fl">3.5</span>, <span class="dt">width =</span> <span class="fl">4.5</span>, <span class="dt">unit =</span> <span class="st">&quot;in&quot;</span>, 
+     <span class="dt">res =</span> <span class="dv">300</span>)
+<span class="kw">par</span>(<span class="dt">mar =</span> <span class="kw">c</span>(<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">5</span>))
+<span class="kw">plot</span>(zambia, <span class="dt">col =</span> <span class="st">&quot;white&quot;</span>, <span class="dt">border =</span> <span class="st">&quot;transparent&quot;</span>)
+<span class="kw">plot</span>(cost, <span class="dt">legend =</span> <span class="ot">TRUE</span>, <span class="dt">add =</span> <span class="ot">TRUE</span>, 
+     <span class="dt">axis.args =</span> <span class="kw">list</span>(<span class="dt">cex.axis =</span> <span class="fl">0.7</span>),
+     <span class="dt">legend.args =</span> <span class="kw">list</span>(<span class="dt">text =</span> <span class="st">&quot;hours&quot;</span>, <span class="dt">cex =</span> <span class="fl">0.8</span>))
+<span class="kw">plot</span>(pas[pas@data$type %in%<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;gma&quot;</span>, <span class="st">&quot;npark&quot;</span>), ], <span class="dt">add =</span> <span class="ot">TRUE</span>, <span class="dt">col =</span> pacols[<span class="dv">2</span>],
+     <span class="dt">border =</span> pacols[<span class="dv">2</span>])
+<span class="kw">legend</span>(<span class="st">&quot;bottomright&quot;</span>, <span class="dt">legend =</span> <span class="kw">c</span>(<span class="st">&quot;Protected Areas&quot;</span>),
+       <span class="dt">pch =</span> <span class="dv">15</span>, <span class="dt">col =</span> <span class="kw">c</span>(pacols[<span class="dv">2</span>]), <span class="dt">bty =</span> <span class="st">&quot;n&quot;</span>,
+       <span class="dt">pt.cex =</span> <span class="dv">2</span>, <span class="dt">cex =</span> <span class="fl">0.8</span>, <span class="dt">inset =</span> <span class="kw">c</span>(<span class="dv">0</span>, <span class="fl">0.1</span>, <span class="dv">0</span>, <span class="dv">0</span>))
+<span class="kw">dev.off</span>()
+
+<span class="kw">png</span>(<span class="kw">fp</span>(p_figures, <span class="st">&quot;bd.png&quot;</span>), <span class="dt">height =</span> <span class="fl">3.5</span>, <span class="dt">width =</span> <span class="fl">4.5</span>, <span class="dt">unit =</span> <span class="st">&quot;in&quot;</span>, 
+     <span class="dt">res =</span> <span class="dv">300</span>)
+<span class="kw">par</span>(<span class="dt">mar =</span> <span class="kw">c</span>(<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">5</span>))
+<span class="kw">plot</span>(zambia, <span class="dt">col =</span> <span class="st">&quot;white&quot;</span>, <span class="dt">border =</span> <span class="st">&quot;transparent&quot;</span>)
+<span class="kw">plot</span>(bd, <span class="dt">legend =</span> <span class="ot">TRUE</span>, <span class="dt">add =</span> <span class="ot">TRUE</span>, <span class="dt">axis.args =</span> <span class="kw">list</span>(<span class="dt">cex.axis =</span> <span class="fl">0.7</span>))
 <span class="kw">plot</span>(pas[pas@data$type ==<span class="st"> &quot;gma&quot;</span>, ], <span class="dt">add =</span> <span class="ot">TRUE</span>, <span class="dt">col =</span> pacols[<span class="dv">2</span>],
      <span class="dt">border =</span> pacols[<span class="dv">2</span>])
 <span class="kw">plot</span>(pas[pas@data$type ==<span class="st"> &quot;npark&quot;</span>, ], <span class="dt">add =</span> <span class="ot">TRUE</span>, <span class="dt">col =</span> pacols[<span class="dv">3</span>],
@@ -1112,23 +1154,37 @@ for(i in <span class="dv">1</span>:<span class="dv">2</span>) {
        <span class="dt">pt.cex =</span> <span class="dv">2</span>, <span class="dt">cex =</span> <span class="dv">1</span>, <span class="dt">inset =</span> <span class="kw">c</span>(<span class="fl">0.1</span>, <span class="fl">0.1</span>, <span class="dv">0</span>, <span class="dv">0</span>))
 <span class="kw">dev.off</span>()
 
-<span class="kw">png</span>(<span class="kw">fp</span>(p_figures, <span class="st">&quot;cost.png&quot;</span>), <span class="dt">height =</span> <span class="fl">3.5</span>, <span class="dt">width =</span> <span class="fl">4.5</span>, <span class="dt">unit =</span> <span class="st">&quot;in&quot;</span>, 
-     <span class="dt">res =</span> <span class="dv">300</span>)
-<span class="kw">par</span>(<span class="dt">mar =</span> <span class="kw">c</span>(<span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">0</span>, <span class="dv">4</span>))
-<span class="kw">plot</span>(zambia, <span class="dt">col =</span> <span class="st">&quot;white&quot;</span>, <span class="dt">border =</span> <span class="st">&quot;transparent&quot;</span>)
-<span class="kw">plot</span>(cost, <span class="dt">legend =</span> <span class="ot">TRUE</span>, <span class="dt">add =</span> <span class="ot">TRUE</span>)
-<span class="kw">plot</span>(pas[pas@data$type ==<span class="st"> &quot;gma&quot;</span>, ], <span class="dt">add =</span> <span class="ot">TRUE</span>, <span class="dt">col =</span> pacols[<span class="dv">2</span>],
-     <span class="dt">border =</span> pacols[<span class="dv">2</span>])
-<span class="kw">plot</span>(pas[pas@data$type ==<span class="st"> &quot;npark&quot;</span>, ], <span class="dt">add =</span> <span class="ot">TRUE</span>, <span class="dt">col =</span> pacols[<span class="dv">3</span>],
-     <span class="dt">border =</span> pacols[<span class="dv">3</span>])
-<span class="kw">legend</span>(<span class="st">&quot;bottomright&quot;</span>, <span class="dt">legend =</span> <span class="kw">c</span>(<span class="st">&quot;GMAs&quot;</span>, <span class="st">&quot;NatParks&quot;</span>),
-       <span class="dt">pch =</span> <span class="dv">15</span>, <span class="dt">col =</span> <span class="kw">c</span>(pacols[<span class="dv">2</span>:<span class="dv">3</span>]), <span class="dt">bty =</span> <span class="st">&quot;n&quot;</span>,
-       <span class="dt">pt.cex =</span> <span class="dv">2</span>, <span class="dt">cex =</span> <span class="dv">1</span>, <span class="dt">inset =</span> <span class="kw">c</span>(<span class="fl">0.1</span>, <span class="fl">0.1</span>, <span class="dv">0</span>, <span class="dv">0</span>))
-<span class="kw">dev.off</span>()</code></pre>
+
+<span class="co"># vegetation types</span>
+<span class="kw">load</span>(<span class="kw">fp</span>(p_bd, <span class="st">&quot;vegstats.rda&quot;</span>))
+vegstats &lt;-<span class="st"> </span><span class="kw">round</span>(vegstats *<span class="st"> </span><span class="dv">100</span>, <span class="dv">2</span>)
+nms &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;Afromontane rain forest&quot;</span>, <span class="st">&quot;Zambezian dry evergreen forest&quot;</span>, 
+         <span class="st">&quot;Zambezian dry deciduous forest&quot;</span>, <span class="st">&quot;Palm wooded grassland&quot;</span>,
+         <span class="st">&quot;Riverine wooded vegetation&quot;</span>, <span class="st">&quot;Zambezian Kalahari woodland&quot;</span>,
+         <span class="st">&quot;Drier miombo woodland&quot;</span>, <span class="st">&quot;Miombo woodland on hills/outcrops&quot;</span>,
+         <span class="st">&quot;Wetter mimbo woodland&quot;</span>, <span class="st">&quot;N. Zambezian undifferentiated woodland&quot;</span>,
+         <span class="st">&quot;Catena of N. Zambezian undifferentiated woodland/edaphic grassland&quot;</span>, 
+         <span class="st">&quot;Mopane woodland/scrub woodland&quot;</span>, <span class="st">&quot;Zambezian chipya woodland&quot;</span>,
+         <span class="st">&quot;Itigi thicket&quot;</span>, <span class="st">&quot;Swamp forest&quot;</span>,
+         <span class="st">&quot;Edaphic grassland on drainage impeded/seasonally flooded soils&quot;</span>, 
+         <span class="st">&quot;Bush groups, typically around termitaria&quot;</span>,
+         <span class="st">&quot;Edaphic grassland w/Zambezian Kalahari woodland&quot;</span>,
+         <span class="st">&quot;Edaphic grassland w/freshwater swamp&quot;</span>, 
+         <span class="st">&quot;Edaphic woodland on drainage impeded/seasonally flooded soils&quot;</span>)
+<span class="kw">print</span>(xtable::<span class="kw">xtable</span>(<span class="kw">cbind</span>(<span class="kw">c</span>(<span class="st">&quot;&quot;</span>, nms), <span class="kw">unname</span>(<span class="kw">t</span>(vegstats)[, <span class="kw">c</span>(<span class="dv">1</span>:<span class="dv">2</span>, <span class="dv">4</span>, <span class="dv">3</span>, <span class="dv">5</span>)])), 
+                           <span class="dt">digits =</span> <span class="kw">c</span>(<span class="dv">2</span>, <span class="dv">2</span>, <span class="dv">2</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">1</span>, <span class="dv">1</span>), ))</code></pre>
+</div>
+<div id="carbon-stocks" class="section level3">
+<h3><span class="header-section-number">1.2.8</span> Carbon stocks</h3>
+<pre class="sourceCode r"><code class="sourceCode r">carbon &lt;-<span class="st"> </span><span class="kw">brick</span>(<span class="kw">fp</span>(p_root, <span class="st">&quot;external/input_devel/carbon/ZA-carbon.tif&quot;</span>))
+carbont &lt;-<span class="st"> </span><span class="kw">calc</span>(carbon, sum)
+carbont &lt;-<span class="st"> </span>raster::<span class="kw">mask</span>(carbont, mgrid, <span class="dt">maskvalue =</span> <span class="dv">0</span>)
+<span class="kw">freq</span>(!<span class="kw">is.na</span>(carbont))  <span class="co"># 738442 km2</span>
+<span class="kw">quantile</span>(carbont, <span class="dt">prob =</span> <span class="kw">seq</span>(<span class="dv">0</span>, <span class="dv">1</span>, <span class="fl">0.1</span>))  <span class="co"># 50% 130 t/ha, 80 t/ha</span></code></pre>
 <p><a href="#top">Back to top</a></p>
 </div>
 <div id="deprecated-version-of-figure-3" class="section level3">
-<h3><span class="header-section-number">1.2.8</span> Deprecated version of Figure 3</h3>
+<h3><span class="header-section-number">1.2.9</span> Deprecated version of Figure 3</h3>
 <pre class="sourceCode r"><code class="sourceCode r"><span class="co"># objective weights</span>
 <span class="co"># obj_wgts &lt;- round(pct_of_tot[, {</span>
 <span class="co">#   c(conv_area, tot_C, int_mean, mu_cost) / </span>

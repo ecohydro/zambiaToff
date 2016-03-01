@@ -12,22 +12,59 @@
 \captionsetup[figure]{slc=off, font=footnotesize}
 \captionsetup[table]{margin={4cm, 4cm}, slc=off, font=footnotesize}
 \usepackage[numbers,sort,compress]{natbib}
+\usepackage[skip=2pt,font=normalsize]{caption}
 
 \begin{document}
 \section*{\Large SI Results}
 
-\section*{\large Crop yields}
+\section*{\large Allocation of land between crops}
+
+To compare the degree to which the cropland allocation routine of \emph{agroEcoTradeoff} causes land that is best for maize to be allocated to soybean and vice versa, we ran the model for each crop separately (with 100\% weight on yield maximization) and compared the overlaps between the resulting conversion maps (Figure 1). The two crops were allocated to the same areas in $<$1\% of converted pixels. 
 
 \begin{figure}[!ht]
+\captionsetup{width=0.95\linewidth, font=small}
        \begin{center}
-       \makebox[\textwidth][c]{\includegraphics[width=0.8\textwidth]{figures/ideal_yield2.png}}
+       \makebox[\textwidth][c]{\includegraphics[width=0.8\textwidth]{figures/ideal_yield3.png}}
         \end{center}
       \caption{The distribution of converted areas when the model is run separately for maize and soybean when 100\% is placed on yield maximization. The map is color-coded according to which crop was allocated to each location (red for maize, blue for soybean, and yellow for the places where both crops were allocated).}
       \label{fig:default}
 \end{figure}
 
+\section*{\large Overlaps with farm blocks}
 
-\section*{\large References}
+\begin{figure}[!ht]
+\captionsetup{width=0.95\linewidth, font=small}
+       \begin{center}
+       \makebox[\textwidth][c]{\includegraphics[width=1.2\textwidth]{figures/fb_overlaps.png}}
+        \end{center}
+      \caption{Simulations run under the 100\% weight to yield maximization and the equal weights scenarios (25\% weight to all objectives), showing the areas of overlap with designated farm development blocks. }
+      \label{fig:default}
+\end{figure}
+
+\clearpage
+\section*{\large Weights associated with 5\% cost compromises}
+
+\begin{table}[ht]
+\begin{center}
+\captionsetup{width=0.85\linewidth, font=small}
+\caption{Weights corresponding to the scenarios in which each objective was a) willing to pay 5\% more than its lowest possible cost, and b) the costs for the other three objectives were minimized equitably.}
+\begin{tabular}{ccccc}
+\hline
+& \multicolumn{4}{c}{Weights}\\
+Objective making 5\% compromise & Yield & Carbon & Biodiversity & Transport Cost \\
+\hline\hline
+Yield & 40 & 10 & 5 & 45 \\
+Carbon & 15 & 75 & 0 & 10 \\
+Biodiversity & 15 & 5 & 50 & 30 \\
+Travel time & 5 & 5 & 0 & 90 \\
+\hline
+\end{tabular}
+\end{center}
+\label{default}
+\end{table}
+
+
+%\section*{\large References}
 \bibliographystyle{prsb} 
 \bibliography{/Users/lestes/Dropbox/publications/full}
 

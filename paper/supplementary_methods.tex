@@ -28,7 +28,7 @@
 
 \section*{\large Model overview}
 
-The agroEcoTradeoff model was designed to identify optimal land use configurations that allow a certain level of agricultural production to be achieved while minimizing associated ecological and economic costs. The model follows the rationale of Koh and Ghazoul \citep{koh_spatially_2010}, which was designed to select areas with promising potential for oil palm production but whose conversion would result in less loss of carbon, avian diversity, and land with high rice production potential. In this case, each unit of land was ranked based on its relative value within each measure. Normalizing these values converted each into an oil palm conversion probability \emph{c} that was conditioned on the individual land value, such that the highest ranking areas were converted until a specified oil palm production target was reached. For example, in the case of carbon conservation being the priority, lands were sequentially selected from the least carbon dense to the most carbon dense, without concern for any other objective. By multiplying the four \emph{c} values together into a joint conversion probability \emph{C}, each land value was given equal weight, achieving a satisfactory tradeoff between the four different land use objectives. 
+Our model was designed to identify optimal land use configurations that allow a certain level of agricultural production to be achieved while minimizing associated ecological and economic costs. The model follows the rationale of Koh and Ghazoul \citep{koh_spatially_2010}, which was designed to select areas with promising potential for oil palm production but whose conversion would result in less loss of carbon, avian diversity, and land with high rice production potential. In this case, each unit of land was ranked based on its relative value within each measure. Normalizing these values converted each into an oil palm conversion probability \emph{c} that was conditioned on the individual land value, such that the highest ranking areas were converted until a specified oil palm production target was reached. For example, in the case of carbon conservation being the priority, lands were sequentially selected from the least carbon dense to the most carbon dense, without concern for any other objective. By multiplying the four \emph{c} values together into a joint conversion probability \emph{C}, each land value was given equal weight, achieving a satisfactory tradeoff between the four different land use objectives. 
 
 Our model is formulated as multi-objective optimization problem that seeks to find acceptable tradeoffs between four potentially competing land use objectives--the desire to select the most productive lands for growing crops, versus the desire to minimize carbon and biodiversity loss, as well as production costs (represented in this study by a proxy variable, travel time). The model starts with the assumption that some level of crop production must be reached, for multiple crops. To achieve optimal tradeoffs, each objective is treated as an efficiency, wherein the lowest cost solution for meeting each production target is sought, using the following formulation:   
 
@@ -183,7 +183,20 @@ The then adjusted the yields in the GAM-derived maps so that their means matched
 \captionsetup{width=0.95\linewidth, font=small}
     \begin{center}
        \makebox[\textwidth][c]{\includegraphics[width=1\textwidth]{figures/yields.png} }
-      \caption{Predicted yield maps for maize (left) and soybean (right), shown in tons ha$^{-1}$, produced by fitting a generalized additive model to DSSAT-predicted yields at 40 points throughout Zambia where weather stations are located.  The GAM-predicted yields where adjusted so that their mean values matched 2050 projected mean yields for Zambia, derived from FAO data. Yields are shown for locations outside of protected areas (GMAs = game management areas; NatParks = national parks). }
+      \caption{Predicted yield maps for maize (left) and soybean (right), shown in tons ha$^{-1}$, produced by fitting a generalized additive model to DSSAT-predicted yields at 40 points throughout Zambia where weather stations are located.  The GAM-predicted yields where adjusted so that their mean values matched 2050 projected mean yields for Zambia, derived from FAO data. Yields are shown for locations outside of protected areas. }
+      \label{fig:default}
+\end{center}
+\end{figure}
+
+\subsection*{Carbon}
+
+Figure 2 shows the carbon densities (100\% of vegetative and 25\% of soil carbon in the top 1 m) used by the model to calculate total carbon loss upon conversion to cropland. 
+
+\begin{figure}[ht]
+\captionsetup{width=0.95\linewidth, font=small}
+    \begin{center}
+       \makebox[\textwidth][c]{\includegraphics[width=1\textwidth]{figures/carbon.png} }
+      \caption{The density of carbon loss (in tons ha$^{-1]}$) per grid cell used by the model to calculate total carbon loss when cells are converted to cropland, as shown for locations outside of existing protected areas. }
       \label{fig:default}
 \end{center}
 \end{figure}
@@ -230,6 +243,19 @@ Miombo woodland on hills/outcrops & 0.15 & 69.2 & 6.7 & 13 & 11.2 \\
 \end{tabular}
 \end{table}
 
+The final biodiversity index map is shown in Figure 2, with 0 being the lowest value areas and 1 the highest. 
+
+\begin{figure}[ht]
+\captionsetup{width=0.95\linewidth, font=small}
+    \begin{center}
+       \makebox[\textwidth][c]{\includegraphics[width=1\textwidth]{figures/bd.png} }
+      \caption{Biodiversity index values for Zambia, shown for locations outside of existing protected areas (GMAs = game management areas; NatParks = national parks), excluding forest reserves (visible as the darkest green areas on the map). }
+      \label{fig:default}
+\end{center}
+\end{figure}
+ 
+
+
 
 \subsection*{Estimating Travel Time}
 
@@ -262,12 +288,12 @@ The travel time rasters where then merged into a single friction surface. Except
 \captionsetup{width=0.95\linewidth, font=small}
     \begin{center}
        \makebox[\textwidth][c]{\includegraphics[width=1\textwidth]{figures/cost.png} }
-      \caption{Cost distance surface for Zambia, showing travel time in hours to the nearest major town. Travel times are shown for locations outside of protected areas (GMAs = game management areas; NatParks = national parks). }
+      \caption{Cost distance surface for Zambia, showing travel time in hours to the nearest major town. Travel times are shown for locations outside of protected areas. }
       \label{fig:default}
 \end{center}
 \end{figure}
 
-
+\clearpage
 %\section*{\large References}
 \bibliographystyle{prsb} 
 \bibliography{/Users/lestes/Dropbox/publications/full}
