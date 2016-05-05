@@ -1,5 +1,5 @@
 \documentclass[a4paper]{article}
-%\usepackage[affil-it]{authblk}  
+\usepackage[affil-it]{authblk}  
 %\newcommand{\citetapos}[1]{\citeauthor{#1}'s \citeyearpar{#1}}  % apostrophe's in cites
 \def\linenumberfont{\normalfont\small\sffamily}
 \usepackage{graphicx}
@@ -7,10 +7,12 @@
 % From link below: next two lines allow caption to fill the full figure box, and caption formats to be changed (e.g. font)
 % http://tex.stackexchange.com/questions/107350/caption-below-the-figure-and-aligned-with-left-side-of-figure
 % http://ctan.mackichan.com/macros/latex/contrib/caption/caption-eng.pdf
+\usepackage[numbers,sort,compress]{natbib}
+
 \usepackage[left=2.5cm, right=2.5cm, bottom=2cm, top=2cm]{geometry}
 \usepackage[skip=2pt,font=normalsize]{caption}
 \captionsetup[figure]{slc=off, font=footnotesize}
-\captionsetup[table]{margin={4cm, 4cm}, slc=off, font=footnotesize}
+\captionsetup[table]{margin={4cm, 4cm}, slc=off, font=small}
 \usepackage[numbers,sort,compress]{natbib}
 \usepackage{amsmath}
 \usepackage{amsfonts}
@@ -22,9 +24,12 @@
 \newcolumntype{L}[1]{>{\raggedright\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
 \newcolumntype{C}[1]{>{\centering\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
 \newcolumntype{R}[1]{>{\raggedleft\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
+\newcommand{\tabitem}{~~\llap{\textbullet}~~}
+\usepackage{multirow}
+
 
 \begin{document}
-\section*{\Large SI Methods}
+\section*{SI Methods}
 
 \section*{\large Model overview}
 
@@ -80,8 +85,10 @@ The algorithm begins by initializing all $x_{ij}$ to 0. While all targets have n
 
 The algorithm considers crops one at a time and selects the cells with the highest conversion probability until the target is reached. Since two crops may not claim the same cell, the algorithm enables cells to be reallocated to crops in later iterations for which they are found to be more valuable towards maximizing the objective function. Consider each crop as a knapsack that needs to be filled to meet a target capacity. The vector $r$ represents the additional conversion probability that each cell brings to its current knapsack than the next available cell, $\hat{C_i}$, would bring. A cell $x_{ij}$ is reallocated to a different crop only if it is still of high enough rank among all remaining cells in terms of conversion probability after reassessing the conversion probability as $C'_{ij} - r_{j}$. (Note that $r$ does not take into account that when more than one cell is reallocated, multiple cells are often required to replace them). Due to this reallocation, some targets may not be satisfied after completing one pass through all crops. Subsequent passes are completed after removing from consideration the crops whose targets have been met and the cells already allocated. All targets are guaranteed to be satisfied after $m$ passes because the last crop considered is always satisfied (none of its selections are reallocated). By running the algorithm with the $C_{ij}$'s calculated with varying $\lambda_k$'s, we can find approximately optimal, non-dominated scenarios and plot the Pareto front.
 
+To assess the effectiveness of this routine, and the degree to which it might cause the ideal allocation area for one crop to be displaced by that of another, we ran the model separately for each crop under a yield maximization scenario and compared the degree of overlap (see SI Results).  
+
 \subsection*{Model Assumptions and Limitations}
-Our model is limited to finding solutions in a convex solution space, and lacks the optimality guarantees possessed by more sophisticated algorithms. More sophisticated approaches, such as genetic approaches \citep[e.g.][]{stewart_genetic_2004,cao_spatial_2011}, which are adept at finding diverse sets of solutions, including those in non-convex spaces, their computational complexity causes model runs to be very time consuming \citep{geertman_participatory_2002}. Algorithms continue to grow more efficient using more sophisticated algorithms, but even these new routines compromise the number of outputs they are able to generate within a given time, which is problematic especially as the size of the inputs grows. The advantage of our approach is that it enables quick determination of land use changes, by applying a hybrid set of weights to multiple objectives in order to search for qualitatively appealing land use change scenarios. 
+Our model is limited to finding solutions in a convex solution space, and lacks the optimality guarantees possessed by more sophisticated algorithms. More sophisticated approaches, such as genetic approaches \citep[e.g.][]{stewart_genetic_2004,cao_spatial_2011}, which are adept at finding diverse sets of solutions, including those in non-convex spaces, have high computational complexity that causes model runs to be very time consuming \citep{geertman_participatory_2002}. Algorithms continue to grow in efficiency and sophistication, but even these newer routines compromise the number of outputs they are able to generate within a given time, which is problematic especially as the size of the inputs grows. The advantage of our approach is that it enables quick determination of land use changes, by applying a hybrid set of weights to multiple objectives in order to search for qualitatively appealing land use change scenarios. 
 
 With respect to the greedy approximation algorithm, Dantzig \citep{dantzig_discrete-variable_1957} acknowledges that it is mathematically imperfect, as it is often optimal to eschew more efficient items in favor of selecting a combination of items that fill the ``knapsack'' closer to the target.  However, Dantzig \citep{dantzig_discrete-variable_1957} also remarks that, in practice, if the target is not strict, the greedy algorithm always leads to a reasonable solution. Moreover, the difference between the greedy approximation and the optimal solution is particularly trivial if the weight of each individual item is small relative to the total weight limit. In the application for which this variant was designed, the potential production of each pixel tends to be orders of magnitude smaller than the target production for a crop. Also, the target is not so strict, as variability is implicit in predicting agricultural productivity. This flexibility leads the greedy algorithm to produce reasonable scenarios. 
 
@@ -91,9 +98,46 @@ In order to estimate yields using DSSAT, we took four stock cultivars for maize 
 
 Both maize and soybean were set to automatically plant when soil water reached 90\% of capacity, with the first possible plant date for maize set to November 11 and soybean to January 1 (approximately each crop's average first dates for planting in Zambia).  Maize and soybean were respectively given 100 and 50 kg ha$^{-1}$ of N fertilizer applied at planting, with maize planted with a density of 4.5 plants m$^{-2}$ and a row spacing of 90 cm, with soybean a density of 40 plants m$^{-2}$ and row spacing of 65 cm. 
 
-We ran the model at 40 weather stations for each of the dominant soils associated in the 10X10 km area \cite{romero_reanalysis_2012} around those stations, for each growing season between 1979 and 2010, resulting in a total of 5,859 climate X soil X weather year combinations. This was repeated for each cultivar, after which we averaged the results at each station and soil types and for each year across cultivars.  The average maize yield across all permutations was 8518 t ha$^{-1}$ and for soybean it was 3074 t ha$^{-1}$.  
+We ran the model at 40 weather stations for each of the dominant soils associated in the 10x10 km area \cite{romero_reanalysis_2012} around those stations, for each growing season between 1979 and 2010 (which totals 30 seasons, given that Zambia's growing season begins in November-December and ends in March-April), resulting in a total of 5,859 climate x soil x weather year combinations. This was repeated for each cultivar, after which we averaged the results at each station and soil types and for each year across cultivars.  The average maize yield across all permutations was 8518 t ha$^{-1}$ and for soybean it was 3074 t ha$^{-1}$.  
 
-We fit generalized additive models \citep{hastie_generalized_1990,wood_mgcv:_2001} to the cultivar averaged yields, which we further reduced to a mean, 10th percentile, and 90th percentile yield value for each weather station-soil combination, using the predictors described in the main text.  We adopted the GAM approach because it makes no assumptions about the distribution of the data, and can fit complex non-linear relationships.  We took advantage of this feature to control for spatial correlations in the data, using a two-dimensional spline on the x and y coordinates of the station locations \citep[e.g.][]{estes_projected_2013,estes_comparing_2013}.  For all other predictors we used parametric, and primarily polynomial terms, accounting for the well-known polynomial relationship between most of the predictors and crop yields \citep{lobell_nonlinear_2011,lobell_use_2010}. We selected the best-fitting, least-correlated subset of predictors, further screening the selected model to make sure it made biophysical sense (e.g. we rejected models where the relationship between soil organic carbon, pH, or temperature showed a concave, as opposed, to convex shape). The following is the summary of the GAM fit for maize:
+To fit generalized additive models \citep[GAM;][]{hastie_generalized_1990,wood_mgcv_2001} to the cultivar averaged yields, we first derived predictors from DSSAT's primary weather and soil inputs (Table 1). For each of the 30 growing seasons in the time series, we calculated the following variables from the daily weather data \citep{sheffield_development_2006, chaney_spatial_2014, estes_changing_2014} used to run DSSAT: the cumulative rainfall for three different portions of the growing season (November-March; December-March; January-March); the mean daily solar radiation for the same three portions of the growing season; growing degree days (GDD). GDD was calculated by first calculating daily mean temperature from the daily maximum and minimum, and then summing the amount of each day's mean temperature exceeding 8$^{\circ}$ \citep[per][]{licker_mind_2010} for each year. From the soil profiles \citep{harvestchoice_converting_2010} that we used to run DSSAT, we calculated for the top 1 m of the soil profile average values of the following parameters: percent soil clay content; percent organic carbon; bulk density; pH. Of these, the clay parameter is not used directly by DSSAT, but is strongly correlated (along with percent organic carbon, which is directly used by DSSAT) with wilting point and field capacity \citep{saxton_estimating_1986,saxton_soil_2006,hutson_estimation_1983}, two soil hydraulic parameters that DSSAT requires but which are not available in the 1 km soil maps \citep{hengl_mapping_2015}. DSSAT in fact provides a tool that uses clay and other texture variables to calculate these hydraulic properties when they are missing using pedotransfer functions, which is a common practice when pre-processing soil inputs for using the model \citep[e.g.][]{estes_comparing_2013}.  
+
+\begin{table}[htdp]
+\captionsetup{width=0.9\linewidth}
+\caption{Correspondence between several primary weather and soil variables used by the DSSAT model \citep{jones_potential_2003} and the predictors derived from them that were used in fitting the generalized additive model.}
+\vspace{-10pt}
+\begin{center}
+\begin{tabular}{p{1.5cm}p{6cm}p{6cm}}
+  \hline
+  Type & DSSAT variable & GAM variable \\
+  \hline\hline
+  \multirow{8}{*}{Weather} & \multirow{3}{*}{\parbox{6cm}{Daily rainfall}} & Nov-March cumulative rainfall \\
+                  &    & Dec-March cumulative rainfall \\
+                 &    & Jan-March cumulative rainfall \\\cline{2-3}
+                 & \multirow{3}{*}{\parbox{6cm}{Daily shortwave radiation }} &  Nov-March mean daily solar radiation \\
+                 & & Dec-March mean daily solar radiation\\
+                 & & Jan-March mean daily solar radiation \\\cline{2-3}
+                 & \multirow{1}{*}{\parbox{6cm}{Daily max \& min temperatures }} & 
+                    Growing degree days (GDD) \\
+  \hline                  
+  \multirow{8}{*}{Soil} & Field capacity in \emph{n} horizons  & - \\
+                                 %  \multirow{2}{*}{\parbox{7cm}{Mean \% clay content in top 1 m}}\\ 
+                  &  Wilting point in \emph{n} horizons & - \\\cline{2-3}
+                  & \% clay content in \emph{n horizons} & Mean \% clay content in top 1 m \\
+                  & \% organic carbon in \emph{n} horizons & Mean \% organic carbon in top 1 m \\
+                  & Bulk density in \emph{n} horizons & Mean bulk density in top 1 m \\
+                  & pH in \emph{n} horizons  & Mean pH in top 1 m \\\cline{2-3}
+%                  & Root growth factor in \emph{n} horizons  & - \\
+%                  & Drainage coefficient  & - \\
+  \hline
+\end{tabular}
+\end{center}
+\label{default}
+\end{table}%
+
+After calculating these predictor variables from DSSAT's inputs, we condensed the DSSAT predicted yields by calculating the mean and 10th and 90th percentile yield values for each weather-soil combination. To make sure the derived weather predictors (Table 1) aligned with these yield values, we calculated the 30-year means of each weather predictor and associated these with the DSSAT mean yields, and extracted the weather variables for the years corresponding to the 10th and 90th percentile yield values. Derived soil predictors did not vary by year. We then fit GAM models using the derived variables as predictors of these summarized DSSAT yield values.   
+
+We adopted the GAM approach because it makes no assumptions about the distribution of the data, and can fit complex non-linear relationships.  We took advantage of this feature to control for spatial correlations in the data, using a two-dimensional spline on the x and y coordinates of the station locations \citep[e.g.][]{estes_projected_2013,estes_comparing_2013}.  For all other predictors we used parametric, and primarily polynomial terms, accounting for the well-known polynomial relationship between most of the predictors and crop yields \citep{lobell_nonlinear_2011,lobell_use_2010}. We selected the best-fitting, least-correlated subset of predictors, further screening the selected model to make sure it made biophysical sense (e.g. we rejected models where the relationship between soil organic carbon, pH, or temperature showed a concave, as opposed, to convex shape). The following is the summary of the GAM fit for maize:
 
 \begin{verbatim}
 Family: gaussian 
@@ -165,19 +209,19 @@ R-sq.(adj) =  0.545   Deviance explained = 56.1%
 -REML = 4832.3  Scale est. = 1.445e+06  n = 567
 \end{verbatim}
 
-The maize model explained 40\% of the deviance in the DSSAT-simulated yields, and the soybean model explained 56\% of deviance. The maize model used predictors for December-March cumulative precipitation (DJFMP), growing degree days (GDD), mean November-March solar radiation (SSRMI), soil pH (SLHW), and soil clay content, with polynomial terms fit to each.  The soybean used the same predictors, except the precipitation was the sum of the January-March period (JFMP) and solar radiation was averaged over the same time period (SSRMIII).  With the exception of GDD in soybean (which was near significant at the p<0.1 level and was retained for consistency with the maize model), all predictors were significant on one or both of the linear and squared term of the predictor, while the geographic terms was significant in both models. 
+The maize model explained 40\% of the deviance in the DSSAT-simulated yields, and the soybean model explained 56\% of deviance. The maize model used predictors for December-March cumulative precipitation (DJFMP), growing degree days (GDD), mean November-March solar radiation (SSRMI), soil pH (SLHW), and soil clay content, with polynomial terms fit to each.  The soybean used the same predictors, except the precipitation was the sum of the January-March period (JFMP) and solar radiation was averaged over the same time period (SSRMIII). With the exception of GDD in soybean (which was near significant at the p$<$0.1 level and was retained for consistency with the maize model), all predictors were significant on one or both of the linear and squared term of the predictor, while the geographic terms was significant in both models. 
 
-Using the gridded predictor variables, we mapped predicted yield values for all of Zambia. We then adjusted these data to match the FAO-projected yields as described in the main text. We used two sources to calculate the likely future yield improvement trend for Zambia.  We used the Food and Agricutural Organization's (FAO) historical and projected yield dataset \citep{alexandratos_world_2012} for sub-Saharan Africa to calculate a projected annual rate of change between 2007 and 2050, and we also examined 2000-2014 yield trends for Zambia, collected from FAOStat \citep{fao_fao_2012}, from which we calculated an annual rate of change. We then took a weighted average of these two factors, giving 25\% weight to the Zambia projections and 75\% to the Bruinsma-derived value to calculate a maize growth rate, to given Zambia some credit for the larger yield gains it has recently shown relative to most of the rest of the region. For soybean we used the Bruinsma rate. 
+To map predicted yields across Zambia, we first derived gridded versions of the GAM predictors (Table 1) from the gridded daily weather data \citep{sheffield_development_2006,chaney_spatial_2014,estes_changing_2014}, and from the 1 km soil maps \citep{hengl_mapping_2015}. The soil maps provide values for 6 different layers at standard depths of 0-5 cm, 5-15 cm, 15-30 cm, 30-60 cm, 60-100 cm, and 100-200 cm. We therefore calculated the mean of the first 5 layers, weighted by each layer's depth, to calculate the equivalent of the predictors derived from DSSAT's soil inputs (Table 1). The GAM coefficients were then applied to the gridded predictor sets to create the yield maps, after which we adjusted the predicted yields to match the FAO-projected yields as described in the main text. We used two sources to calculate the likely future yield improvement trend for Zambia.  We used the Food and Agricutural Organization's (FAO) historical and projected yield dataset \citep{alexandratos_world_2012} for sub-Saharan Africa to calculate a projected annual rate of change between 2007 and 2050, and we also examined 2000-2014 yield trends for Zambia, collected from FAOStat \citep{fao_fao_2012}, from which we calculated an annual rate of change. We then took a weighted average of these two factors, giving 25\% weight to the Zambia projections and 75\% to the Bruinsma-derived value to calculate a maize growth rate, to given Zambia some credit for the larger yield gains it has recently shown relative to most of the rest of the region. For soybean we used the Bruinsma rate. 
 
 We then applied these rates to calculate a projected 2050 yield for each crop in Zambia as follows: 
 
 \begin{equation}
-y_{2050} = (1 + \beta(2050-2014))y_{current}
+\textrm{y}_{2050} = (1 + \beta(2050-2014))\textrm{y}_{\textrm{current}}
 \end{equation} 
 
 Where $\beta$ is the yield gain rate, and $y_{current}$ is the 2009-2014 mean yield for each crop (2.3 t ha$^{-1}$ for maize and 2 t ha$^{-1}$ for soybean). Applying this formula resulted in projected yields of 4.43 and 3.4 tons t ha$^{-1}$ for maize and soybean, respectively. 
 
-The then adjusted the yields in the GAM-derived maps so that their means matched these projected means. However, since the yield rates and average values on which they were based were obtained from existing cropland, we extracted the gridded yield values that corresponded with existing cropland (determined using the landcover dataset, see main text). We calculated the mean GAM-predicted yield on existing cropland, which we divided into the FAO-projected yield to determine a correction factor, which we then applied to the entirety of each map.  The resulting maps are shown in Figure 1. 
+We then adjusted the yields in the GAM-derived maps so that their means matched these projected means. However, since the yield rates and average values on which they were based were obtained from existing cropland, we extracted the gridded yield values that corresponded with existing cropland (determined using the landcover dataset, see main text). We calculated the mean GAM-predicted yield on existing cropland, which we divided into the FAO-projected yield to determine a correction factor, which we then applied to the entirety of each map.  The resulting maps are shown in Figure 1. 
 
 \begin{figure}[ht]
 \captionsetup{width=0.95\linewidth, font=small}
@@ -202,14 +246,14 @@ Figure 2 shows the carbon densities (100\% of vegetative and 25\% of soil carbon
 \end{figure}
 
 \subsection*{Landcover data}
-The choice of landcover product can have a critical impact on the results of any spatial analysis.  This is particularly true with respect to trying to locate the current extent of existing cropland, where existing landcover datasets are particularly discrepant and in wide disagreement \cite{fritz_comparison_2010} because the average cropland extent is small and, from a nadir perspective, are often difficult to distinguish from the surrounding savanna vegetation \cite{estes_platform_2016,debats_generalized_2015}. The most accurate landcover datasets tend to be country-specific Landsat-based maps \cite[][and per a forthcoming South Africa-focused landcover intercomparison]{fritz_comparison_2010}, therefore we selected the 30 m resolution type II landcover map for Zambia for the year 2010, developed under the NASA SERVIR program\footnote{downloaded from http://apps.rcmrd.org/landcoverviewer/}. These products have undergone extensive validation and provide the most current and best available landcover maps for Zambia and several other eastern and southern African countries, and their consistency across the region is another advantage in that it facilitates the transferability of our model. 
+The choice of landcover product can have a critical impact on the results of any spatial analysis.  This is particularly true with respect to the distribution and extent of current cropland. Most existing landcover datasets are notoriously inaccurate for this task \cite{fritz_comparison_2010}, because the average field size is small and, from a nadir perspective, often difficult to distinguish from the surrounding savanna vegetation \cite{estes_platform_2016,debats_generalized_2015}. The most accurate landcover datasets tend to be country-specific Landsat-based maps \cite[][and per a forthcoming South Africa-focused landcover intercomparison]{fritz_comparison_2010}, therefore we selected the 30 m resolution scheme II landcover map for Zambia for the year 2010, developed under the NASA SERVIR program\footnote{downloaded from http://apps.rcmrd.org/landcoverviewer/}. These products have undergone extensive validation and provide the most current and best available landcover maps for Zambia and several other eastern and southern African countries. The regional consistency of these maps provides a further advantage in that it facilitates the transferability of our model. 
 
-We used this landcover map as the basis for determining how much land in each 1 km$^2$ grid cell was unconverted to cropland or urban areas. This information formed the basis for determining what land was potentially available for new cropland (although it does not factor in ownership or other factors that cannot be seen from space, which determine true availability), and also the degree to which habitats remained intact and un-fragmented.  To calculate both measures, we first removed cropland and urban cover types from the 30 m resolution landcover map, and then aggregated the remainder to 1 km$^2$, producing a fractional map expressing how much untransformed land was available in each grid cell. To calculate the intactness measure, we passed a simple 11X11 focal mean filter over this map, with the result describing the proportion of intact habitat remaining in a broader 121 km$^2$ neighborhood around each grid cell.  We selected this neighborhood size because 1) it is roughly equivalent to the size of a large provincial nature in South Africa \cite{estes_using_2014}, which has been more heavily transformed to agriculture, and 2) in a situation where a country is facing large-scale agricultural transformation, it is useful to highlight areas that have both a viable amount of remaining habitat, yet are not so big that they would be heavily conflicted with agricultural interests. 
+We used this landcover map as the basis for determining how much land in each 1 km$^2$ grid cell was unconverted to cropland or urban areas. This information formed the basis for determining what land was potentially available for new cropland (although it cannot factor in ownership and features that are invisible from space, which determine true availability), and also the degree to which habitats remained intact and un-fragmented.  To calculate both measures, we first removed cropland and urban cover types from the 30 m resolution landcover map, and then aggregated the remainder to 1 km$^2$, producing a fractional map expressing how much untransformed land was available in each grid cell. To calculate the intactness measure, we passed a simple 11X11 focal mean filter over this map, with the result describing the proportion of intact habitat remaining in a broader 121 km$^2$ neighborhood around each grid cell.  We selected this neighborhood size because 1) it is roughly equivalent to the size of a large provincial nature in South Africa \cite{estes_using_2014}, which has been more heavily transformed to agriculture, and 2) in a situation where a country is facing large-scale agricultural transformation, it is useful to highlight areas that have both a viable amount of remaining habitat, yet are not so big that they would be heavily conflicted with agricultural interests. 
 
 \subsection*{Biodiversity}
 The rarity/threat measure incorporated into our biodiversity value criterion is a simplified version of the measure developed by van Breugel et al \citep{van_breugel_environmental_2015}. Our metric differs in that we define the rarity of each vegetation type with respect to how much of its remains untransformed to cropland or urban areas within Zambia, whereas van Breugel et al define this regionally. We adopted this national-level criterion because 1) the other land use criteria in our analysis are scaled to this level, and 2) conservation decisions about what to protect or not to protect are typically made based on representativeness at national to sub-national scales \citep[e.g.][]{cowling_conservation_2003}. 
 
-We also did not calculate the same threat index for non-protected parts of these vegetation types, opting instead to use the measure of intactness described in the previous section and in the main text. We wanted to give equal weight to intactness because the overwhelmingly dominant habitat types in Zambia are miombo woodlands (Table 1), which to date have remained relatively intact. Applying just the rarity/threat index, would penalize these habitats, yet their relative intactness, together with high mammal species richness, is one of the factors that make them of conservation interest \cite{olson_terrestrial_2001,searchinger_high_2015,brooks_global_2006}. Furthermore, a unique feature of miombo woodlands is that, due to the digestibility of forage, megaherbivores (buffalo, elephant) are over-represented in the assemblage of large mammalian herbivores, and correspondingly require large range sizes to maintain viable populations \cite{mcnaughton_ecology_1986}.  
+We also did not calculate the same threat index for non-protected parts of these vegetation types, opting instead to use the measure of intactness described in the previous section and in the main text. We wanted to give equal weight to intactness because the overwhelmingly dominant habitat types in Zambia are miombo woodlands (Table 1), which to date have remained relatively intact. Applying just the rarity/threat index, would penalize these habitats, yet their relative intactness, together with high mammal species richness, is one of the factors that make them of conservation interest \cite{olson_terrestrial_2001, searchinger_high_2015, brooks_global_2006}. Furthermore, a unique feature of miombo woodlands is that, due to the digestibility of forage, megaherbivores (buffalo, elephant) are over-represented in the assemblage of large mammalian herbivores, and correspondingly require large range sizes to maintain viable populations \cite{mcnaughton_ecology_1986}.  
 
 \begin{table}[ht]
 \centering
@@ -254,18 +298,9 @@ The final biodiversity index map is shown in Figure 2, with 0 being the lowest v
 \end{center}
 \end{figure}
  
-
-
-
 \subsection*{Estimating Travel Time}
 
-To calculate the time to travel to the nearest major town, we considered not just Zambia but also portions of the neighboring countries, under the assumption that for certain areas within Zambia near its borders, the closest market center might be in a neighboring country. We therefore calculated travel time within a region defined by longitudes 19.5 to 34.5 degrees, and latitudes -19.5 to -8 degrees.  
-
-We obtained a vector dataset of roads from the Zambian government, and downloaded an additional dataset available for broader region from OpenStreetMap. We merged these two sets into a single dataset in order to capture the road network in and around Zambia, and classified roads into trunk roads, primary roads, secondary roads, and tertiary roads. 
-
-We obtained vector datasets for lakes and major towns in Zambia from the government. For towns outside Zambia, we used the Gridded Population of the World Version 3 \citep{ciesin_gridded_2005} town vectors. We used the USGS Hydrosheds database to indicate the position and size of rivers, based on their contributing area. 
-
-The roads, rivers, and lakes were converted to a raster of 1 km resolution (the same as our analysis), together with Zambia's borders. Travel times were then assigned to each of the features, based on how long it would take to cross a 1 km pixel: 
+To create the cost distance analysis, features used to define the input friction surface (see main text) were assigned different estimates for how long it took to travel 1 km. These were assigned as follows: 
 
 \begin{enumerate}
 \item Roads
@@ -296,7 +331,7 @@ The travel time rasters where then merged into a single friction surface. Except
 \clearpage
 %\section*{\large References}
 \bibliographystyle{prsb} 
-\bibliography{/Users/lestes/Dropbox/publications/full}
+\bibliography{/Users/lestes/Dropbox/publications/fullbib}
 
 
 

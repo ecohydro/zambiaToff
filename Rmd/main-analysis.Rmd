@@ -144,17 +144,19 @@ Running the model individually for each crop. This currently entails updating an
 # }
 
 # Separate soy and maize impacts
+
+# together
 cb <- c("Y" = 1, "C" = 0, "BD" = 0, "COST" = 0)
 mzsoyto <- tradeoff_mod(prod_targ = targ, cbetas = cb, currprodmod = g)
 
 # mzto$conv[, sum(maize)]
 # soyto$conv[, sum(soy)]
 
-CRSobj <- CRS(mzto$inputs$sp$crs)
+CRSobj <- CRS(mzsoyto$inputs$sp$crs)
 mzsoytor <- dt_to_raster(mzsoyto$conv, CRSobj)  # converges on same results
 
 # Plot
-i1 <- rbind(mzto$impacts, soyto$impacts)
+# i1 <- rbind(mzto$impacts, soyto$impacts)
 basedt <- mzsoyto$inputs$mask
 ```
 <a href="#top">Back to top</a>
